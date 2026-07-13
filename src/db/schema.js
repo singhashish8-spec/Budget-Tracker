@@ -42,6 +42,43 @@ export const MIGRATIONS = [
       );`,
     ],
   },
+  {
+    version: 2,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS reminders (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        due_day INTEGER NOT NULL,
+        paid_for TEXT,
+        created_at INTEGER NOT NULL
+      );`,
+      `CREATE TABLE IF NOT EXISTS goals (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        target_amount INTEGER NOT NULL,
+        saved_amount INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      );`,
+      `CREATE TABLE IF NOT EXISTS net_worth_items (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL CHECK(kind IN ('asset','liability')),
+        label TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+      );`,
+      `CREATE TABLE IF NOT EXISTS pattern_prefs (
+        signature TEXT PRIMARY KEY,
+        status TEXT NOT NULL CHECK(status IN ('confirmed','dismissed'))
+      );`,
+      `CREATE TABLE IF NOT EXISTS sms_log (
+        id TEXT PRIMARY KEY,
+        raw_sms TEXT NOT NULL,
+        txn_id TEXT REFERENCES transactions(id),
+        created_at INTEGER NOT NULL
+      );`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

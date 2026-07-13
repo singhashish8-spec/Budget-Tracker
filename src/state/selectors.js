@@ -79,3 +79,44 @@ export function filterTransactions(txns, { search = '', filter = 'all' } = {}) {
   if (filter === 'review') list = list.filter((t) => !t.cat);
   return list;
 }
+
+// Groups expense transactions by merchant, surfaces the ones seen 3+ times as
+// a "pattern" (real detection over stored data — the design prototype used
+// hardcoded demo patterns). signature = normalized merchant name, used as the
+// pattern_prefs primary key so confirm/dismiss survives across app opens.
+export function detectPatterns(txns, categories, patternPrefs) {
+  const prefByMerchant = {};
+  patternPrefs.forEach((p) => {
+    prefByMerchant[p.signature] = p.status;
+  });
+
+  const groups = {};
+  txns
+    .filter((t) => t.type === 'expense')
+    .forEach((t) => {
+      const key = t.merchant.trim().toLowerCase();
+      if (!groups[key]) groups[key] = { merchant: t.merchant, count: 0, total: 0, cat: t.cat };
+      groups[key].count += 1;
+      groups[key].total += t.amount;
+    });
+
+  return Object.entries(groups)
+    .filter(([sig, g]) => g.count >= 3 && prefByMerchant[sig] !== 'dismissed')
+    .map(([sig, g]) => {
+      const cat = categoryById(categories, g.cat);
+      const avg = Math.round(g.total / g.count);
+      return {
+        signature: sig,
+        merchant: g.merchant,
+        count: g.count,
+        avgAmount: avg,
+        avgF: fmt(avg),
+        totalF: fmt(g.total),
+        label: cat?.label ?? 'Uncategorised',
+        mono: cat?.mono ?? '?',
+        color: cat?.color ?? '#8A8577',
+        confirmed: prefByMerchant[sig] === 'confirmed',
+      };
+    })
+    .sort((a, b) => b.count - a.count);
+}

@@ -1,0 +1,114 @@
+import { useState } from 'react';
+import { colors, tint } from '../theme/tokens';
+import { useApp } from '../state/AppContext';
+import { detectPatterns } from '../state/selectors';
+import { unlock as biometricUnlock } from '../services/appLock';
+
+export default function PatternsScreen() {
+  const { state, go, setPatternPref, clearPatternPref, showToast } = useApp();
+  const patterns = detectPatterns(state.txns, state.categories, state.patternPrefs);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const requestDelete = async (p) => {
+    setConfirmDelete(p.signature);
+    const res = await biometricUnlock();
+    setConfirmDelete(null);
+    if (res.success) {
+      await setPatternPref(p.signature, 'dismissed');
+      showToast(`"${p.merchant}" pattern dismissed`);
+    } else if (!res.cancelled) {
+      showToast(res.message || 'Couldn’t verify — try again');
+    }
+  };
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
+        <button onClick={() => go('home')} style={backBtnStyle}>
+          <BackIcon />
+        </button>
+        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>Smart patterns</div>
+      </div>
+
+      <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.textSecondary, padding: '0 4px' }}>
+        Detected from your transactions
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {patterns.map((p) => (
+          <div key={p.signature} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: 15 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 8 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: tint(p.color), color: p.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+                {p.mono}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 600 }}>{p.merchant}</div>
+                <div style={{ fontSize: 12, color: colors.textTertiary }}>Seen {p.count} times · avg {p.avgF}</div>
+              </div>
+              <button
+                onClick={() => requestDelete(p)}
+                title="Dismiss pattern"
+                disabled={confirmDelete === p.signature}
+                style={{ width: 30, height: 30, borderRadius: '50%', background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+              >
+                <svg width="11" height="11" viewBox="0 0 11 11">
+                  <path d="M1 1l9 9M10 1l-9 9" stroke={colors.danger} strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: colors.textSecondary, marginBottom: 10 }}>
+              Tagged {p.label} {p.count} times, totalling {p.totalF} so far.
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => (p.confirmed ? clearPatternPref(p.signature) : setPatternPref(p.signature, 'confirmed'))}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: '7px 15px',
+                  borderRadius: 100,
+                  cursor: 'pointer',
+                  background: p.confirmed ? colors.successTint : colors.primary,
+                  color: p.confirmed ? colors.primary : colors.bgApp,
+                  border: `1px solid ${p.confirmed ? colors.successBorder : colors.primary}`,
+                }}
+              >
+                {p.confirmed ? 'Confirmed pattern' : 'Confirm pattern'}
+              </button>
+            </div>
+          </div>
+        ))}
+        {patterns.length === 0 && (
+          <div style={{ fontSize: 13.5, color: colors.textTertiary, textAlign: 'center', padding: '20px 0' }}>
+            No recurring merchants yet — patterns show up once a merchant appears 3+ times
+          </div>
+        )}
+      </div>
+
+      <div style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', padding: '4px 20px' }}>
+        Dismissing a pattern requires verifying it's you
+      </div>
+    </div>
+  );
+}
+
+const backBtnStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: '50%',
+  background: colors.cardSurface,
+  border: `1px solid ${colors.cardBorder}`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  flexShrink: 0,
+};
+
+function BackIcon() {
+  return (
+    <svg width="9" height="15" viewBox="0 0 9 15">
+      <path d="M8 1L2 7.5 8 14" stroke="#1B1F23" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

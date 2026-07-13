@@ -2,7 +2,7 @@ import { colors } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 
 export default function TopBar() {
-  const { state, go, showToast } = useApp();
+  const { state, go, openMenu } = useApp();
   if (state.screen === 'onboarding' || state.processing) return null;
 
   return (
@@ -31,7 +31,7 @@ export default function TopBar() {
         </svg>
       </button>
       <button
-        onClick={() => showToast('Settings, insights & reminders are coming in the next build')}
+        onClick={openMenu}
         style={{
           width: 40,
           height: 40,

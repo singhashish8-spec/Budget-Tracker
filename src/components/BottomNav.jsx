@@ -7,6 +7,7 @@ const TABS = [
   { key: 'transactions', label: 'Activity' },
   null, // center FAB slot
   { key: 'budgets', label: 'Budgets' },
+  { key: 'insights', label: 'More' },
 ];
 
 export default function BottomNav() {

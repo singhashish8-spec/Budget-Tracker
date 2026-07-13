@@ -3,15 +3,15 @@ import { CapacitorSQLite, SQLiteConnection } from '@capacitor-community/sqlite';
 import { MIGRATIONS, LATEST_SCHEMA_VERSION, BUILTIN_CATEGORIES } from './schema';
 
 // Financial transaction history lives here. On native this is a real SQLite
-// file in app-private storage; in the browser (dev / `npm run dev`) it's
-// backed by jeep-sqlite + sql.js (IndexedDB-persisted) so the same code path
-// works without a device. Neither is encrypted at rest yet — see README
-// "Known gaps" for the production requirement to layer in SQLCipher via the
-// plugin's `encrypted` connection mode before shipping.
+// file, encrypted at rest with SQLCipher (see ensureEncryptionSecret below);
+// in the browser (dev / `npm run dev`) it's backed by jeep-sqlite + sql.js
+// (IndexedDB-persisted, unencrypted — dev convenience only) so the same code
+// path works without a device.
 
 const DB_NAME = 'budget_tracker';
 const sqlite = new SQLiteConnection(CapacitorSQLite);
 const isWeb = () => Capacitor.getPlatform() === 'web';
+const isNative = () => Capacitor.isNativePlatform();
 
 let dbPromise = null;
 
@@ -77,12 +77,33 @@ async function runMigrations(db) {
   if (isWeb()) await sqlite.saveToStore(DB_NAME);
 }
 
+// The plugin persists the encryption secret itself via the OS's secure
+// storage (Android Keystore-backed) once set — we never store or see the
+// passphrase again after this call. isSecretStored() MUST be checked first:
+// calling setEncryptionSecret a second time would try to re-encrypt with a
+// new secret and make the existing database unreadable.
+async function ensureEncryptionSecret() {
+  if (!isNative()) return;
+  const { result: stored } = await sqlite.isSecretStored();
+  if (stored) return;
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const passphrase = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  await sqlite.setEncryptionSecret(passphrase);
+}
+
+// Connection mode note: the plugin's 'encryption' mode is a one-time
+// plaintext→encrypted migration for a database that already exists on disk
+// (it fails with "not found" on a fresh install, since there's nothing to
+// migrate). 'secret' is the mode for creating/opening a database that's
+// encrypted from the moment it's created — that's what we want here.
 async function openDb() {
   await ensureWebStore();
+  await ensureEncryptionSecret();
+  const encrypted = isNative();
   const isConn = (await sqlite.isConnection(DB_NAME, false)).result;
   const db = isConn
     ? await sqlite.retrieveConnection(DB_NAME, false)
-    : await sqlite.createConnection(DB_NAME, false, 'no-encryption', 1, false);
+    : await sqlite.createConnection(DB_NAME, encrypted, encrypted ? 'secret' : 'no-encryption', 1, false);
   await db.open();
   await runMigrations(db);
   return db;

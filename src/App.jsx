@@ -1,4 +1,5 @@
 import { colors } from './theme/tokens';
+import { setActiveCurrency } from './utils/currency';
 import { AppProvider, useApp } from './state/AppContext';
 import Onboarding from './screens/onboarding/Onboarding';
 import HomeScreen from './screens/HomeScreen';
@@ -6,16 +7,24 @@ import TransactionsScreen from './screens/TransactionsScreen';
 import BudgetsScreen from './screens/BudgetsScreen';
 import UploadScreen from './screens/UploadScreen';
 import ReviewImportScreen from './screens/ReviewImportScreen';
+import InsightsScreen from './screens/InsightsScreen';
+import RemindersScreen from './screens/RemindersScreen';
+import PatternsScreen from './screens/PatternsScreen';
+import SmsScreen from './screens/SmsScreen';
+import SettingsScreen from './screens/SettingsScreen';
 import TopBar from './components/TopBar';
 import BottomNav from './components/BottomNav';
 import CategorySheet from './components/CategorySheet';
 import ProcessingOverlay from './components/ProcessingOverlay';
 import Toast from './components/Toast';
+import LockScreen from './components/LockScreen';
+import HamburgerDrawer from './components/HamburgerDrawer';
 
-const TAB_SCREENS = ['home', 'transactions', 'budgets'];
+const TAB_SCREENS = ['home', 'transactions', 'budgets', 'insights'];
 
 function Shell() {
   const { state } = useApp();
+  setActiveCurrency(state.currency);
 
   if (state.loading) {
     return (
@@ -34,6 +43,10 @@ function Shell() {
     );
   }
 
+  if (state.locked) {
+    return <LockScreen />;
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', background: colors.bgApp, color: colors.ink }}>
       {state.screen === 'onboarding' && <Onboarding />}
@@ -42,10 +55,16 @@ function Shell() {
       {state.screen === 'budgets' && <BudgetsScreen />}
       {state.screen === 'upload' && <UploadScreen />}
       {state.screen === 'review' && <ReviewImportScreen />}
+      {state.screen === 'insights' && <InsightsScreen />}
+      {state.screen === 'reminders' && <RemindersScreen />}
+      {state.screen === 'patterns' && <PatternsScreen />}
+      {state.screen === 'sms' && <SmsScreen />}
+      {state.screen === 'settings' && <SettingsScreen />}
 
       <TopBar />
       {TAB_SCREENS.includes(state.screen) && <BottomNav />}
       <CategorySheet />
+      <HamburgerDrawer />
       <ProcessingOverlay />
       <Toast />
     </div>

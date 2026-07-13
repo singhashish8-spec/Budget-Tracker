@@ -1,5 +1,13 @@
 {
   "appId": "com.budgettracker.app",
   "appName": "Budget Tracker",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorSQLite": {
+      "androidIsEncryption": true,
+      "androidBiometric": {
+        "biometricAuth": false
+      }
+    }
+  }
 }

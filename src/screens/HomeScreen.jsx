@@ -1,5 +1,6 @@
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
+import { currentMonthKey, currentMonthLabel, ordinal } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { alertCount, topCategories, homeTotals } from '../state/selectors';
 
@@ -10,8 +11,13 @@ export default function HomeScreen() {
   const { spend, income, spendPct } = homeTotals(txns);
   const top = topCategories(txns, categories);
   const recent = txns.slice(0, 4);
+  const monthKey = currentMonthKey();
+  const upcomingBills = [...state.reminders]
+    .filter((r) => r.paid_for !== monthKey)
+    .sort((a, b) => a.due_day - b.due_day)
+    .slice(0, 2);
 
-  const monthLabel = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  const monthLabel = currentMonthLabel();
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -72,6 +78,27 @@ export default function HomeScreen() {
           </div>
         ))}
       </div>
+
+      {upcomingBills.length > 0 && (
+        <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600 }}>Upcoming bills</div>
+            <button onClick={() => go('reminders')} style={{ fontSize: 13, fontWeight: 600, color: colors.primary, cursor: 'pointer' }}>View all</button>
+          </div>
+          {upcomingBills.map((r) => (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '7px 0' }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: colors.warningTint, color: colors.warning, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+                {r.label.slice(0, 2).toUpperCase()}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{r.label}</div>
+                <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Due {ordinal(r.due_day)}</div>
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{fmt(r.amount)}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>

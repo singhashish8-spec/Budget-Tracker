@@ -92,3 +92,130 @@ export async function setSetting(key, value) {
   );
   await persist();
 }
+
+// ── reminders (bills) ──
+
+export async function listReminders() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM reminders ORDER BY due_day ASC`);
+  return res.values ?? [];
+}
+
+export async function addReminder({ label, amount, dueDay }) {
+  const db = await getDb();
+  const id = newId('rem');
+  await db.run(
+    `INSERT INTO reminders (id, label, amount, due_day, paid_for, created_at) VALUES (?,?,?,?,NULL,?)`,
+    [id, label, Math.round(amount), dueDay, Date.now()],
+  );
+  await persist();
+  return id;
+}
+
+export async function setReminderPaid(id, paidFor) {
+  const db = await getDb();
+  await db.run(`UPDATE reminders SET paid_for = ? WHERE id = ?`, [paidFor, id]);
+  await persist();
+}
+
+export async function deleteReminder(id) {
+  const db = await getDb();
+  await db.run(`DELETE FROM reminders WHERE id = ?`, [id]);
+  await persist();
+}
+
+// ── savings goals ──
+
+export async function listGoals() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM goals ORDER BY created_at ASC`);
+  return res.values ?? [];
+}
+
+export async function addGoal({ label, targetAmount }) {
+  const db = await getDb();
+  const id = newId('goal');
+  await db.run(
+    `INSERT INTO goals (id, label, target_amount, saved_amount, created_at) VALUES (?,?,?,0,?)`,
+    [id, label, Math.round(targetAmount), Date.now()],
+  );
+  await persist();
+  return id;
+}
+
+export async function addToGoal(id, amount) {
+  const db = await getDb();
+  await db.run(`UPDATE goals SET saved_amount = saved_amount + ? WHERE id = ?`, [Math.round(amount), id]);
+  await persist();
+}
+
+export async function deleteGoal(id) {
+  const db = await getDb();
+  await db.run(`DELETE FROM goals WHERE id = ?`, [id]);
+  await persist();
+}
+
+// ── net worth (assets / liabilities) ──
+
+export async function listNetWorthItems() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM net_worth_items ORDER BY created_at ASC`);
+  return res.values ?? [];
+}
+
+export async function addNetWorthItem({ kind, label, amount }) {
+  const db = await getDb();
+  const id = newId('nw');
+  await db.run(
+    `INSERT INTO net_worth_items (id, kind, label, amount, created_at) VALUES (?,?,?,?,?)`,
+    [id, kind, label, Math.round(amount), Date.now()],
+  );
+  await persist();
+  return id;
+}
+
+export async function deleteNetWorthItem(id) {
+  const db = await getDb();
+  await db.run(`DELETE FROM net_worth_items WHERE id = ?`, [id]);
+  await persist();
+}
+
+// ── pattern preferences (confirm / dismiss) ──
+
+export async function listPatternPrefs() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM pattern_prefs`);
+  return res.values ?? [];
+}
+
+export async function setPatternPref(signature, status) {
+  const db = await getDb();
+  await db.run(
+    `INSERT INTO pattern_prefs (signature, status) VALUES (?,?)
+     ON CONFLICT(signature) DO UPDATE SET status = excluded.status`,
+    [signature, status],
+  );
+  await persist();
+}
+
+export async function clearPatternPref(signature) {
+  const db = await getDb();
+  await db.run(`DELETE FROM pattern_prefs WHERE signature = ?`, [signature]);
+  await persist();
+}
+
+// ── SMS log ──
+
+export async function listSmsLog(limit = 20) {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM sms_log ORDER BY created_at DESC LIMIT ?`, [limit]);
+  return res.values ?? [];
+}
+
+export async function addSmsLog({ rawSms, txnId }) {
+  const db = await getDb();
+  const id = newId('sms');
+  await db.run(`INSERT INTO sms_log (id, raw_sms, txn_id, created_at) VALUES (?,?,?,?)`, [id, rawSms, txnId, Date.now()]);
+  await persist();
+  return id;
+}
