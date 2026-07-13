@@ -1,5 +1,5 @@
 {
-  "name": "scaffold-tmp",
+  "name": "budget-tracker",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,11 +10,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor-community/sqlite": "^8.1.0",
     "@capacitor/android": "^8.4.1",
+    "@capacitor/camera": "^8.2.1",
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
+    "@capacitor/filesystem": "^8.1.2",
+    "jeep-sqlite": "^2.8.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "sql.js": "^1.14.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

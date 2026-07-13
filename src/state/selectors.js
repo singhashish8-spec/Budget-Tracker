@@ -1,0 +1,81 @@
+import { fmt } from '../utils/currency';
+
+// Pure derived-value helpers, mirroring the design prototype's renderVals()
+// but split out so screens/tests can call them without a live DB connection.
+
+export function categoryById(categories, id) {
+  return categories.find((c) => c.id === id) || null;
+}
+
+export function alertCount(txns) {
+  return txns.filter((t) => !t.cat).length;
+}
+
+export function spendByCategory(txns) {
+  const byCat = {};
+  txns
+    .filter((t) => t.type === 'expense' && t.cat)
+    .forEach((t) => {
+      byCat[t.cat] = (byCat[t.cat] || 0) + t.amount;
+    });
+  return byCat;
+}
+
+export function topCategories(txns, categories, limit = 4) {
+  const byCat = spendByCategory(txns);
+  const sorted = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, limit);
+  const max = sorted.length ? sorted[0][1] : 1;
+  return sorted.map(([id, amt]) => {
+    const cat = categoryById(categories, id);
+    return {
+      id,
+      label: cat?.label ?? id,
+      mono: cat?.mono ?? '?',
+      color: cat?.color ?? '#8A8577',
+      amount: amt,
+      amtF: fmt(amt),
+      barPct: Math.max(6, Math.round((amt / max) * 100)),
+    };
+  });
+}
+
+export function homeTotals(txns) {
+  const spend = txns.filter((t) => t.type === 'expense').reduce((a, t) => a + t.amount, 0);
+  const income = txns.filter((t) => t.type === 'income').reduce((a, t) => a + t.amount, 0);
+  const spendPct = income ? Math.min(100, Math.round((spend / income) * 100)) : 0;
+  return { spend, income, spendPct };
+}
+
+export function budgetRows(txns, categories, budgets) {
+  const byCat = spendByCategory(txns);
+  return budgets.map((b) => {
+    const cat = categoryById(categories, b.cat);
+    const spent = byCat[b.cat] || 0;
+    const pct = b.limit ? Math.round((spent / b.limit) * 100) : 0;
+    const over = spent > b.limit;
+    const near = !over && pct >= 80;
+    return {
+      cat: b.cat,
+      label: cat?.label ?? b.cat,
+      mono: cat?.mono ?? '?',
+      color: cat?.color ?? '#8A8577',
+      spent,
+      limit: b.limit,
+      spentF: fmt(spent),
+      limitF: fmt(b.limit),
+      barPct: Math.min(100, pct),
+      status: over ? 'over' : near ? 'near' : 'ok',
+      statusText: over
+        ? `Over by ${fmt(spent - b.limit)}`
+        : `${fmt(b.limit - spent)} left${near ? ' — almost there' : ''}`,
+    };
+  });
+}
+
+export function filterTransactions(txns, { search = '', filter = 'all' } = {}) {
+  const q = search.trim().toLowerCase();
+  let list = txns;
+  if (q) list = list.filter((t) => t.merchant.toLowerCase().includes(q));
+  if (filter === 'review') list = list.filter((t) => !t.cat);
+  return list;
+}
