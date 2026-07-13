@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root {
+  color-scheme: light;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: #ECE7DD;
+  font-family: 'IBM Plex Sans', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+input, button {
+  font-family: inherit;
+}
+
+input {
+  outline: none;
+}
+
+button {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sheetup { from { transform: translateY(40px); opacity: 0.4; } to { transform: translateY(0); opacity: 1; } }
+@keyframes slidein { from { transform: translateX(48px); opacity: 0.4; } to { transform: translateX(0); opacity: 1; } }
