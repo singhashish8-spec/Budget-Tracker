@@ -10,7 +10,9 @@ import { toBase64, htmlToText, capText, xlsxToText } from './fileParse';
 // the key server-side. Mitigate by using a key with tight quotas / that you
 // can rotate, and don't publish this APK. See README "AI scanning".
 
-const MODEL = 'gemini-2.5-flash';
+// Alias that always tracks Google's current Gemini Flash model — verified to
+// work with generateContent (gemini-2.5-flash is now restricted for new keys).
+const MODEL = 'gemini-flash-latest';
 
 function apiKey() {
   return import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -38,10 +40,13 @@ async function callGemini(parts) {
   if (!key) {
     throw new Error('AI scanning isn’t set up yet — add your Gemini API key (see README) and rebuild');
   }
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+  // Key goes in the x-goog-api-key header (not the URL query string) — works
+  // with both classic AIza and newer AQ.* key formats, and keeps the secret
+  // out of the request URL.
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({
       contents: [{ role: 'user', parts }],
       generationConfig: { responseMimeType: 'application/json', temperature: 0 },
