@@ -19,3 +19,6 @@ project(':capacitor-filesystem').projectDir = new File('../node_modules/@capacit
 
 include ':capacitor-share'
 project(':capacitor-share').projectDir = new File('../node_modules/@capacitor/share/android')
+
+include ':capacitor-sms-inbox'
+project(':capacitor-sms-inbox').projectDir = new File('../node_modules/capacitor-sms-inbox/android')

@@ -47,7 +47,7 @@ export default function BottomNav() {
               position: 'relative',
             }}
           >
-            <span style={{ fontSize: 10.5, fontWeight: 600 }}>{tab.label}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 600 }}>{tab.label}</span>
             {tab.key === 'transactions' && hasAlerts && (
               <div
                 style={{

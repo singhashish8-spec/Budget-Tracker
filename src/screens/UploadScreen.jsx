@@ -20,7 +20,8 @@ export default function UploadScreen() {
     set({ processing: true, procTitle: `Reading ${file.name}…`, procSub: 'Preparing file' });
     try {
       set({ procSub: 'AI is reading the transactions' });
-      const { transactions, truncated } = await extractTransactions(file);
+      const validIds = state.categories.map((c) => c.id);
+      const { transactions, truncated } = await extractTransactions(file, validIds);
       if (!Array.isArray(transactions) || !transactions.length) throw new Error('No transactions found in this file');
 
       const valid = state.categories.map((c) => c.id);

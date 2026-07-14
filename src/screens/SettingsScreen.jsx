@@ -1,9 +1,18 @@
 import { colors } from '../theme/tokens';
 import { CURRENCIES } from '../utils/currency';
 import { useApp } from '../state/AppContext';
+import { backupToDrive } from '../services/backup';
 
 export default function SettingsScreen() {
   const { state, go, showToast, setCurrency, toggleAccount, toggleAppLock } = useApp();
+
+  const doBackup = async () => {
+    try {
+      await backupToDrive();
+    } catch (err) {
+      if (!/cancel/i.test(err?.message || '')) showToast('Couldn’t start the backup — try again');
+    }
+  };
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -15,16 +24,16 @@ export default function SettingsScreen() {
       </div>
 
       <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
-        <div style={sectionLabel}>Account &amp; sync</div>
+        <div style={sectionLabel}>Backup</div>
         <button
-          onClick={() => showToast('Google sign-in isn’t configured yet — add your OAuth client ID to enable it')}
+          onClick={doBackup}
           style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer' }}
         >
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 600 }}>Google Drive sync</div>
-            <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Not connected</div>
+            <div style={{ fontSize: 14.5, fontWeight: 600 }}>Back up to Google Drive</div>
+            <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Exports your data — pick "Save to Drive" in the share sheet</div>
           </div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>Connect</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>Back up</div>
         </button>
       </div>
 

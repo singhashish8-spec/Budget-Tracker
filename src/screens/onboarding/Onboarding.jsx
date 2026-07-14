@@ -31,7 +31,7 @@ export default function Onboarding() {
 }
 
 function StepSignIn() {
-  const { obNext, showToast } = useApp();
+  const { obNext } = useApp();
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
@@ -57,36 +57,15 @@ function StepSignIn() {
           Link what you use. We'll read your bills and statements, sort every expense, and flag anything we can't recognise.
         </div>
       </div>
-      <button
-        onClick={() => showToast('Google sign-in isn’t configured yet — add your OAuth client ID to enable it')}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          background: colors.cardSurface,
-          border: `1px solid ${colors.cardBorder}`,
-          borderRadius: 16,
-          padding: 14,
-          cursor: 'pointer',
-          textAlign: 'left',
-          width: '100%',
-        }}
-      >
-        <GoogleG />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Sign in with Google</div>
-          <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Saves everything to a "Budget Tracker" folder in your own Drive</div>
-        </div>
-      </button>
       <div style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 1.5, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: '13px 14px' }}>
-        Everything stays on this device unless you turn on Drive sync — nothing is sent to a company server.
+        Your data is encrypted and stays on this device. You can back it up to Google Drive anytime from Settings.
       </div>
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button
           onClick={obNext}
           style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 16, textAlign: 'center', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}
         >
-          Continue without signing in
+          Get started
         </button>
       </div>
     </>
@@ -137,7 +116,7 @@ function StepTrack() {
 }
 
 function StepCategories() {
-  const { state, addCategory, obBack, finishOnboarding } = useApp();
+  const { state, addCategory, toggleCategoryEnabled, obBack, finishOnboarding } = useApp();
   const [newCat, setNewCat] = useState('');
 
   const submit = async () => {
@@ -150,19 +129,38 @@ function StepCategories() {
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 26, fontWeight: 700 }}>Your categories</div>
-        <div style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 1.45 }}>Every expense gets sorted into one of these. Add your own below.</div>
+        <div style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 1.45 }}>Tap to turn categories on or off. Add your own below.</div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         {state.categories
           .filter((c) => c.id !== 'income' && c.id !== 'transfer')
-          .map((c) => (
-            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 9, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 14, padding: '10px 11px' }}>
-              <div style={{ width: 28, height: 28, borderRadius: 9, background: tint(c.color), color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
-                {c.mono}
-              </div>
-              <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.label}</div>
-            </div>
-          ))}
+          .map((c) => {
+            const on = !state.disabledCats.includes(c.id);
+            return (
+              <button
+                key={c.id}
+                onClick={() => toggleCategoryEnabled(c.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 9,
+                  background: on ? colors.cardSurface : 'transparent',
+                  border: `1.5px solid ${on ? colors.primary : colors.cardBorder}`,
+                  borderRadius: 14,
+                  padding: '10px 11px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  opacity: on ? 1 : 0.5,
+                }}
+              >
+                <div style={{ width: 28, height: 28, borderRadius: 9, background: tint(c.color), color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
+                  {c.mono}
+                </div>
+                <div style={{ fontSize: 13.5, fontWeight: 500, flex: 1 }}>{c.label}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: on ? colors.primary : colors.textTertiary }}>{on ? '✓' : '+'}</div>
+              </button>
+            );
+          })}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <input
@@ -187,13 +185,3 @@ function StepCategories() {
   );
 }
 
-function GoogleG() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
-      <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.9z" />
-      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
-      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.4-11.3-8.1l-6.5 5C9.5 39.6 16.2 44 24 44z" />
-      <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4.1 5.5l6.2 5.2C41 35.4 44 30.2 44 24c0-1.3-.1-2.7-.4-3.9z" />
-    </svg>
-  );
-}

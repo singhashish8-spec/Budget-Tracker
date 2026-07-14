@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { App as CapacitorApp } from '@capacitor/app';
 import * as repo from '../db/repo';
 import { checkLockAvailable, unlock as biometricUnlock } from '../services/appLock';
+import { smsAvailable, ensureSmsPermission, readNewTransactions } from '../services/smsReader';
 
 const AppStateContext = createContext(null);
 
@@ -36,6 +37,8 @@ const initialState = {
   currency: 'INR',
   taxRegime: 'new',
   tax80cInvested: 0,
+  disabledCats: [],
+  customPatterns: [],
   appLock: false,
   locked: false,
   menuOpen: false,
@@ -75,6 +78,8 @@ export function AppProvider({ children }) {
           currency,
           taxRegime,
           tax80cInvested,
+          disabledCatsJson,
+          customPatternsJson,
         ] = await Promise.all([
           repo.listCategories(),
           repo.listTransactions(),
@@ -90,6 +95,8 @@ export function AppProvider({ children }) {
           repo.getSetting('currency', 'INR'),
           repo.getSetting('taxRegime', 'new'),
           repo.getSetting('tax80cInvested', '0'),
+          repo.getSetting('disabledCats', null),
+          repo.getSetting('customPatterns', null),
         ]);
         const onboarded = onboardedFlag === '1';
         const appLock = appLockFlag === '1';
@@ -110,6 +117,8 @@ export function AppProvider({ children }) {
           currency,
           taxRegime,
           tax80cInvested: Number(tax80cInvested) || 0,
+          disabledCats: disabledCatsJson ? JSON.parse(disabledCatsJson) : [],
+          customPatterns: customPatternsJson ? JSON.parse(customPatternsJson) : [],
           loading: false,
         });
       } catch (err) {
@@ -168,6 +177,20 @@ export function AppProvider({ children }) {
       repo.setSetting('currency', code);
     },
     [set],
+  );
+
+  // Onboarding category selection: toggling a category into disabledCats
+  // hides it from the category pickers (categorize sheet, budget chips)
+  // without deleting it, so past transactions keep their category.
+  const toggleCategoryEnabled = useCallback(
+    (id) => {
+      const disabled = state.disabledCats.includes(id)
+        ? state.disabledCats.filter((x) => x !== id)
+        : [...state.disabledCats, id];
+      set({ disabledCats: disabled });
+      repo.setSetting('disabledCats', JSON.stringify(disabled));
+    },
+    [state.disabledCats, set],
   );
 
   const setTaxRegime = useCallback(
@@ -355,21 +378,73 @@ export function AppProvider({ children }) {
     [set],
   );
 
-  // ── SMS simulation: inserts a real transaction + logs the "SMS" that produced it ──
-  const simulateSms = useCallback(
-    async ({ rawSms, merchant, amount, cat, type }) => {
-      try {
-        const id = await repo.addTransaction({ merchant, account: 'SMS · auto-tracked', date: 'Today', amount, cat, type, source: 'sms' });
-        await repo.addSmsLog({ rawSms, txnId: id });
-        const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
-        set({ txns, smsLog });
-        showToast(cat ? `Auto-added: ${merchant}` : 'Couldn’t recognise — flagged red');
-      } catch (err) {
-        showToast(err?.message || 'Couldn’t process that SMS');
-      }
+  // User-defined recurring items shown alongside auto-detected patterns.
+  const addCustomPattern = useCallback(
+    ({ label, amount, cadence }) => {
+      const next = [...state.customPatterns, { id: `cp_${Date.now()}`, label, amount: Math.round(amount), cadence }];
+      set({ customPatterns: next });
+      repo.setSetting('customPatterns', JSON.stringify(next));
+      showToast(`"${label}" added`);
     },
-    [set, showToast],
+    [state.customPatterns, set, showToast],
   );
+
+  const deleteCustomPattern = useCallback(
+    (id) => {
+      const next = state.customPatterns.filter((p) => p.id !== id);
+      set({ customPatterns: next });
+      repo.setSetting('customPatterns', JSON.stringify(next));
+    },
+    [state.customPatterns, set],
+  );
+
+  // ── real SMS scan: reads inbox, parses bank/UPI alerts, dedupes, inserts ──
+  const scanSms = useCallback(async () => {
+    if (!smsAvailable()) {
+      showToast('SMS reading works on an Android phone only');
+      return;
+    }
+    try {
+      const granted = await ensureSmsPermission();
+      if (!granted) {
+        showToast('SMS permission is needed to auto-track from messages');
+        return;
+      }
+      const sinceMs = Number(await repo.getSetting('smsLastRead', '0')) || 0;
+      const { transactions: found, newest } = await readNewTransactions(sinceMs);
+
+      // Cross-check against already-stored SMS transactions so a re-scan or an
+      // overlapping window doesn't double-add the same payment.
+      const existing = await repo.listTransactions();
+      let added = 0;
+      for (const t of found) {
+        const dayLabel = new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+        const dup = existing.some(
+          (e) => e.source === 'sms' && e.type === t.type && e.amount === t.amount && e.date === dayLabel,
+        );
+        if (dup) continue;
+        const id = await repo.addTransaction({
+          merchant: t.merchant,
+          account: 'SMS · auto-tracked',
+          date: dayLabel,
+          amount: t.amount,
+          cat: null,
+          type: t.type,
+          source: 'sms',
+        });
+        await repo.addSmsLog({ rawSms: t.rawSms, txnId: id });
+        existing.push({ source: 'sms', type: t.type, amount: t.amount, date: dayLabel });
+        added += 1;
+      }
+
+      await repo.setSetting('smsLastRead', String(newest));
+      const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
+      set({ txns, smsLog });
+      showToast(added ? `Added ${added} transaction${added === 1 ? '' : 's'} from SMS` : 'No new transactions in your messages');
+    } catch (err) {
+      showToast(err?.message || 'Couldn’t read your messages');
+    }
+  }, [set, showToast]);
 
   // Review-import staging: these edit state.reviewImported in place (not the
   // DB) until the user confirms the batch — nothing is persisted until then.
@@ -402,6 +477,7 @@ export function AppProvider({ children }) {
       showToast,
       toggleAccount,
       setCurrency,
+      toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,
       toggleAppLock,
@@ -425,7 +501,9 @@ export function AppProvider({ children }) {
       deleteNetWorthItem,
       setPatternPref,
       clearPatternPref,
-      simulateSms,
+      addCustomPattern,
+      deleteCustomPattern,
+      scanSms,
       setReviewCategory,
       cancelReview,
       confirmReview,
@@ -440,6 +518,7 @@ export function AppProvider({ children }) {
       showToast,
       toggleAccount,
       setCurrency,
+      toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,
       toggleAppLock,
@@ -463,7 +542,9 @@ export function AppProvider({ children }) {
       deleteNetWorthItem,
       setPatternPref,
       clearPatternPref,
-      simulateSms,
+      addCustomPattern,
+      deleteCustomPattern,
+      scanSms,
       setReviewCategory,
       cancelReview,
       confirmReview,

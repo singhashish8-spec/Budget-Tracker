@@ -38,4 +38,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Read bank/UPI transaction SMS for auto-tracking (requested at runtime) -->
+    <uses-permission android:name="android.permission.READ_SMS" />
 </manifest>

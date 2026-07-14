@@ -39,7 +39,7 @@ export default function CategorySheet() {
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {state.categories
-            .filter((c) => c.id !== 'income')
+            .filter((c) => c.id !== 'income' && !state.disabledCats.includes(c.id))
             .map((c) => (
               <button
                 key={c.id}

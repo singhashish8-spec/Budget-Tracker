@@ -13,7 +13,9 @@ export default function BudgetsScreen() {
   const overallPct = overallLimit ? Math.min(100, Math.round((overallSpent / overallLimit) * 100)) : 0;
 
   const monthLabel = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-  const availableCats = categories.filter((c) => c.id !== 'income' && c.id !== 'transfer' && !budgets.some((b) => b.cat === c.id));
+  const availableCats = categories.filter(
+    (c) => c.id !== 'income' && c.id !== 'transfer' && !state.disabledCats.includes(c.id) && !budgets.some((b) => b.cat === c.id),
+  );
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>

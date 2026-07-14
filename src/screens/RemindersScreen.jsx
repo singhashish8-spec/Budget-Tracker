@@ -8,17 +8,18 @@ export default function RemindersScreen() {
   const { state, go, addReminder, toggleReminderPaid, deleteReminder } = useApp();
   const [label, setLabel] = useState('');
   const [amt, setAmt] = useState('');
-  const [day, setDay] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const monthKey = currentMonthKey();
 
   const submit = () => {
     const amount = parseInt(String(amt).replace(/[^0-9]/g, ''), 10);
-    const dueDay = Math.min(31, Math.max(1, parseInt(day, 10) || 1));
-    if (!label.trim() || !amount) return;
+    // Bills recur monthly, so we store the day-of-month from the picked date.
+    const dueDay = dueDate ? new Date(dueDate).getDate() : 1;
+    if (!label.trim() || !amount || !dueDate) return;
     addReminder({ label: label.trim(), amount, dueDay });
     setLabel('');
     setAmt('');
-    setDay('');
+    setDueDate('');
   };
 
   const rows = [...state.reminders].sort((a, b) => a.due_day - b.due_day);
@@ -78,10 +79,14 @@ export default function RemindersScreen() {
       <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.textSecondary }}>Add a bill</div>
         <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Electricity" style={inputStyle} />
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="₹ amount" style={{ ...inputStyle, flex: 1 }} />
-          <input value={day} onChange={(e) => setDay(e.target.value)} placeholder="Due day (1-31)" style={{ ...inputStyle, flex: 1 }} />
-        </div>
+        <input value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="₹ amount" style={inputStyle} />
+        <label style={{ fontSize: 12.5, color: colors.textSecondary, paddingLeft: 4 }}>Due date (repeats monthly on this day)</label>
+        <input
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          style={{ ...inputStyle, color: dueDate ? colors.ink : colors.textTertiary }}
+        />
         <button onClick={submit} style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 12, textAlign: 'center', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
           Add reminder
         </button>

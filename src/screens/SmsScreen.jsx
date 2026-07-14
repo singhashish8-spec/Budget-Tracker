@@ -3,27 +3,18 @@ import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
 
-// Canned SMS templates for the simulate button — the same "extract from text"
-// path a real Android SMS_RECEIVED listener would feed. Production would add
-// that native listener; per the design review, shipping it live is a Google
-// Play restricted-permissions risk (Play only allows SMS read for a default
-// SMS/dialer app or a narrow declared-use exception) that needs a Play
-// Console declared-use justification before it goes out, not just a toggle.
-const SMS_QUEUE = [
-  { sms: 'ICICI Bank: Rs 240.00 debited from a/c **8890 on 11-07-26 at BLINKIT*BANGALORE. Avl bal Rs 42,310.', merchant: 'Blinkit', amount: 240, cat: 'groceries', type: 'expense' },
-  { sms: 'HDFC Bank: Rs 500.00 credited to a/c **3412 on 11-07-26 via UPI from rahul.sharma@okhdfcbank. Ref 662104.', merchant: 'UPI from Rahul Sharma', amount: 500, cat: null, type: 'income' },
-  { sms: 'HDFC Bank: Rs 3,450.00 debited from a/c **3412 on 11-07-26 at POS AXIS*9921. Ref 771204.', merchant: 'POS AXIS*9921', amount: 3450, cat: null, type: 'expense' },
-];
-
 export default function SmsScreen() {
-  const { state, go, simulateSms, openCategorySheet } = useApp();
-  const [i, setI] = useState(0);
+  const { state, go, scanSms, openCategorySheet } = useApp();
+  const [scanning, setScanning] = useState(false);
   const on = state.accounts.sms;
 
-  const simulate = () => {
-    const q = SMS_QUEUE[i % SMS_QUEUE.length];
-    simulateSms({ rawSms: q.sms, merchant: q.merchant, amount: q.amount, cat: q.cat, type: q.type });
-    setI(i + 1);
+  const scan = async () => {
+    setScanning(true);
+    try {
+      await scanSms();
+    } finally {
+      setScanning(false);
+    }
   };
 
   return (
@@ -38,16 +29,17 @@ export default function SmsScreen() {
       <div style={{ background: on ? colors.successTint : colors.dangerTint, border: `1px solid ${on ? colors.successBorder : colors.dangerBorder}`, borderRadius: 16, padding: '13px 15px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 10, height: 10, borderRadius: '50%', background: on ? colors.primary : colors.danger, flexShrink: 0 }} />
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: on ? colors.primary : colors.danger }}>{on ? 'On — watching your inbox' : 'Off'}</div>
-          <div style={{ fontSize: 12.5, color: colors.textSecondary }}>HDFC, ICICI, GPay &amp; Paytm sender IDs · reads on your phone only</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: on ? colors.primary : colors.danger }}>{on ? 'On — reads bank & UPI SMS' : 'Off'}</div>
+          <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Reads on your phone only · duplicate bank + UPI texts are merged</div>
         </div>
       </div>
 
       <button
-        onClick={simulate}
-        style={{ background: colors.surfaceDark, color: colors.bgApp, borderRadius: 100, padding: 14, textAlign: 'center', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
+        onClick={scan}
+        disabled={scanning}
+        style={{ background: colors.surfaceDark, color: colors.bgApp, borderRadius: 100, padding: 14, textAlign: 'center', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: scanning ? 0.6 : 1 }}
       >
-        Simulate an incoming SMS
+        {scanning ? 'Reading your messages…' : 'Scan my messages'}
       </button>
 
       <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
