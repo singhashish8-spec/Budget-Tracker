@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { App as CapacitorApp } from '@capacitor/app';
 import * as repo from '../db/repo';
 import { checkLockAvailable, unlock as biometricUnlock } from '../services/appLock';
-import { smsAvailable, ensureSmsPermission, readNewTransactions } from '../services/smsReader';
+import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransactions } from '../services/smsReader';
 
 const AppStateContext = createContext(null);
 
@@ -128,19 +128,42 @@ export function AppProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-lock whenever the app comes back from the background, if app-lock is on.
+  // Re-read all table-backed data into state (used after a restore-from-backup).
+  const reloadData = useCallback(async () => {
+    const [categories, txns, budgets, reminders, goals, netWorthItems, patternPrefs, smsLog] = await Promise.all([
+      repo.listCategories(),
+      repo.listTransactions(),
+      repo.listBudgets(),
+      repo.listReminders(),
+      repo.listGoals(),
+      repo.listNetWorthItems(),
+      repo.listPatternPrefs(),
+      repo.listSmsLog(),
+    ]);
+    set({ categories, txns, budgets, reminders, goals, netWorthItems, patternPrefs, smsLog });
+  }, [set]);
+
+  // Refs so the once-registered lifecycle listener always sees current values.
   const appLockRef = useRef(state.appLock);
   const onboardedRef = useRef(state.onboarded);
+  const smsOnRef = useRef(state.accounts.sms);
+  const autoScanRef = useRef(null); // set to scanSms after it's defined below
   useEffect(() => {
     appLockRef.current = state.appLock;
     onboardedRef.current = state.onboarded;
-  }, [state.appLock, state.onboarded]);
+    smsOnRef.current = state.accounts.sms;
+  }, [state.appLock, state.onboarded, state.accounts.sms]);
 
+  // Bug 1 fix: auto-sync SMS silently on app resume (so new messages get
+  // picked up without a manual tap), and re-lock on background. The silent
+  // scan never prompts and is bounded by a timeout, so it can't freeze the UI.
   useEffect(() => {
     const handle = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-      if (!isActive && appLockRef.current && onboardedRef.current) {
-        set({ locked: true });
+      if (!isActive) {
+        if (appLockRef.current && onboardedRef.current) set({ locked: true });
+        return;
       }
+      if (onboardedRef.current && smsOnRef.current) autoScanRef.current?.({ silent: true });
     });
     return () => {
       handle.then((h) => h.remove()).catch(() => {});
@@ -399,52 +422,73 @@ export function AppProvider({ children }) {
   );
 
   // ── real SMS scan: reads inbox, parses bank/UPI alerts, dedupes, inserts ──
-  const scanSms = useCallback(async () => {
-    if (!smsAvailable()) {
-      showToast('SMS reading works on an Android phone only');
-      return;
-    }
-    try {
-      const granted = await ensureSmsPermission();
-      if (!granted) {
-        showToast('SMS permission is needed to auto-track from messages');
+  // `silent` mode (used by auto-sync on app open/resume) never prompts for
+  // permission and stays quiet unless it actually adds something — so opening
+  // the app doesn't nag or interrupt. Whole flow is wrapped so a plugin hang
+  // (now bounded by a 12s timeout in smsReader) can never freeze the UI.
+  const scanSms = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!smsAvailable()) {
+        if (!silent) showToast('SMS reading works on an Android phone only');
         return;
       }
-      const sinceMs = Number(await repo.getSetting('smsLastRead', '0')) || 0;
-      const { transactions: found, newest } = await readNewTransactions(sinceMs);
+      try {
+        const granted = silent ? await hasSmsPermission() : await ensureSmsPermission();
+        if (!granted) {
+          if (!silent) showToast('SMS permission is needed to auto-track from messages');
+          return;
+        }
+        const sinceMs = Number(await repo.getSetting('smsLastRead', '0')) || 0;
+        const { transactions: found, newest } = await readNewTransactions(sinceMs);
 
-      // Cross-check against already-stored SMS transactions so a re-scan or an
-      // overlapping window doesn't double-add the same payment.
-      const existing = await repo.listTransactions();
-      let added = 0;
-      for (const t of found) {
-        const dayLabel = new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-        const dup = existing.some(
-          (e) => e.source === 'sms' && e.type === t.type && e.amount === t.amount && e.date === dayLabel,
-        );
-        if (dup) continue;
-        const id = await repo.addTransaction({
-          merchant: t.merchant,
-          account: 'SMS · auto-tracked',
-          date: dayLabel,
-          amount: t.amount,
-          cat: null,
-          type: t.type,
-          source: 'sms',
-        });
-        await repo.addSmsLog({ rawSms: t.rawSms, txnId: id });
-        existing.push({ source: 'sms', type: t.type, amount: t.amount, date: dayLabel });
-        added += 1;
+        // Cross-check against already-stored SMS transactions so a re-scan or an
+        // overlapping window doesn't double-add the same payment.
+        const existing = await repo.listTransactions();
+        let added = 0;
+        for (const t of found) {
+          const dayLabel = new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          const dup = existing.some(
+            (e) => e.source === 'sms' && e.type === t.type && e.amount === t.amount && e.date === dayLabel,
+          );
+          if (dup) continue;
+          const id = await repo.addTransaction({
+            merchant: t.merchant,
+            account: t.address || 'SMS · auto-tracked',
+            date: dayLabel,
+            amount: t.amount,
+            cat: null,
+            type: t.type,
+            source: 'sms',
+          });
+          await repo.addSmsLog({ rawSms: t.rawSms, txnId: id });
+          existing.push({ source: 'sms', type: t.type, amount: t.amount, date: dayLabel });
+          added += 1;
+        }
+
+        await repo.setSetting('smsLastRead', String(newest));
+        const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
+        set({ txns, smsLog });
+        if (added) showToast(`Added ${added} transaction${added === 1 ? '' : 's'} from SMS`);
+        else if (!silent) showToast('No new transactions in your messages');
+      } catch (err) {
+        if (!silent) showToast(err?.message || 'Couldn’t read your messages');
       }
+    },
+    [set, showToast],
+  );
 
-      await repo.setSetting('smsLastRead', String(newest));
-      const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
-      set({ txns, smsLog });
-      showToast(added ? `Added ${added} transaction${added === 1 ? '' : 's'} from SMS` : 'No new transactions in your messages');
-    } catch (err) {
-      showToast(err?.message || 'Couldn’t read your messages');
+  // Keep the resume listener pointed at the latest scanSms, and run one silent
+  // auto-sync shortly after the app finishes loading (app-open pickup).
+  useEffect(() => {
+    autoScanRef.current = scanSms;
+  }, [scanSms]);
+  useEffect(() => {
+    if (!state.loading && state.onboarded && state.accounts.sms) {
+      const t = setTimeout(() => scanSms({ silent: true }), 800);
+      return () => clearTimeout(t);
     }
-  }, [set, showToast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.loading, state.onboarded]);
 
   // Review-import staging: these edit state.reviewImported in place (not the
   // DB) until the user confirms the batch — nothing is persisted until then.
@@ -474,6 +518,7 @@ export function AppProvider({ children }) {
       goReview,
       openMenu,
       closeMenu,
+      reloadData,
       showToast,
       toggleAccount,
       setCurrency,
@@ -515,6 +560,7 @@ export function AppProvider({ children }) {
       goReview,
       openMenu,
       closeMenu,
+      reloadData,
       showToast,
       toggleAccount,
       setCurrency,

@@ -11,11 +11,33 @@ export function smsAvailable() {
   return Capacitor.getPlatform() === 'android';
 }
 
+// Any native call here can hang if the plugin/OS misbehaves (the reported
+// "froze the whole app" bug). Race every native call against a timeout so a
+// hang surfaces as a catchable error instead of an await that never resolves.
+const SMS_TIMEOUT_MS = 12000;
+function withTimeout(promise, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out — try again`)), SMS_TIMEOUT_MS)),
+  ]);
+}
+
 export async function ensureSmsPermission() {
-  const status = await SMSInboxReader.checkPermissions();
+  const status = await withTimeout(SMSInboxReader.checkPermissions(), 'SMS permission check');
   if (status.sms === 'granted') return true;
-  const req = await SMSInboxReader.requestPermissions();
+  const req = await withTimeout(SMSInboxReader.requestPermissions(), 'SMS permission request');
   return req.sms === 'granted';
+}
+
+// Non-interactive permission check (for silent auto-sync): returns whether we
+// already have permission, without ever prompting.
+export async function hasSmsPermission() {
+  try {
+    const status = await withTimeout(SMSInboxReader.checkPermissions(), 'SMS permission check');
+    return status.sms === 'granted';
+  } catch {
+    return false;
+  }
 }
 
 // Collapses messages describing the same payment (same amount+type within the
@@ -36,21 +58,25 @@ function dedupeParsed(items) {
 // candidate transactions plus the newest message timestamp seen (so the caller
 // can persist a high-water mark and not re-import the same messages).
 export async function readNewTransactions(sinceMs = 0) {
-  const { smsList } = await SMSInboxReader.getSMSList({
-    filter: {
-      type: MessageType.INBOX,
-      minDate: sinceMs ? sinceMs + 1 : undefined,
-      maxCount: 300,
-    },
-    projection: { id: true, address: true, date: true, body: true },
-  });
+  const { smsList } = await withTimeout(
+    SMSInboxReader.getSMSList({
+      filter: {
+        type: MessageType.INBOX,
+        minDate: sinceMs ? sinceMs + 1 : undefined,
+        maxCount: 300,
+      },
+      projection: { id: true, address: true, date: true, body: true },
+    }),
+    'Reading messages',
+  );
 
   let newest = sinceMs;
   const parsed = [];
   for (const sms of smsList || []) {
     if (sms.date > newest) newest = sms.date;
     const txn = parseSms(sms.body);
-    if (txn) parsed.push({ ...txn, date: sms.date, rawSms: sms.body });
+    // Keep the sender address (bank/UPI sender id) for richer transaction detail.
+    if (txn) parsed.push({ ...txn, date: sms.date, rawSms: sms.body, address: sms.address || '' });
   }
 
   return { transactions: dedupeParsed(parsed), newest };

@@ -49,7 +49,27 @@ async function seedCategories(db) {
   }
 }
 
+// Safeguard: a migration must never be able to silently destroy user data.
+// Any DROP TABLE / DELETE / TRUNCATE in a migration is rejected before it can
+// run, so a future schema change can't wipe existing rows the way the
+// original design was suspected of doing. Additive-only migrations
+// (CREATE TABLE IF NOT EXISTS, ALTER TABLE ADD COLUMN, CREATE INDEX) are safe.
+const DESTRUCTIVE_SQL = /\b(DROP\s+TABLE|DELETE\s+FROM|TRUNCATE|DROP\s+COLUMN)\b/i;
+
+function assertNonDestructive(migration) {
+  for (const stmt of migration.statements) {
+    if (DESTRUCTIVE_SQL.test(stmt)) {
+      throw new Error(
+        `Migration v${migration.version} contains a destructive statement and was blocked to protect user data: ${stmt.slice(0, 60)}…`,
+      );
+    }
+  }
+}
+
 async function runMigrations(db) {
+  // Guard every migration up front — never partially apply then fail.
+  MIGRATIONS.forEach(assertNonDestructive);
+
   let current = 0;
   try {
     const res = await db.query(`SELECT value FROM schema_meta WHERE key = 'schema_version'`);

@@ -47,3 +47,20 @@ export async function backupToDrive() {
     url: result.uri,
   });
 }
+
+// Restore from a backup JSON File (picked via a file input). Validates the
+// file looks like our backup, then merges it into the local database.
+// Returns the per-table counts so the UI can confirm what came back.
+export async function restoreFromFile(file) {
+  const text = await file.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error('That file isn’t a valid backup');
+  }
+  if (!data || data.app !== 'Budget Tracker' || !Array.isArray(data.transactions)) {
+    throw new Error('That doesn’t look like a Budget Tracker backup');
+  }
+  return repo.importBackup(data);
+}

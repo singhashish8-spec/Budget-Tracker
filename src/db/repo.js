@@ -219,3 +219,58 @@ export async function addSmsLog({ rawSms, txnId }) {
   await persist();
   return id;
 }
+
+// ── restore from a backup file ──
+// Idempotent: uses each row's original id with INSERT OR REPLACE, so restoring
+// merges into whatever is already there (re-running a restore won't duplicate).
+// This is the real recovery path after a reinstall wipes the local database.
+export async function importBackup(data) {
+  const db = await getDb();
+  const counts = { categories: 0, transactions: 0, budgets: 0, reminders: 0, goals: 0, netWorthItems: 0 };
+
+  for (const c of data.categories ?? []) {
+    await db.run(
+      `INSERT OR REPLACE INTO categories (id, label, mono, color, is_builtin, sort_order) VALUES (?,?,?,?,?,?)`,
+      [c.id, c.label, c.mono, c.color, c.is_builtin ?? 0, c.sort_order ?? 999],
+    );
+    counts.categories++;
+  }
+  for (const t of data.transactions ?? []) {
+    await db.run(
+      `INSERT OR REPLACE INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [t.id, t.merchant, t.account ?? null, t.date, Math.round(Math.abs(t.amount)), t.category_id ?? t.cat ?? null, t.type === 'income' ? 'income' : 'expense', t.source ?? 'manual', t.created_at ?? Date.now()],
+    );
+    counts.transactions++;
+  }
+  for (const b of data.budgets ?? []) {
+    await db.run(
+      `INSERT OR REPLACE INTO budgets (category_id, monthly_limit) VALUES (?,?)`,
+      [b.category_id ?? b.cat, Math.round(b.monthly_limit ?? b.limit)],
+    );
+    counts.budgets++;
+  }
+  for (const r of data.reminders ?? []) {
+    await db.run(
+      `INSERT OR REPLACE INTO reminders (id, label, amount, due_day, paid_for, created_at) VALUES (?,?,?,?,?,?)`,
+      [r.id, r.label, Math.round(r.amount), r.due_day, r.paid_for ?? null, r.created_at ?? Date.now()],
+    );
+    counts.reminders++;
+  }
+  for (const g of data.goals ?? []) {
+    await db.run(
+      `INSERT OR REPLACE INTO goals (id, label, target_amount, saved_amount, created_at) VALUES (?,?,?,?,?)`,
+      [g.id, g.label, Math.round(g.target_amount), Math.round(g.saved_amount ?? 0), g.created_at ?? Date.now()],
+    );
+    counts.goals++;
+  }
+  for (const n of data.netWorthItems ?? []) {
+    await db.run(
+      `INSERT OR REPLACE INTO net_worth_items (id, kind, label, amount, created_at) VALUES (?,?,?,?,?)`,
+      [n.id, n.kind, n.label, Math.round(n.amount), n.created_at ?? Date.now()],
+    );
+    counts.netWorthItems++;
+  }
+  await persist();
+  return counts;
+}

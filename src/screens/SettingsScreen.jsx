@@ -1,16 +1,31 @@
+import { useRef } from 'react';
 import { colors } from '../theme/tokens';
 import { CURRENCIES } from '../utils/currency';
 import { useApp } from '../state/AppContext';
-import { backupToDrive } from '../services/backup';
+import { backupToDrive, restoreFromFile } from '../services/backup';
 
 export default function SettingsScreen() {
-  const { state, go, showToast, setCurrency, toggleAccount, toggleAppLock } = useApp();
+  const { state, go, showToast, setCurrency, toggleAccount, toggleAppLock, reloadData } = useApp();
+  const restoreRef = useRef(null);
 
   const doBackup = async () => {
     try {
       await backupToDrive();
     } catch (err) {
       if (!/cancel/i.test(err?.message || '')) showToast('Couldn’t start the backup — try again');
+    }
+  };
+
+  const onRestoreFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const counts = await restoreFromFile(file);
+      await reloadData();
+      showToast(`Restored ${counts.transactions} transactions, ${counts.budgets} budgets, ${counts.reminders} reminders`);
+    } catch (err) {
+      showToast(err?.message || 'Couldn’t restore that file');
     }
   };
 
@@ -24,16 +39,27 @@ export default function SettingsScreen() {
       </div>
 
       <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
-        <div style={sectionLabel}>Backup</div>
+        <div style={sectionLabel}>Backup &amp; restore</div>
         <button
           onClick={doBackup}
-          style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer', paddingBottom: 13, borderBottom: `1px solid ${colors.divider}` }}
         >
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14.5, fontWeight: 600 }}>Back up to Google Drive</div>
             <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Exports your data — pick "Save to Drive" in the share sheet</div>
           </div>
           <div style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>Back up</div>
+        </button>
+        <input ref={restoreRef} type="file" accept="application/json,.json" onChange={onRestoreFile} style={{ display: 'none' }} />
+        <button
+          onClick={() => restoreRef.current?.click()}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer', paddingTop: 13 }}
+        >
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 600 }}>Restore from a backup</div>
+            <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Pick a backup file to bring back budgets, reminders &amp; transactions</div>
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>Restore</div>
         </button>
       </div>
 
