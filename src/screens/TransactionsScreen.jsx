@@ -81,9 +81,14 @@ export default function TransactionsScreen() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant}</div>
-                <div style={{ fontSize: 12.5, color: uncat ? colors.danger : colors.textSecondary, fontWeight: uncat ? 600 : 400 }}>
-                  {uncat ? 'Needs review — tap to categorise' : `${t.date} · ${t.account || ''} · ${cat.label}`}
+                <div style={{ fontSize: 12.5, color: uncat ? colors.danger : colors.textSecondary, fontWeight: uncat ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {uncat ? 'Needs review — tap to categorise' : `${t.date} · ${cat.label}`}
                 </div>
+                {t.note && (
+                  <div style={{ fontSize: 12, color: colors.textTertiary, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    “{t.note}”
+                  </div>
+                )}
               </div>
               <div style={{ fontSize: 14.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
                 {income ? '+' : '−'}{fmt(t.amount)}

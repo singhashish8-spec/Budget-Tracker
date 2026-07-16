@@ -32,8 +32,8 @@ export async function addTransaction(txn) {
   const db = await getDb();
   const id = txn.id || newId('txn');
   await db.run(
-    `INSERT INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       id,
       txn.merchant,
@@ -44,10 +44,25 @@ export async function addTransaction(txn) {
       txn.type === 'income' ? 'income' : 'expense',
       txn.source ?? 'manual',
       Date.now(),
+      txn.note ?? null,
+      txn.smsAddress ?? null,
+      txn.smsDate ?? null,
     ],
   );
   await persist();
   return id;
+}
+
+export async function setTransactionNote(id, note) {
+  const db = await getDb();
+  await db.run(`UPDATE transactions SET note = ? WHERE id = ?`, [note || null, id]);
+  await persist();
+}
+
+export async function deleteTransaction(id) {
+  const db = await getDb();
+  await db.run(`DELETE FROM transactions WHERE id = ?`, [id]);
+  await persist();
 }
 
 export async function addTransactions(txns) {
@@ -220,6 +235,26 @@ export async function addSmsLog({ rawSms, txnId }) {
   return id;
 }
 
+export async function getRawSmsForTxn(txnId) {
+  const db = await getDb();
+  const res = await db.query(`SELECT raw_sms FROM sms_log WHERE txn_id = ? LIMIT 1`, [txnId]);
+  return res.values?.[0]?.raw_sms ?? null;
+}
+
+// ── SMS ignore list (messages the user chose never to import again) ──
+
+export async function listSmsIgnores() {
+  const db = await getDb();
+  const res = await db.query(`SELECT signature FROM sms_ignores`);
+  return (res.values ?? []).map((r) => r.signature);
+}
+
+export async function addSmsIgnore(signature) {
+  const db = await getDb();
+  await db.run(`INSERT OR IGNORE INTO sms_ignores (signature, created_at) VALUES (?,?)`, [signature, Date.now()]);
+  await persist();
+}
+
 // ── restore from a backup file ──
 // Idempotent: uses each row's original id with INSERT OR REPLACE, so restoring
 // merges into whatever is already there (re-running a restore won't duplicate).
@@ -237,9 +272,9 @@ export async function importBackup(data) {
   }
   for (const t of data.transactions ?? []) {
     await db.run(
-      `INSERT OR REPLACE INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?)`,
-      [t.id, t.merchant, t.account ?? null, t.date, Math.round(Math.abs(t.amount)), t.category_id ?? t.cat ?? null, t.type === 'income' ? 'income' : 'expense', t.source ?? 'manual', t.created_at ?? Date.now()],
+      `INSERT OR REPLACE INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [t.id, t.merchant, t.account ?? null, t.date, Math.round(Math.abs(t.amount)), t.category_id ?? t.cat ?? null, t.type === 'income' ? 'income' : 'expense', t.source ?? 'manual', t.created_at ?? Date.now(), t.note ?? null, t.sms_address ?? null, t.sms_date ?? null],
     );
     counts.transactions++;
   }

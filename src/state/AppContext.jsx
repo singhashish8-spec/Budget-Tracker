@@ -3,6 +3,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import * as repo from '../db/repo';
 import { checkLockAvailable, unlock as biometricUnlock } from '../services/appLock';
 import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransactions } from '../services/smsReader';
+import { smsSignature } from '../services/smsParse';
 
 const AppStateContext = createContext(null);
 
@@ -454,7 +455,8 @@ export function AppProvider({ children }) {
           return;
         }
         const sinceMs = Number(await repo.getSetting('smsLastRead', '0')) || 0;
-        const { transactions: found, newest } = await readNewTransactions(sinceMs);
+        const ignores = new Set(await repo.listSmsIgnores());
+        const { transactions: found, newest } = await readNewTransactions(sinceMs, ignores);
 
         // Cross-check against already-stored SMS transactions so a re-scan or an
         // overlapping window doesn't double-add the same payment.
@@ -471,9 +473,12 @@ export function AppProvider({ children }) {
             account: t.address || 'SMS · auto-tracked',
             date: dayLabel,
             amount: t.amount,
-            cat: null,
+            cat: null, // always left for review; BNPL especially needs confirming
             type: t.type,
             source: 'sms',
+            note: t.bnpl ? `Pay-later (${t.bnpl}) — confirm what this was` : null,
+            smsAddress: t.address || null,
+            smsDate: t.date || null,
           });
           await repo.addSmsLog({ rawSms: t.rawSms, txnId: id });
           existing.push({ source: 'sms', type: t.type, amount: t.amount, date: dayLabel });
@@ -490,6 +495,38 @@ export function AppProvider({ children }) {
       }
     },
     [set, showToast],
+  );
+
+  // Attach / edit a free-text note on a transaction.
+  const setTransactionNote = useCallback(
+    async (id, note) => {
+      await repo.setTransactionNote(id, note);
+      set({ txns: await repo.listTransactions() });
+    },
+    [set],
+  );
+
+  // "Ignore this forever": mute the SMS template behind a transaction so it's
+  // never re-imported, then remove the transaction it created.
+  const ignoreSmsTransaction = useCallback(
+    async (id) => {
+      const raw = await repo.getRawSmsForTxn(id);
+      if (raw) await repo.addSmsIgnore(smsSignature(raw));
+      await repo.deleteTransaction(id);
+      const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
+      set({ txns, smsLog, sheetFor: null });
+      showToast('Ignored — messages like this won’t be added again');
+    },
+    [set, showToast],
+  );
+
+  // Plain delete of a transaction (no ignore).
+  const deleteTransaction = useCallback(
+    async (id) => {
+      await repo.deleteTransaction(id);
+      set({ txns: await repo.listTransactions(), sheetFor: null });
+    },
+    [set],
   );
 
   // Keep the resume listener pointed at the latest scanSms, and run one silent
@@ -550,6 +587,9 @@ export function AppProvider({ children }) {
       openCategorySheet,
       closeCategorySheet,
       setTxnCategory,
+      setTransactionNote,
+      ignoreSmsTransaction,
+      deleteTransaction,
       addManualTransactions,
       addBudget,
       addReminder,
@@ -593,6 +633,9 @@ export function AppProvider({ children }) {
       openCategorySheet,
       closeCategorySheet,
       setTxnCategory,
+      setTransactionNote,
+      ignoreSmsTransaction,
+      deleteTransaction,
       addManualTransactions,
       addBudget,
       addReminder,

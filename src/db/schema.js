@@ -79,6 +79,25 @@ export const MIGRATIONS = [
       );`,
     ],
   },
+  {
+    // Additive only (ADD COLUMN) — safe, and the migration safeguard would
+    // block anything destructive here anyway.
+    version: 3,
+    statements: [
+      // Free-text note the user attaches to a transaction.
+      `ALTER TABLE transactions ADD COLUMN note TEXT;`,
+      // Exact bank/UPI sender id captured from the SMS, for showing bank name.
+      `ALTER TABLE transactions ADD COLUMN sms_address TEXT;`,
+      // Full timestamp (ms) of the original SMS, for showing date & time.
+      `ALTER TABLE transactions ADD COLUMN sms_date INTEGER;`,
+      // SMS bodies the user chose to ignore forever, so they're never
+      // re-imported. Keyed by a normalized signature of the message.
+      `CREATE TABLE IF NOT EXISTS sms_ignores (
+        signature TEXT PRIMARY KEY,
+        created_at INTEGER NOT NULL
+      );`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

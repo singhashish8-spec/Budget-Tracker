@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { SMSInboxReader, MessageType } from 'capacitor-sms-inbox';
-import { parseSms, DEDUP_WINDOW_MS } from './smsParse';
+import { parseSms, smsSignature, DEDUP_WINDOW_MS } from './smsParse';
 
 // Reads real inbox SMS (Android only) and turns bank/UPI transaction alerts
 // into transactions, de-duplicating the common case where one payment
@@ -57,7 +57,8 @@ function dedupeParsed(items) {
 // Reads SMS newer than `sinceMs` (exclusive), parses + dedupes, and returns
 // candidate transactions plus the newest message timestamp seen (so the caller
 // can persist a high-water mark and not re-import the same messages).
-export async function readNewTransactions(sinceMs = 0) {
+// `ignoreSet` is a Set of signatures the user chose to never import again.
+export async function readNewTransactions(sinceMs = 0, ignoreSet = new Set()) {
   const { smsList } = await withTimeout(
     SMSInboxReader.getSMSList({
       filter: {
@@ -74,8 +75,10 @@ export async function readNewTransactions(sinceMs = 0) {
   const parsed = [];
   for (const sms of smsList || []) {
     if (sms.date > newest) newest = sms.date;
+    if (ignoreSet.has(smsSignature(sms.body))) continue; // user muted this template
     const txn = parseSms(sms.body);
-    // Keep the sender address (bank/UPI sender id) for richer transaction detail.
+    // Keep the sender address (bank/UPI sender id) and full timestamp for
+    // richer transaction detail.
     if (txn) parsed.push({ ...txn, date: sms.date, rawSms: sms.body, address: sms.address || '' });
   }
 
