@@ -1,11 +1,12 @@
 import { useRef } from 'react';
 import { colors } from '../theme/tokens';
 import { CURRENCIES } from '../utils/currency';
+import { salaryDayLabel } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { backupToDrive, restoreFromFile } from '../services/backup';
 
 export default function SettingsScreen() {
-  const { state, go, showToast, setCurrency, toggleAccount, toggleAppLock, reloadData } = useApp();
+  const { state, go, showToast, setCurrency, setSalaryDay, toggleAccount, toggleAppLock, reloadData } = useApp();
   const restoreRef = useRef(null);
 
   const doBackup = async () => {
@@ -92,6 +93,36 @@ export default function SettingsScreen() {
       </div>
 
       <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
+        <div style={sectionLabel}>Pay cycle</div>
+        <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 10 }}>
+          Get paid on a specific day? Set it and your month runs pay-day to pay-day instead of 1st–31st.
+        </div>
+        <select
+          value={state.salaryDay}
+          onChange={(e) => setSalaryDay(Number(e.target.value))}
+          style={{
+            width: '100%',
+            background: colors.bgApp,
+            border: `1px solid ${colors.cardBorder}`,
+            borderRadius: 100,
+            padding: '11px 16px',
+            fontSize: 14,
+            color: colors.ink,
+            fontFamily: "'IBM Plex Sans', sans-serif",
+          }}
+        >
+          <option value={0}>Calendar month (1st–end)</option>
+          {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+            <option key={d} value={d}>
+              {salaryDayLabel(d)} of the month
+            </option>
+          ))}
+          <option value={32}>Last day of month</option>
+        </select>
+        <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: 8 }}>Currently: {salaryDayLabel(state.salaryDay)}</div>
+      </div>
+
+      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
         <div style={sectionLabel}>Privacy &amp; security</div>
         <ToggleRow
           title="SMS auto-tracking"
@@ -100,6 +131,16 @@ export default function SettingsScreen() {
           onToggle={() => toggleAccount('sms')}
           border
         />
+        <button
+          onClick={() => go('sms')}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer', padding: '13px 0', borderBottom: `1px solid ${colors.divider}` }}
+        >
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 600 }}>SMS activity &amp; manual scan</div>
+            <div style={{ fontSize: 12.5, color: colors.textSecondary }}>See recently read messages and scan now</div>
+          </div>
+          <div style={{ color: colors.textTertiary, fontWeight: 600 }}>›</div>
+        </button>
         <ToggleRow title="App lock" sub="Fingerprint / face / PIN unlock on open" on={state.appLock} onToggle={toggleAppLock} />
       </div>
 

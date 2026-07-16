@@ -5,7 +5,6 @@ const ITEMS = [
   { key: 'settings', label: 'Settings', mono: 'ST', color: colors.primary },
   { key: 'reminders', label: 'Bill reminders', mono: 'BR', color: colors.warning },
   { key: 'patterns', label: 'Smart patterns', mono: 'SP', color: colors.warning },
-  { key: 'sms', label: 'SMS auto-tracking', mono: 'SM', color: '#C2622E' },
   { key: 'upload', label: 'Upload bills', mono: 'UP', color: '#2D6E8F' },
 ];
 

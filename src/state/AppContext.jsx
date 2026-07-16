@@ -37,6 +37,7 @@ const initialState = {
   currency: 'INR',
   taxRegime: 'new',
   tax80cInvested: 0,
+  salaryDay: 0, // 0 = not set (use calendar month); 1-31 = pay day; 32 = last day of month
   disabledCats: [],
   customPatterns: [],
   appLock: false,
@@ -80,6 +81,7 @@ export function AppProvider({ children }) {
           tax80cInvested,
           disabledCatsJson,
           customPatternsJson,
+          salaryDayStr,
         ] = await Promise.all([
           repo.listCategories(),
           repo.listTransactions(),
@@ -97,6 +99,7 @@ export function AppProvider({ children }) {
           repo.getSetting('tax80cInvested', '0'),
           repo.getSetting('disabledCats', null),
           repo.getSetting('customPatterns', null),
+          repo.getSetting('salaryDay', '0'),
         ]);
         const onboarded = onboardedFlag === '1';
         const appLock = appLockFlag === '1';
@@ -119,6 +122,7 @@ export function AppProvider({ children }) {
           tax80cInvested: Number(tax80cInvested) || 0,
           disabledCats: disabledCatsJson ? JSON.parse(disabledCatsJson) : [],
           customPatterns: customPatternsJson ? JSON.parse(customPatternsJson) : [],
+          salaryDay: Number(salaryDayStr) || 0,
           loading: false,
         });
       } catch (err) {
@@ -198,6 +202,17 @@ export function AppProvider({ children }) {
     (code) => {
       set({ currency: code });
       repo.setSetting('currency', code);
+    },
+    [set],
+  );
+
+  // Salary day: 0 = calendar month; 1-31 = pay day; 32 = last day of month.
+  // Feeds the budget cycle (#6) and "return by next salary" (#3).
+  const setSalaryDay = useCallback(
+    (day) => {
+      const d = Math.max(0, Math.min(32, Number(day) || 0));
+      set({ salaryDay: d });
+      repo.setSetting('salaryDay', String(d));
     },
     [set],
   );
@@ -522,6 +537,7 @@ export function AppProvider({ children }) {
       showToast,
       toggleAccount,
       setCurrency,
+      setSalaryDay,
       toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,
@@ -564,6 +580,7 @@ export function AppProvider({ children }) {
       showToast,
       toggleAccount,
       setCurrency,
+      setSalaryDay,
       toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,

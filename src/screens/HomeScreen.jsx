@@ -1,6 +1,6 @@
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
-import { currentMonthKey, currentMonthLabel, ordinal } from '../utils/date';
+import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { alertCount, topCategories, homeTotals } from '../state/selectors';
 
@@ -12,6 +12,7 @@ export default function HomeScreen() {
   const top = topCategories(txns, categories);
   const recent = txns.slice(0, 4);
   const monthKey = currentMonthKey();
+  const daysToPay = daysUntilPayday(state.salaryDay);
   const upcomingBills = [...state.reminders]
     .filter((r) => r.paid_for !== monthKey)
     .sort((a, b) => a.due_day - b.due_day)
@@ -21,9 +22,16 @@ export default function HomeScreen() {
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ padding: '0 4px' }}>
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 700 }}>Home</div>
-        <div style={{ fontSize: 13, color: colors.textSecondary }}>{monthLabel}</div>
+      <div style={{ padding: '0 4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 700 }}>Home</div>
+          <div style={{ fontSize: 13, color: colors.textSecondary }}>{monthLabel}</div>
+        </div>
+        {daysToPay != null && (
+          <div style={{ background: colors.successTint, color: colors.successText, borderRadius: 100, padding: '6px 12px', fontSize: 12, fontWeight: 600, marginTop: 4 }}>
+            {daysToPay === 0 ? 'Payday today 🎉' : `${daysToPay} day${daysToPay === 1 ? '' : 's'} to payday`}
+          </div>
+        )}
       </div>
 
       {alerts > 0 && (
