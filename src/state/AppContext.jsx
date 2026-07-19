@@ -161,6 +161,7 @@ export function AppProvider({ children }) {
   const onboardedRef = useRef(state.onboarded);
   const smsOnRef = useRef(state.accounts.sms);
   const autoScanRef = useRef(null); // set to scanSms after it's defined below
+  const scanInFlightRef = useRef(false); // guards against concurrent scans (auto-sync + manual)
   useEffect(() => {
     appLockRef.current = state.appLock;
     onboardedRef.current = state.onboarded;
@@ -456,6 +457,11 @@ export function AppProvider({ children }) {
         if (!silent) showToast('SMS reading works on an Android phone only');
         return;
       }
+      // Concurrency guard: auto-sync (on open/resume) and a manual tap could
+      // otherwise run at the same time, both see the same messages as new, and
+      // both insert them — the duplicate rows the user hit. Only one at a time.
+      if (scanInFlightRef.current) return;
+      scanInFlightRef.current = true;
       try {
         const granted = silent ? await hasSmsPermission() : await ensureSmsPermission();
         if (!granted) {
@@ -466,16 +472,17 @@ export function AppProvider({ children }) {
         const ignores = new Set(await repo.listSmsIgnores());
         const { transactions: found, newest } = await readNewTransactions(sinceMs, ignores);
 
-        // Cross-check against already-stored SMS transactions so a re-scan or an
-        // overlapping window doesn't double-add the same payment.
-        const existing = await repo.listTransactions();
+        // Exact de-dup: never import a message whose exact body we've already
+        // imported. This is precise (unlike the old amount+type+day check, which
+        // wrongly merged two different same-amount payments on one day) and is
+        // race-proof even if the high-water mark lags.
+        const importedBodies = new Set((await repo.listImportedSmsBodies()).map((b) => (b || '').trim()));
         let added = 0;
         for (const t of found) {
+          const bodyKey = (t.rawSms || '').trim();
+          if (importedBodies.has(bodyKey)) continue;
+          importedBodies.add(bodyKey);
           const dayLabel = new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-          const dup = existing.some(
-            (e) => e.source === 'sms' && e.type === t.type && e.amount === t.amount && e.date === dayLabel,
-          );
-          if (dup) continue;
           const id = await repo.addTransaction({
             merchant: t.merchant,
             account: t.address || 'SMS · auto-tracked',
@@ -489,7 +496,6 @@ export function AppProvider({ children }) {
             smsDate: t.date || null,
           });
           await repo.addSmsLog({ rawSms: t.rawSms, txnId: id });
-          existing.push({ source: 'sms', type: t.type, amount: t.amount, date: dayLabel });
           added += 1;
         }
 
@@ -500,6 +506,8 @@ export function AppProvider({ children }) {
         else if (!silent) showToast('No new transactions in your messages');
       } catch (err) {
         if (!silent) showToast(err?.message || 'Couldn’t read your messages');
+      } finally {
+        scanInFlightRef.current = false;
       }
     },
     [set, showToast],

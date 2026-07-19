@@ -24,7 +24,10 @@ export async function addCategory({ label, mono, color }) {
 
 export async function listTransactions() {
   const db = await getDb();
-  const res = await db.query(`SELECT * FROM transactions ORDER BY created_at DESC`);
+  // Order by when the transaction actually happened (the SMS timestamp for
+  // SMS-derived rows), falling back to import time — so re-imported older
+  // messages don't jump to the top of the list.
+  const res = await db.query(`SELECT * FROM transactions ORDER BY COALESCE(sms_date, created_at) DESC`);
   return (res.values ?? []).map((t) => ({ ...t, cat: t.category_id }));
 }
 
@@ -225,6 +228,14 @@ export async function listSmsLog(limit = 20) {
   const db = await getDb();
   const res = await db.query(`SELECT * FROM sms_log ORDER BY created_at DESC LIMIT ?`, [limit]);
   return res.values ?? [];
+}
+
+// All raw SMS bodies we've already turned into transactions — used for exact
+// de-duplication so the same physical message is never imported twice.
+export async function listImportedSmsBodies() {
+  const db = await getDb();
+  const res = await db.query(`SELECT raw_sms FROM sms_log`);
+  return (res.values ?? []).map((r) => r.raw_sms);
 }
 
 export async function addSmsLog({ rawSms, txnId }) {
