@@ -5,6 +5,7 @@ import { resetDatabase } from '../db/sqlite';
 import { checkLockAvailable, unlock as biometricUnlock } from '../services/appLock';
 import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransactions } from '../services/smsReader';
 import { smsSignature } from '../services/smsParse';
+import { setGeminiKey } from '../services/aiExtract';
 
 const AppStateContext = createContext(null);
 
@@ -40,6 +41,7 @@ const initialState = {
   taxRegime: 'new',
   tax80cInvested: 0,
   salaryDay: 0, // 0 = not set (use calendar month); 1-31 = pay day; 32 = last day of month
+  geminiKey: '',
   disabledCats: [],
   customPatterns: [],
   appLock: false,
@@ -84,6 +86,7 @@ export function AppProvider({ children }) {
           disabledCatsJson,
           customPatternsJson,
           salaryDayStr,
+          geminiKeyStr,
         ] = await Promise.all([
           repo.listCategories(),
           repo.listTransactions(),
@@ -102,6 +105,7 @@ export function AppProvider({ children }) {
           repo.getSetting('disabledCats', null),
           repo.getSetting('customPatterns', null),
           repo.getSetting('salaryDay', '0'),
+          repo.getSetting('geminiKey', ''),
         ]);
         const onboarded = onboardedFlag === '1';
         const appLock = appLockFlag === '1';
@@ -125,8 +129,10 @@ export function AppProvider({ children }) {
           disabledCats: disabledCatsJson ? JSON.parse(disabledCatsJson) : [],
           customPatterns: customPatternsJson ? JSON.parse(customPatternsJson) : [],
           salaryDay: Number(salaryDayStr) || 0,
+          geminiKey: geminiKeyStr || '',
           loading: false,
         });
+        setGeminiKey(geminiKeyStr || '');
       } catch (err) {
         set({ loading: false, loadError: err?.message || 'Could not open the local database' });
       }
@@ -212,6 +218,18 @@ export function AppProvider({ children }) {
     (code) => {
       set({ currency: code });
       repo.setSetting('currency', code);
+    },
+    [set],
+  );
+
+  // Gemini API key entered by the user (Settings). Stored in the encrypted DB,
+  // never in the public web bundle. Pushed into the AI service immediately.
+  const setGeminiApiKey = useCallback(
+    (key) => {
+      const k = (key || '').trim();
+      set({ geminiKey: k });
+      setGeminiKey(k);
+      repo.setSetting('geminiKey', k);
     },
     [set],
   );
@@ -592,6 +610,7 @@ export function AppProvider({ children }) {
       toggleAccount,
       setCurrency,
       setSalaryDay,
+      setGeminiApiKey,
       toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,
@@ -639,6 +658,7 @@ export function AppProvider({ children }) {
       toggleAccount,
       setCurrency,
       setSalaryDay,
+      setGeminiApiKey,
       toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,

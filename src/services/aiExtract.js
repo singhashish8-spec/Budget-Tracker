@@ -3,19 +3,24 @@ import { toBase64, htmlToText, capText, xlsxToText } from './fileParse';
 // Calls Google Gemini directly to extract transactions from a receipt photo,
 // PDF/HTML/CSV statement, or spreadsheet.
 //
-// SECURITY NOTE: the API key ships inside the APK (it's read at build time
-// from VITE_GEMINI_API_KEY). Anyone who unpacks the APK can extract it. That
-// is an accepted tradeoff for a personal, self-installed build — the proper
-// production fix is to route these calls through a small backend that holds
-// the key server-side. Mitigate by using a key with tight quotas / that you
-// can rotate, and don't publish this APK. See README "AI scanning".
+// KEY HANDLING: the Gemini key is supplied at RUNTIME (entered by the user in
+// Settings, stored in the encrypted on-device database) and injected here via
+// setGeminiKey(). It is deliberately NOT baked into the web bundle, because the
+// bundle is hosted publicly on GitHub Pages for over-the-air updates — a
+// build-time key would be publicly readable. VITE_GEMINI_API_KEY remains only
+// as a convenience fallback for local dev builds.
 
 // Alias that always tracks Google's current Gemini Flash model — verified to
 // work with generateContent (gemini-2.5-flash is now restricted for new keys).
 const MODEL = 'gemini-flash-latest';
 
+let runtimeKey = '';
+export function setGeminiKey(k) {
+  runtimeKey = (k || '').trim();
+}
+
 function apiKey() {
-  return import.meta.env.VITE_GEMINI_API_KEY || '';
+  return runtimeKey || import.meta.env.VITE_GEMINI_API_KEY || '';
 }
 
 export function isConfigured() {
@@ -38,7 +43,7 @@ function buildPrompt(categoryIds) {
 async function callGemini(parts) {
   const key = apiKey();
   if (!key) {
-    throw new Error('AI scanning isn’t set up yet — add your Gemini API key (see README) and rebuild');
+    throw new Error('Add your Gemini key in Settings → Receipt scanning to enable this');
   }
   // Key goes in the x-goog-api-key header (not the URL query string) — works
   // with both classic AIza and newer AQ.* key formats, and keeps the secret

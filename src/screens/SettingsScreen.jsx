@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { colors } from '../theme/tokens';
 import { CURRENCIES } from '../utils/currency';
 import { salaryDayLabel } from '../utils/date';
@@ -6,8 +6,9 @@ import { useApp } from '../state/AppContext';
 import { backupToDrive, restoreFromFile } from '../services/backup';
 
 export default function SettingsScreen() {
-  const { state, go, showToast, setCurrency, setSalaryDay, toggleAccount, toggleAppLock, reloadData } = useApp();
+  const { state, go, showToast, setCurrency, setSalaryDay, setGeminiApiKey, toggleAccount, toggleAppLock, reloadData } = useApp();
   const restoreRef = useRef(null);
+  const [keyDraft, setKeyDraft] = useState(state.geminiKey || '');
 
   const doBackup = async () => {
     try {
@@ -120,6 +121,35 @@ export default function SettingsScreen() {
           <option value={32}>Last day of month</option>
         </select>
         <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: 8 }}>Currently: {salaryDayLabel(state.salaryDay)}</div>
+      </div>
+
+      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
+        <div style={sectionLabel}>Receipt scanning (Gemini)</div>
+        <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 10 }}>
+          Paste your Google Gemini API key to enable scanning bills & statements. It's stored only on this phone (encrypted) — get a free key at aistudio.google.com/app/apikey.
+        </div>
+        <input
+          value={keyDraft}
+          onChange={(e) => setKeyDraft(e.target.value)}
+          placeholder="Paste Gemini API key"
+          type="password"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          style={{ width: '100%', background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '11px 16px', fontSize: 14, color: colors.ink }}
+        />
+        <button
+          onClick={() => {
+            setGeminiApiKey(keyDraft);
+            showToast(keyDraft.trim() ? 'Gemini key saved' : 'Gemini key cleared');
+          }}
+          style={{ marginTop: 10, background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '11px', width: '100%', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+        >
+          Save key
+        </button>
+        <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: 8 }}>
+          {state.geminiKey ? '✓ Key saved — scanning is enabled' : 'No key yet — scanning is off'}
+        </div>
       </div>
 
       <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
