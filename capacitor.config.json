@@ -8,6 +8,10 @@
       "androidBiometric": {
         "biometricAuth": false
       }
+    },
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "resetWhenUpdate": true
     }
   }
 }
