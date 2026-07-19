@@ -2,8 +2,10 @@
 // Returns null when the message doesn't look like a debit/credit alert.
 
 const AMOUNT_RE = /(?:rs|inr)\.?\s*([\d,]+(?:\.\d{1,2})?)/i;
-const DEBIT_RE = /\b(debited|debit|spent|paid|withdrawn|purchase|sent)\b/i;
-const CREDIT_RE = /\b(credited|credit|received|deposited|refund)\b/i;
+// Full words plus the short forms Indian banks (e.g. AU) use: "Dr INR ..." for
+// a debit and the "UPI/DR/..." reference token. Same for credit ("Cr", "/CR/").
+const DEBIT_RE = /\b(debited|debit|spent|paid|withdrawn|purchase|sent)\b|\bdr\.?\s+(?:rs|inr)\b|\/dr\//i;
+const CREDIT_RE = /\b(credited|credit|received|deposited|refund)\b|\bcr\.?\s+(?:rs|inr)\b|\/cr\//i;
 
 // Buy-now-pay-later / pay-later services. When one of these is detected we
 // don't guess the type — we flag it so the user confirms (it might be a spend,
@@ -40,6 +42,10 @@ export function smsSignature(body) {
 function extractMerchant(body) {
   // Ordered heuristics for common Indian bank/UPI SMS phrasings.
   const patterns = [
+    // AU / UPI reference format: "UPI/DR/233251988234/Amazon Pay Groceri" —
+    // the payee name follows the numeric reference. Stops at a slash, " Bal",
+    // or line end so trailing balance text isn't swallowed.
+    /UPI\/(?:CR|DR)\/\w+\/([A-Za-z][A-Za-z0-9 .*&_-]+?)(?=\/|\s+Bal\b|[\r\n]|$)/i,
     /\bto VPA\s+([^\s.,]+)/i,
     /\bat\s+([A-Z0-9][A-Za-z0-9*&._-]+(?:\s+[A-Za-z0-9*&._-]+){0,2})/,
     /\bto\s+([A-Z0-9][A-Za-z0-9*&._@-]+(?:\s+[A-Za-z0-9*&._-]+){0,2})/,
@@ -49,7 +55,7 @@ function extractMerchant(body) {
   for (const re of patterns) {
     const m = body.match(re);
     if (m && m[1]) {
-      let name = m[1].replace(/[.,]$/, '').trim();
+      let name = m[1].replace(/[.,\s]+$/, '').trim();
       // Skip account-number fragments like "a/c" matches
       if (/^a\/?c$/i.test(name) || /^\*+\d+$/.test(name)) continue;
       if (name.length >= 2) return name.slice(0, 48);
