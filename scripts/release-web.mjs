@@ -4,7 +4,23 @@
 // You then upload BOTH files to the GitHub Pages repo (main branch root).
 
 import { execSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, createWriteStream } from 'node:fs';
+import { ZipArchive } from 'archiver';
+
+// Zip the CONTENTS of `srcDir` (so index.html is at the zip root) using forward
+// slashes — Windows' Compress-Archive writes backslash paths that Android's
+// unzipper mishandles, breaking the bundle. archiver always uses "/".
+function zipDir(srcDir, outPath) {
+  return new Promise((resolve, reject) => {
+    const output = createWriteStream(outPath);
+    const archive = new ZipArchive({ zlib: { level: 9 } });
+    output.on('close', resolve);
+    archive.on('error', reject);
+    archive.pipe(output);
+    archive.directory(srcDir, false); // false = contents at root, not nested
+    archive.finalize();
+  });
+}
 
 const PAGES_BASE = 'https://singhashish8-spec.github.io/Budget-Tracker';
 const VER_FILE = 'web-version.txt';
@@ -24,10 +40,7 @@ const zipName = `budget-tracker-web-${version}.zip`;
 
 // Zip the CONTENTS of dist/ so index.html sits at the zip root (what capgo expects).
 console.log(`▶ Zipping → release/${zipName}`);
-execSync(
-  `powershell -NoProfile -Command "Compress-Archive -Path 'dist/*' -DestinationPath 'release/${zipName}' -Force"`,
-  { stdio: 'inherit' },
-);
+await zipDir('dist', `release/${zipName}`);
 
 const manifest = { version, url: `${PAGES_BASE}/${zipName}` };
 writeFileSync('release/latest.json', JSON.stringify(manifest, null, 2));
