@@ -134,6 +134,31 @@ export function getDb() {
   return dbPromise;
 }
 
+// Recovery for an unopenable database — e.g. an OS auto-backup restored the
+// encrypted DB file onto a device whose Keystore key didn't come with it, so
+// it can't be decrypted. The data is already unrecoverable in that state, so
+// we delete the file and start fresh. Also resets the encryption secret so the
+// new database is created cleanly. Returns true if a reset happened.
+export async function resetDatabase() {
+  dbPromise = null;
+  try {
+    const isConn = (await sqlite.isConnection(DB_NAME, false)).result;
+    const db = isConn
+      ? await sqlite.retrieveConnection(DB_NAME, false)
+      : await sqlite.createConnection(DB_NAME, isNative(), isNative() ? 'secret' : 'no-encryption', 1, false);
+    try { await db.close(); } catch { /* not open — fine */ }
+    await db.delete(); // removes the DB file
+  } catch {
+    // If we couldn't delete via a connection, fall back to the raw plugin.
+    try { await CapacitorSQLite.deleteDatabase({ database: DB_NAME }); } catch { /* best effort */ }
+  }
+  try { await sqlite.closeConnection(DB_NAME, false); } catch { /* ignore */ }
+  if (isNative()) {
+    try { await sqlite.clearEncryptionSecret(); } catch { /* ignore */ }
+  }
+  return true;
+}
+
 // Call after any write when running on web — jeep-sqlite keeps the live DB
 // in memory and only persists to IndexedDB on request. Native writes are
 // durable immediately, so this is a no-op there.

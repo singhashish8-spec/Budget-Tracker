@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import * as repo from '../db/repo';
+import { resetDatabase } from '../db/sqlite';
 import { checkLockAvailable, unlock as biometricUnlock } from '../services/appLock';
 import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransactions } from '../services/smsReader';
 import { smsSignature } from '../services/smsParse';
@@ -131,6 +132,13 @@ export function AppProvider({ children }) {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Recovery when the database can't be opened (e.g. a restored-but-
+  // undecryptable DB): wipe it and reload the app to start clean.
+  const resetApp = useCallback(async () => {
+    await resetDatabase();
+    window.location.reload();
   }, []);
 
   // Re-read all table-backed data into state (used after a restore-from-backup).
@@ -571,6 +579,7 @@ export function AppProvider({ children }) {
       openMenu,
       closeMenu,
       reloadData,
+      resetApp,
       showToast,
       toggleAccount,
       setCurrency,
@@ -617,6 +626,7 @@ export function AppProvider({ children }) {
       openMenu,
       closeMenu,
       reloadData,
+      resetApp,
       showToast,
       toggleAccount,
       setCurrency,

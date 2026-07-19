@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+      allowBackup=false is deliberate. The SQLite database is encrypted with a
+      key held in the Android Keystore, which is hardware-bound and can NEVER
+      be backed up/restored. With auto-backup on, a reinstall could restore the
+      old encrypted DB file WITHOUT its key, leaving the app unable to decrypt
+      it ("Couldn't open the local database"). We ship our own JSON backup
+      (Settings > Backup & restore) instead, so Android's raw-DB backup is both
+      unnecessary and harmful. fullBackupContent/dataExtractionRules exclude
+      the databases as belt-and-suspenders for OEMs that ignore allowBackup.
+    -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

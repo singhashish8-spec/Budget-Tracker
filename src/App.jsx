@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { colors } from './theme/tokens';
 import { setActiveCurrency } from './utils/currency';
 import { AppProvider, useApp } from './state/AppContext';
@@ -35,12 +36,7 @@ function Shell() {
   }
 
   if (state.loadError) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: colors.bgApp, padding: 32, textAlign: 'center', gap: 8 }}>
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>Couldn't open the local database</div>
-        <div style={{ fontSize: 13.5, color: colors.textSecondary, maxWidth: 320 }}>{state.loadError}</div>
-      </div>
-    );
+    return <DatabaseErrorScreen message={state.loadError} />;
   }
 
   if (state.locked) {
@@ -67,6 +63,37 @@ function Shell() {
       <HamburgerDrawer />
       <ProcessingOverlay />
       <Toast />
+    </div>
+  );
+}
+
+function DatabaseErrorScreen({ message }) {
+  const { resetApp } = useApp();
+  const [resetting, setResetting] = useState(false);
+
+  const doReset = async () => {
+    setResetting(true);
+    try {
+      await resetApp();
+    } catch {
+      setResetting(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: colors.bgApp, padding: 32, textAlign: 'center', gap: 12 }}>
+      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>Couldn't open your data</div>
+      <div style={{ fontSize: 13.5, color: colors.textSecondary, maxWidth: 340, lineHeight: 1.5 }}>
+        This usually happens when the app was restored to a new phone or reinstalled — the encrypted data can't be unlocked here. Starting fresh fixes it. If you have a backup file, you can restore it afterwards from Settings.
+      </div>
+      <button
+        onClick={doReset}
+        disabled={resetting}
+        style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '14px 28px', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 8, opacity: resetting ? 0.6 : 1 }}
+      >
+        {resetting ? 'Resetting…' : 'Reset & start fresh'}
+      </button>
+      <div style={{ fontSize: 11.5, color: colors.textTertiary, maxWidth: 320 }}>Technical detail: {message}</div>
     </div>
   );
 }
