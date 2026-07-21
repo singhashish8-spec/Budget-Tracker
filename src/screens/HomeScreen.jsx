@@ -1,18 +1,25 @@
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
-import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday } from '../utils/date';
+import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleWindow } from '../utils/date';
 import { useApp } from '../state/AppContext';
-import { alertCount, topCategories, homeTotals } from '../state/selectors';
+import { alertCount, topCategories, homeTotals, inWindow } from '../state/selectors';
 
 export default function HomeScreen() {
   const { state, go, goReview, openCategorySheet } = useApp();
   const { txns, categories } = state;
   const alerts = alertCount(txns);
-  const { spend, income, spendPct } = homeTotals(txns);
-  const top = topCategories(txns, categories);
+  // Spending resets on payday, not on the 1st — so the headline figure matches
+  // the money you actually have to work with this cycle.
+  const cycle = payCycleWindow(state.salaryDay);
+  const cycleTxns = inWindow(txns, cycle);
+  const { spend, income, spendPct } = homeTotals(txns, cycle);
+  const top = topCategories(cycleTxns, categories);
   const recent = txns.slice(0, 4);
   const monthKey = currentMonthKey();
   const daysToPay = daysUntilPayday(state.salaryDay);
+  const spentLabel = cycle.calendar
+    ? 'Spent this month'
+    : `Spent since ${cycle.start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
   const upcomingBills = [...state.reminders]
     .filter((r) => r.paid_for !== monthKey)
     .sort((a, b) => a.due_day - b.due_day)
@@ -49,7 +56,7 @@ export default function HomeScreen() {
       )}
 
       <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '20px 18px', color: colors.bgApp }}>
-        <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>Spent this month</div>
+        <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>{spentLabel}</div>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 36, fontWeight: 700, margin: '6px 0 14px' }}>{fmt(spend)}</div>
         <div style={{ height: 6, borderRadius: 100, background: 'rgba(247,244,238,0.15)', overflow: 'hidden' }}>
           <div style={{ height: '100%', borderRadius: 100, background: colors.accentGreen1, width: `${spendPct}%` }} />

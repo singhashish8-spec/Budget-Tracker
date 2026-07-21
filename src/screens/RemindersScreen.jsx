@@ -5,7 +5,7 @@ import { currentMonthKey, ordinal } from '../utils/date';
 import { useApp } from '../state/AppContext';
 
 export default function RemindersScreen() {
-  const { state, go, addReminder, toggleReminderPaid, deleteReminder } = useApp();
+  const { state, goBack, addReminder, toggleReminderPaid, deleteReminder } = useApp();
   const [label, setLabel] = useState('');
   const [amt, setAmt] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -27,7 +27,7 @@ export default function RemindersScreen() {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
-        <button onClick={() => go('home')} style={backBtnStyle}>
+        <button onClick={goBack} style={backBtnStyle}>
           <BackIcon />
         </button>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>Bill reminders</div>

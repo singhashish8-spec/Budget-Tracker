@@ -6,7 +6,7 @@ import { useApp } from '../state/AppContext';
 import { backupToDrive, restoreFromFile } from '../services/backup';
 
 export default function SettingsScreen() {
-  const { state, go, showToast, setCurrency, setSalaryDay, setGeminiApiKey, toggleAccount, toggleAppLock, reloadData } = useApp();
+  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setGeminiApiKey, toggleAccount, toggleAppLock, reloadData } = useApp();
   const restoreRef = useRef(null);
   const [keyDraft, setKeyDraft] = useState(state.geminiKey || '');
 
@@ -34,7 +34,7 @@ export default function SettingsScreen() {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
-        <button onClick={() => go('home')} style={backBtnStyle}>
+        <button onClick={goBack} style={backBtnStyle}>
           <BackIcon />
         </button>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>Settings</div>

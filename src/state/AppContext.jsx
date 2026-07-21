@@ -4,7 +4,7 @@ import * as repo from '../db/repo';
 import { resetDatabase } from '../db/sqlite';
 import { checkLockAvailable, unlock as biometricUnlock } from '../services/appLock';
 import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransactions } from '../services/smsReader';
-import { smsSignature } from '../services/smsParse';
+import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
 import { setGeminiKey } from '../services/aiExtract';
 
 const AppStateContext = createContext(null);
@@ -47,14 +47,34 @@ const initialState = {
   appLock: false,
   locked: false,
   menuOpen: false,
+  // Screens visited on the way here, so Android's back gesture has somewhere to
+  // return to. Without this the gesture had no history and simply closed the app.
+  navStack: [],
+  // Money-mentioning messages the parser couldn't interpret. Surfaced to the
+  // user rather than dropped, so nothing goes missing silently.
+  smsUnmatched: [],
 };
 
 function reducer(state, action) {
   switch (action.type) {
     case 'SET':
       return { ...state, ...action.payload };
-    case 'GO':
-      return { ...state, screen: action.screen, sheetFor: null, addSheetOpen: false, menuOpen: false };
+    case 'GO': {
+      if (action.screen === state.screen) {
+        return { ...state, sheetFor: null, addSheetOpen: false, menuOpen: false };
+      }
+      // Returning to a screen already in the stack unwinds to it rather than
+      // stacking a loop (home → settings → home shouldn't need two backs).
+      const idx = state.navStack.indexOf(action.screen);
+      const navStack = idx >= 0 ? state.navStack.slice(0, idx) : [...state.navStack, state.screen];
+      return { ...state, screen: action.screen, navStack, sheetFor: null, addSheetOpen: false, menuOpen: false };
+    }
+    case 'BACK': {
+      if (!state.navStack.length) return state;
+      const navStack = state.navStack.slice(0, -1);
+      const screen = state.navStack[state.navStack.length - 1];
+      return { ...state, screen, navStack, sheetFor: null, addSheetOpen: false, menuOpen: false };
+    }
     default:
       return state;
   }
@@ -201,6 +221,33 @@ export function AppProvider({ children }) {
   );
 
   const go = useCallback((screen) => dispatch({ type: 'GO', screen }), []);
+  const goBack = useCallback(() => dispatch({ type: 'BACK' }), []);
+
+  // Android back gesture / button. Capacitor raises this for the swipe too.
+  // Nothing listened for it before, so the gesture had no history to walk and
+  // Android just closed the app. Unwind the most recent thing first: an open
+  // sheet, then the drawer, then the screen stack — and only exit from Home.
+  const backStateRef = useRef(state);
+  useEffect(() => {
+    backStateRef.current = state;
+  }, [state]);
+  useEffect(() => {
+    const handle = CapacitorApp.addListener('backButton', () => {
+      const s = backStateRef.current;
+      // Back must never slip past the lock screen — leave the app instead.
+      if (s.locked) return CapacitorApp.exitApp();
+      if (s.sheetFor) return set({ sheetFor: null });
+      if (s.menuOpen) return set({ menuOpen: false });
+      if (s.addSheetOpen) return set({ addSheetOpen: false });
+      if (s.budgetSheetOpen) return set({ budgetSheetOpen: false });
+      if (s.navStack.length) return dispatch({ type: 'BACK' });
+      if (s.screen !== 'home' && s.onboarded) return dispatch({ type: 'GO', screen: 'home' });
+      CapacitorApp.exitApp();
+    });
+    return () => {
+      handle.then((h) => h.remove()).catch(() => {});
+    };
+  }, [set]);
   const goReview = useCallback(() => set({ screen: 'transactions', filter: 'review', sheetFor: null, addSheetOpen: false }), [set]);
   const openMenu = useCallback(() => set({ menuOpen: true }), [set]);
   const closeMenu = useCallback(() => set({ menuOpen: false }), [set]);
@@ -470,7 +517,7 @@ export function AppProvider({ children }) {
   // the app doesn't nag or interrupt. Whole flow is wrapped so a plugin hang
   // (now bounded by a 12s timeout in smsReader) can never freeze the UI.
   const scanSms = useCallback(
-    async ({ silent = false } = {}) => {
+    async ({ silent = false, deep = false } = {}) => {
       if (!smsAvailable()) {
         if (!silent) showToast('SMS reading works on an Android phone only');
         return;
@@ -488,7 +535,7 @@ export function AppProvider({ children }) {
         }
         const sinceMs = Number(await repo.getSetting('smsLastRead', '0')) || 0;
         const ignores = new Set(await repo.listSmsIgnores());
-        const { transactions: found, newest } = await readNewTransactions(sinceMs, ignores);
+        const { transactions: found, newest, unmatched } = await readNewTransactions(sinceMs, ignores, { deep });
 
         // Exact de-dup: never import a message whose exact body we've already
         // imported. This is precise (unlike the old amount+type+day check, which
@@ -514,14 +561,26 @@ export function AppProvider({ children }) {
             smsDate: t.date || null,
           });
           await repo.addSmsLog({ rawSms: t.rawSms, txnId: id });
+          // Messages folded in as duplicates are logged against the same
+          // transaction, so the detail sheet can show them and offer to split
+          // one back out if the merge was wrong.
+          for (const m of t.mergedFrom || []) {
+            const dupKey = (m.rawSms || '').trim();
+            if (importedBodies.has(dupKey)) continue;
+            importedBodies.add(dupKey);
+            await repo.addSmsLog({ rawSms: m.rawSms, txnId: id });
+          }
           added += 1;
         }
 
         await repo.setSetting('smsLastRead', String(newest));
+        // Drop anything we've since imported or that the user already has, so
+        // the "not recognised" list only ever shows genuinely unhandled texts.
+        const stillUnmatched = (unmatched || []).filter((u) => !importedBodies.has((u.rawSms || '').trim()));
         const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
-        set({ txns, smsLog });
+        set({ txns, smsLog, ...(deep || stillUnmatched.length ? { smsUnmatched: stillUnmatched } : {}) });
         if (added) showToast(`Added ${added} transaction${added === 1 ? '' : 's'} from SMS`);
-        else if (!silent) showToast('No new transactions in your messages');
+        else if (!silent) showToast(deep ? 'Deep scan finished — nothing new to add' : 'No new transactions in your messages');
       } catch (err) {
         if (!silent) showToast(err?.message || 'Couldn’t read your messages');
       } finally {
@@ -550,6 +609,74 @@ export function AppProvider({ children }) {
       const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
       set({ txns, smsLog, sheetFor: null });
       showToast('Ignored — messages like this won’t be added again');
+    },
+    [set, showToast],
+  );
+
+  // ── unrecognised messages ──
+  // A message we found money in but couldn't classify. The user tells us which
+  // way it went and we import it, so nothing is stuck being invisible.
+  const addUnmatchedAsTransaction = useCallback(
+    async (entry, type) => {
+      const amount = extractAmount(entry.rawSms);
+      if (!amount) {
+        showToast('Couldn’t read an amount in that message');
+        return;
+      }
+      const merchant = extractMerchant(entry.rawSms) || (type === 'income' ? 'Credit' : 'Payment');
+      const dayLabel = new Date(entry.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      const id = await repo.addTransaction({
+        merchant,
+        account: entry.address || 'SMS · added by you',
+        date: dayLabel,
+        amount,
+        cat: null,
+        type,
+        source: 'sms',
+        smsAddress: entry.address || null,
+        smsDate: entry.date || null,
+      });
+      await repo.addSmsLog({ rawSms: entry.rawSms, txnId: id });
+      const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
+      set({ txns, smsLog, smsUnmatched: state.smsUnmatched.filter((u) => u.rawSms !== entry.rawSms) });
+      showToast(`Added as ${type === 'income' ? 'money in' : 'a spend'}`);
+    },
+    [state.smsUnmatched, set, showToast],
+  );
+
+  const ignoreUnmatched = useCallback(
+    async (entry) => {
+      await repo.addSmsIgnore(smsSignature(entry.rawSms));
+      set({ smsUnmatched: state.smsUnmatched.filter((u) => u.rawSms !== entry.rawSms) });
+      showToast('Ignored — messages like this won’t be shown again');
+    },
+    [state.smsUnmatched, set, showToast],
+  );
+
+  // "This wasn't a duplicate": give a merged message its own transaction and
+  // re-point its log row, leaving the original with whatever messages remain.
+  const splitMergedSms = useCallback(
+    async (log, parentTxn) => {
+      const parsed = parseSms(log.raw_sms);
+      if (!parsed) {
+        showToast('Couldn’t read that message as a transaction');
+        return;
+      }
+      const id = await repo.addTransaction({
+        merchant: parsed.merchant,
+        account: parentTxn.account,
+        date: parentTxn.date,
+        amount: parsed.amount,
+        cat: null,
+        type: parsed.type,
+        source: 'sms',
+        smsAddress: parentTxn.sms_address ?? null,
+        smsDate: parentTxn.sms_date ?? null,
+      });
+      await repo.reassignSmsLog(log.id, id);
+      const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
+      set({ txns, smsLog });
+      showToast('Split into its own transaction');
     },
     [set, showToast],
   );
@@ -601,6 +728,7 @@ export function AppProvider({ children }) {
       state,
       set,
       go,
+      goBack,
       goReview,
       openMenu,
       closeMenu,
@@ -625,6 +753,9 @@ export function AppProvider({ children }) {
       setTxnCategory,
       setTransactionNote,
       ignoreSmsTransaction,
+      addUnmatchedAsTransaction,
+      ignoreUnmatched,
+      splitMergedSms,
       deleteTransaction,
       addManualTransactions,
       addBudget,
@@ -649,6 +780,7 @@ export function AppProvider({ children }) {
       state,
       set,
       go,
+      goBack,
       goReview,
       openMenu,
       closeMenu,
@@ -673,6 +805,9 @@ export function AppProvider({ children }) {
       setTxnCategory,
       setTransactionNote,
       ignoreSmsTransaction,
+      addUnmatchedAsTransaction,
+      ignoreUnmatched,
+      splitMergedSms,
       deleteTransaction,
       addManualTransactions,
       addBudget,

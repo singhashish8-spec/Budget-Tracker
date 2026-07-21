@@ -252,6 +252,22 @@ export async function getRawSmsForTxn(txnId) {
   return res.values?.[0]?.raw_sms ?? null;
 }
 
+// Every message behind a transaction, oldest first. More than one means texts
+// were merged as duplicates — the UI shows them so a wrong merge can be undone.
+export async function listSmsForTxn(txnId) {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM sms_log WHERE txn_id = ? ORDER BY created_at ASC`, [txnId]);
+  return res.values ?? [];
+}
+
+// Re-point a merged message at a new transaction of its own ("this wasn't a
+// duplicate"), leaving the original transaction with the messages that remain.
+export async function reassignSmsLog(logId, txnId) {
+  const db = await getDb();
+  await db.run(`UPDATE sms_log SET txn_id = ? WHERE id = ?`, [txnId, logId]);
+  await persist();
+}
+
 // ── SMS ignore list (messages the user chose never to import again) ──
 
 export async function listSmsIgnores() {

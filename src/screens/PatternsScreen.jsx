@@ -6,7 +6,7 @@ import { detectPatterns } from '../state/selectors';
 import { unlock as biometricUnlock } from '../services/appLock';
 
 export default function PatternsScreen() {
-  const { state, go, setPatternPref, clearPatternPref, showToast, addCustomPattern, deleteCustomPattern } = useApp();
+  const { state, goBack, setPatternPref, clearPatternPref, showToast, addCustomPattern, deleteCustomPattern } = useApp();
   const patterns = detectPatterns(state.txns, state.categories, state.patternPrefs);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [cpLabel, setCpLabel] = useState('');
@@ -36,7 +36,7 @@ export default function PatternsScreen() {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
-        <button onClick={() => go('home')} style={backBtnStyle}>
+        <button onClick={goBack} style={backBtnStyle}>
           <BackIcon />
         </button>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>Smart patterns</div>

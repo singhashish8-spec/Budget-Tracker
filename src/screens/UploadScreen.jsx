@@ -13,7 +13,7 @@ function base64ToFile(base64, format) {
 }
 
 export default function UploadScreen() {
-  const { state, set, go, showToast } = useApp();
+  const { state, set, goBack, showToast } = useApp();
   const pickRef = useRef(null);
 
   const runExtract = async (file) => {
@@ -74,7 +74,7 @@ export default function UploadScreen() {
         style={{ display: 'none' }}
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
-        <button onClick={() => go('home')} style={backBtnStyle}>
+        <button onClick={goBack} style={backBtnStyle}>
           <BackIcon />
         </button>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>Add expenses</div>

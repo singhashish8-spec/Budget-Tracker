@@ -27,6 +27,29 @@ function detectBnpl(body) {
   return null;
 }
 
+// The bank/UPI reference number — a payment's unique id. Two messages carrying
+// DIFFERENT refs are definitively different payments however alike they look,
+// which is what stops two same-amount payments minutes apart being merged.
+const REF_RE = /(?:UPI\/(?:CR|DR)\/|\bref(?:erence)?(?:\s*(?:no|id))?\.?[:\s#]\s*)(\w{6,})/i;
+
+// OTPs quote amounts but are never transactions.
+const OTP_RE = /\bOTP\b|one[-\s]?time password|do not share/i;
+
+export function extractRef(body) {
+  const m = String(body || '').match(REF_RE);
+  return m ? m[1].toUpperCase() : null;
+}
+
+// True when a message mentions money at all — used to surface the messages we
+// could NOT interpret, instead of dropping them silently. OTPs are excluded
+// because they quote amounts but are never transactions.
+export function looksLikeMoney(body) {
+  if (!body) return false;
+  if (!AMOUNT_RE.test(body)) return false;
+  if (OTP_RE.test(body)) return false;
+  return true;
+}
+
 // Stable key for the "ignore this message forever" list. Numbers (amounts,
 // dates, ref ids) are collapsed to # so all similar messages share a
 // signature — ignoring one silences that whole recurring template.
@@ -39,7 +62,16 @@ export function smsSignature(body) {
     .slice(0, 140);
 }
 
-function extractMerchant(body) {
+// The amount alone, for messages we couldn't classify as debit or credit but
+// the user is telling us about ("this WAS an expense").
+export function extractAmount(body) {
+  const m = String(body || '').match(AMOUNT_RE);
+  if (!m) return 0;
+  const n = Math.round(parseFloat(m[1].replace(/,/g, '')));
+  return n > 0 ? n : 0;
+}
+
+export function extractMerchant(body) {
   // Ordered heuristics for common Indian bank/UPI SMS phrasings.
   const patterns = [
     // AU / UPI reference format: "UPI/DR/233251988234/Amazon Pay Groceri" —
@@ -75,17 +107,50 @@ export function parseSms(body) {
   const isDebit = DEBIT_RE.test(body);
   if (!isCredit && !isDebit) return null; // has an amount but no txn verb (e.g. balance/OTP)
   // OTP messages sometimes contain "Rs" — guard against them.
-  if (/\bOTP\b|one[-\s]?time password|do not share/i.test(body)) return null;
+  if (OTP_RE.test(body)) return null;
 
   const type = isCredit && !isDebit ? 'income' : 'expense';
   const bnpl = detectBnpl(body);
   const merchant = bnpl || extractMerchant(body) || (type === 'income' ? 'Credit' : 'Payment');
   // BNPL transactions are returned but flagged so the caller leaves them for
   // the user to confirm rather than auto-categorising.
-  return { amount, type, merchant, bnpl: bnpl || null };
+  return { amount, type, merchant, bnpl: bnpl || null, ref: extractRef(body) };
 }
 
 // Two SMS describe the SAME payment when they share amount+type and land
 // within this window — e.g. your UPI app and your bank both text you for one
-// transaction. Used to de-duplicate.
+// transaction. Only used when neither message carries a reference number.
 export const DEDUP_WINDOW_MS = 5 * 60 * 1000;
+
+function normMerchant(m) {
+  return String(m || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// Collapses the two texts one payment often generates (UPI app + bank) into a
+// single transaction, keeping the earliest and recording what was folded in on
+// `mergedFrom` so the UI can show it and offer to split it back out.
+//
+// Matching on amount+time alone was wrong: two genuine payments of the same
+// amount minutes apart were silently merged into one. So the reference number
+// decides whenever both messages carry one (different ref = different payment,
+// always). Only when neither has a ref do we fall back to time proximity — and
+// even then the payee has to match.
+export function dedupeParsed(items) {
+  const sorted = [...items].sort((a, b) => a.date - b.date);
+  const kept = [];
+  for (const it of sorted) {
+    const dup = kept.find((k) => {
+      if (k.type !== it.type || k.amount !== it.amount) return false;
+      if (k.ref && it.ref) return k.ref === it.ref;
+      if (Math.abs(k.date - it.date) > DEDUP_WINDOW_MS) return false;
+      return normMerchant(k.merchant) === normMerchant(it.merchant);
+    });
+    if (dup) {
+      if (!dup.mergedFrom) dup.mergedFrom = [];
+      dup.mergedFrom.push({ rawSms: it.rawSms, address: it.address, date: it.date });
+    } else {
+      kept.push(it);
+    }
+  }
+  return kept;
+}

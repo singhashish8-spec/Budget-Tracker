@@ -11,6 +11,24 @@ export function alertCount(txns) {
   return txns.filter((t) => !t.cat).length;
 }
 
+// When a transaction actually happened: the SMS timestamp for imported rows,
+// falling back to when it was recorded. `date` is only a display label.
+export function txnTime(t) {
+  return t.sms_date || t.created_at || 0;
+}
+
+// Limit transactions to a period (e.g. the current pay cycle). Passing no
+// window returns everything, which is what the all-time views still want.
+export function inWindow(txns, window) {
+  if (!window) return txns;
+  const from = +window.start;
+  const to = +window.end;
+  return txns.filter((t) => {
+    const ts = txnTime(t);
+    return ts >= from && ts < to;
+  });
+}
+
 export function spendByCategory(txns) {
   const byCat = {};
   txns
@@ -39,9 +57,13 @@ export function topCategories(txns, categories, limit = 4) {
   });
 }
 
-export function homeTotals(txns) {
-  const spend = txns.filter((t) => t.type === 'expense').reduce((a, t) => a + t.amount, 0);
-  const income = txns.filter((t) => t.type === 'income').reduce((a, t) => a + t.amount, 0);
+// Totals for the period shown on Home. Previously this summed EVERY
+// transaction ever recorded while the card claimed "spent this month" — passing
+// the pay-cycle window makes the number mean what the label says.
+export function homeTotals(txns, window) {
+  const list = inWindow(txns, window);
+  const spend = list.filter((t) => t.type === 'expense').reduce((a, t) => a + t.amount, 0);
+  const income = list.filter((t) => t.type === 'income').reduce((a, t) => a + t.amount, 0);
   const spendPct = income ? Math.min(100, Math.round((spend / income) * 100)) : 0;
   return { spend, income, spendPct };
 }

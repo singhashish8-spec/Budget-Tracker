@@ -2,26 +2,27 @@ import { useEffect, useState } from 'react';
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
-import { getRawSmsForTxn } from '../db/repo';
+import { listSmsForTxn } from '../db/repo';
 
 export default function CategorySheet() {
-  const { state, closeCategorySheet, setTxnCategory, addCategory, setTransactionNote, ignoreSmsTransaction, deleteTransaction } = useApp();
+  const { state, closeCategorySheet, setTxnCategory, addCategory, setTransactionNote, ignoreSmsTransaction, deleteTransaction, splitMergedSms } = useApp();
   const [newCat, setNewCat] = useState('');
   const [note, setNote] = useState('');
-  const [rawSms, setRawSms] = useState(null);
+  const [smsRows, setSmsRows] = useState([]);
   const open = !!state.sheetFor;
   const txn = open ? state.txns.find((t) => t.id === state.sheetFor.id) : null;
 
-  // Load the note + original SMS text whenever a different transaction opens.
+  // Load the note + every message behind this transaction whenever a different
+  // one opens. More than one row means texts were merged as duplicates.
   useEffect(() => {
     if (!txn) return;
     setNote(txn.note || '');
-    setRawSms(null);
+    setSmsRows([]);
     if (txn.source === 'sms') {
-      getRawSmsForTxn(txn.id).then(setRawSms).catch(() => setRawSms(null));
+      listSmsForTxn(txn.id).then(setSmsRows).catch(() => setSmsRows([]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.sheetFor?.id]);
+  }, [state.sheetFor?.id, state.smsLog]);
 
   if (!open || !txn) return null;
 
@@ -59,10 +60,29 @@ export default function CategorySheet() {
           {[bank, when || txn.date, isSms ? 'from SMS' : txn.source].filter(Boolean).join(' · ')}
         </div>
 
-        {/* Original SMS */}
-        {isSms && rawSms && (
-          <div style={{ fontSize: 12, lineHeight: 1.5, color: colors.textSecondary, background: colors.cardSurface, border: `1px solid ${colors.divider}`, borderRadius: 12, padding: '10px 12px', marginBottom: 14 }}>
-            {rawSms}
+        {/* Original SMS. When more than one message sits behind this row they
+            were merged as duplicates — show them all, and let a wrong merge be
+            undone rather than leaving a real payment hidden inside another. */}
+        {isSms && smsRows.length > 0 && (
+          <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {smsRows.length > 1 && (
+              <div style={{ fontSize: 12, fontWeight: 600, color: colors.warningDark }}>
+                {smsRows.length} messages merged as one payment
+              </div>
+            )}
+            {smsRows.map((row, i) => (
+              <div key={row.id} style={{ fontSize: 12, lineHeight: 1.5, color: colors.textSecondary, background: colors.cardSurface, border: `1px solid ${colors.divider}`, borderRadius: 12, padding: '10px 12px' }}>
+                {row.raw_sms}
+                {i > 0 && (
+                  <button
+                    onClick={() => splitMergedSms(row, txn)}
+                    style={{ marginTop: 8, background: colors.bgApp, color: colors.primary, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Not a duplicate — make it its own
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
