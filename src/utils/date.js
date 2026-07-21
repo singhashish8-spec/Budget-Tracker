@@ -57,7 +57,7 @@ export function daysUntilPayday(salaryDay, now = new Date()) {
 // Prefers the original SMS timestamp; `date` on the row is only ever a display
 // string ("16 Jun") with no year or time, so it's the last resort.
 export function txnWhen(t) {
-  const ms = t?.sms_date || t?.created_at;
+  const ms = t?.occurred_at || t?.sms_date || t?.created_at;
   if (!ms) return t?.date || '';
   const d = new Date(ms);
   const now = new Date();

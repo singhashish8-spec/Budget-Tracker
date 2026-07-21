@@ -98,6 +98,20 @@ export const MIGRATIONS = [
       );`,
     ],
   },
+  {
+    // Additive only, like v3.
+    version: 4,
+    statements: [
+      // How the money moved: 'cash' | 'upi' | 'card' | 'bank'. Cash spending is
+      // invisible to SMS tracking, so it can only ever be entered by hand.
+      `ALTER TABLE transactions ADD COLUMN method TEXT;`,
+      // When the transaction actually happened, as a timestamp. `date` is only
+      // ever a display string ("16 Jun") and `sms_date` exists solely for
+      // SMS-derived rows, so a hand-entered transaction had no real date to
+      // sort or total by — it fell back to when it was typed in.
+      `ALTER TABLE transactions ADD COLUMN occurred_at INTEGER;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -16,6 +16,7 @@ import SettingsScreen from './screens/SettingsScreen';
 import TopBar from './components/TopBar';
 import BottomNav from './components/BottomNav';
 import CategorySheet from './components/CategorySheet';
+import AddTransactionSheet from './components/AddTransactionSheet';
 import ProcessingOverlay from './components/ProcessingOverlay';
 import Toast from './components/Toast';
 import LockScreen from './components/LockScreen';
@@ -66,6 +67,7 @@ function Shell() {
       <TopBar />
       {TAB_SCREENS.includes(state.screen) && <BottomNav />}
       <CategorySheet />
+      <AddTransactionSheet />
       <HamburgerDrawer />
       <ProcessingOverlay />
       <Toast />

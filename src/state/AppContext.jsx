@@ -12,6 +12,10 @@ const AppStateContext = createContext(null);
 
 const DEFAULT_ACCOUNTS = { bank: true, card: true, upi: true, sms: true, cash: false, invest: true, loans: false };
 
+// Shown as the transaction's "account" line so a hand-entered row reads the
+// same way an SMS-derived one does.
+const METHOD_LABELS = { cash: 'Cash', upi: 'UPI', card: 'Card', bank: 'Bank transfer' };
+
 const initialState = {
   loading: true,
   loadError: null,
@@ -439,6 +443,29 @@ export function AppProvider({ children }) {
     [state.sheetFor, set],
   );
 
+  // A single hand-entered transaction (the "+" button). Cash leaves no SMS
+  // trail, so this is the only way it can ever be recorded.
+  const addManualTransaction = useCallback(
+    async ({ merchant, amount, type, method, cat, note, occurredAt }) => {
+      const when = occurredAt || Date.now();
+      await repo.addTransaction({
+        merchant,
+        account: method ? METHOD_LABELS[method] || 'Added by you' : 'Added by you',
+        date: new Date(when).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+        amount,
+        cat: cat ?? null,
+        type,
+        source: 'manual',
+        note: note ?? null,
+        method: method ?? null,
+        occurredAt: when,
+      });
+      set({ txns: await repo.listTransactions() });
+      showToast(type === 'income' ? 'Money in added' : 'Spend added');
+    },
+    [set, showToast],
+  );
+
   const addManualTransactions = useCallback(
     async (txnList) => {
       await repo.addTransactions(txnList);
@@ -814,6 +841,7 @@ export function AppProvider({ children }) {
       ignoreUnmatched,
       splitMergedSms,
       deleteTransaction,
+      addManualTransaction,
       addManualTransactions,
       addBudget,
       addReminder,
@@ -868,6 +896,7 @@ export function AppProvider({ children }) {
       ignoreUnmatched,
       splitMergedSms,
       deleteTransaction,
+      addManualTransaction,
       addManualTransactions,
       addBudget,
       addReminder,

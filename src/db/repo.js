@@ -24,10 +24,11 @@ export async function addCategory({ label, mono, color }) {
 
 export async function listTransactions() {
   const db = await getDb();
-  // Order by when the transaction actually happened (the SMS timestamp for
-  // SMS-derived rows), falling back to import time — so re-imported older
-  // messages don't jump to the top of the list.
-  const res = await db.query(`SELECT * FROM transactions ORDER BY COALESCE(sms_date, created_at) DESC`);
+  // Order by when the transaction actually happened — the date the user chose
+  // for a hand-entered row, the SMS timestamp for an imported one — falling
+  // back to when it was recorded, so backdated or re-imported entries land in
+  // the right place rather than jumping to the top.
+  const res = await db.query(`SELECT * FROM transactions ORDER BY COALESCE(occurred_at, sms_date, created_at) DESC`);
   return (res.values ?? []).map((t) => ({ ...t, cat: t.category_id }));
 }
 
@@ -35,8 +36,8 @@ export async function addTransaction(txn) {
   const db = await getDb();
   const id = txn.id || newId('txn');
   await db.run(
-    `INSERT INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       id,
       txn.merchant,
@@ -50,6 +51,8 @@ export async function addTransaction(txn) {
       txn.note ?? null,
       txn.smsAddress ?? null,
       txn.smsDate ?? null,
+      txn.method ?? null,
+      txn.occurredAt ?? txn.smsDate ?? null,
     ],
   );
   await persist();

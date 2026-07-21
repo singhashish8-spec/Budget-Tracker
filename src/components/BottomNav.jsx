@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { colors } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 import { alertCount } from '../state/selectors';
+
+// The "+" opens a choice rather than jumping straight to the camera: most
+// spending that needs adding by hand is cash, which has no receipt to scan.
 
 const TABS = [
   { key: 'home', label: 'Home' },
@@ -11,7 +15,8 @@ const TABS = [
 ];
 
 export default function BottomNav() {
-  const { state, go } = useApp();
+  const { state, set, go: goTab } = useApp();
+  const [choosing, setChoosing] = useState(false);
   const hasAlerts = alertCount(state.txns) > 0;
 
   return (
@@ -34,7 +39,7 @@ export default function BottomNav() {
         tab ? (
           <button
             key={tab.key}
-            onClick={() => go(tab.key)}
+            onClick={() => goTab(tab.key)}
             style={{
               flex: 1,
               display: 'flex',
@@ -65,7 +70,7 @@ export default function BottomNav() {
         ) : (
           <div key="fab" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
             <button
-              onClick={() => go('upload')}
+              onClick={() => setChoosing(true)}
               style={{
                 width: 54,
                 height: 54,
@@ -82,13 +87,65 @@ export default function BottomNav() {
                 fontSize: 26,
                 lineHeight: 1,
               }}
-              aria-label="Add expense"
+              aria-label="Add a transaction"
             >
               +
             </button>
           </div>
         ),
       )}
+
+      {choosing && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 55, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+          <div onClick={() => setChoosing(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.4)' }} />
+          <div style={{ position: 'relative', background: colors.bgApp, borderRadius: '24px 24px 0 0', padding: '20px 16px calc(env(safe-area-inset-bottom, 0px) + 24px)', animation: 'sheetup 0.22s ease-out' }}>
+            <div style={{ width: 40, height: 4, borderRadius: 100, background: colors.track, margin: '0 auto 16px' }} />
+            <button
+              onClick={() => {
+                setChoosing(false);
+                set({ addSheetOpen: true });
+              }}
+              style={choiceStyle}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>Add manually</div>
+                <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Cash, or anything not tracked from SMS</div>
+              </div>
+            </button>
+            <button
+              onClick={() => {
+                setChoosing(false);
+                goTab('upload');
+              }}
+              style={{ ...choiceStyle, marginTop: 8 }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>Scan a receipt</div>
+                <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Photograph a bill and pull the details out</div>
+              </div>
+            </button>
+            <button
+              onClick={() => setChoosing(false)}
+              style={{ width: '100%', marginTop: 12, padding: 13, borderRadius: 100, fontSize: 14.5, fontWeight: 600, color: colors.textSecondary, cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+const choiceStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  width: '100%',
+  textAlign: 'left',
+  cursor: 'pointer',
+  background: colors.cardSurface,
+  border: `1px solid ${colors.cardBorder}`,
+  borderRadius: 16,
+  padding: '14px 16px',
+};

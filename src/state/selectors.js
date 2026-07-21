@@ -11,10 +11,11 @@ export function alertCount(txns) {
   return txns.filter((t) => !t.cat).length;
 }
 
-// When a transaction actually happened: the SMS timestamp for imported rows,
-// falling back to when it was recorded. `date` is only a display label.
+// When a transaction actually happened: the date chosen for a hand-entered
+// row, the SMS timestamp for an imported one, else when it was recorded.
+// `date` is only a display label and can't be compared.
 export function txnTime(t) {
-  return t.sms_date || t.created_at || 0;
+  return t.occurred_at || t.sms_date || t.created_at || 0;
 }
 
 // Limit transactions to a period (e.g. the current pay cycle). Passing no

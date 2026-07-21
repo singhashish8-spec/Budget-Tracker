@@ -4,6 +4,8 @@ import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
 import { listSmsForTxn } from '../db/repo';
 
+const METHOD_LABELS = { cash: 'paid in cash', upi: 'paid by UPI', card: 'paid by card', bank: 'bank transfer' };
+
 export default function CategorySheet() {
   const { state, closeCategorySheet, setTxnCategory, addCategory, setTransactionNote, ignoreSmsTransaction, deleteTransaction, splitMergedSms } = useApp();
   const [newCat, setNewCat] = useState('');
@@ -57,7 +59,7 @@ export default function CategorySheet() {
 
         {/* Meta: bank + date/time */}
         <div style={{ fontSize: 12.5, color: colors.textSecondary, marginTop: 4, marginBottom: 12 }}>
-          {[bank, when || txn.date, isSms ? 'from SMS' : txn.source].filter(Boolean).join(' · ')}
+          {[bank, when || txn.date, isSms ? 'from SMS' : METHOD_LABELS[txn.method] || 'added by you'].filter(Boolean).join(' · ')}
         </div>
 
         {/* Original SMS. When more than one message sits behind this row they
