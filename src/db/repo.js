@@ -65,6 +65,34 @@ export async function setTransactionNote(id, note) {
   await persist();
 }
 
+// Edit an existing transaction. Only the fields present in `patch` change, so
+// callers can update one thing without having to resend the whole row.
+// `source` is deliberately not editable — it records where the row came from.
+const EDITABLE_TXN_FIELDS = {
+  merchant: (v) => String(v),
+  amount: (v) => Math.round(Math.abs(Number(v) || 0)),
+  type: (v) => (v === 'income' ? 'income' : 'expense'),
+  method: (v) => (v == null ? null : String(v)),
+  note: (v) => (v ? String(v) : null),
+  date: (v) => String(v),
+  occurred_at: (v) => (v == null ? null : Number(v)),
+  category_id: (v) => (v == null ? null : String(v)),
+};
+
+export async function updateTransaction(id, patch) {
+  const sets = [];
+  const values = [];
+  for (const [key, coerce] of Object.entries(EDITABLE_TXN_FIELDS)) {
+    if (patch[key] === undefined) continue;
+    sets.push(`${key} = ?`);
+    values.push(coerce(patch[key]));
+  }
+  if (!sets.length) return;
+  const db = await getDb();
+  await db.run(`UPDATE transactions SET ${sets.join(', ')} WHERE id = ?`, [...values, id]);
+  await persist();
+}
+
 export async function deleteTransaction(id) {
   const db = await getDb();
   await db.run(`DELETE FROM transactions WHERE id = ?`, [id]);
@@ -94,6 +122,12 @@ export async function upsertBudget(categoryId, monthlyLimit) {
      ON CONFLICT(category_id) DO UPDATE SET monthly_limit = excluded.monthly_limit`,
     [categoryId, Math.round(monthlyLimit)],
   );
+  await persist();
+}
+
+export async function deleteBudget(categoryId) {
+  const db = await getDb();
+  await db.run(`DELETE FROM budgets WHERE category_id = ?`, [categoryId]);
   await persist();
 }
 
@@ -133,6 +167,15 @@ export async function addReminder({ label, amount, dueDay }) {
   return id;
 }
 
+export async function updateReminder(id, { label, amount, dueDay }) {
+  const db = await getDb();
+  await db.run(
+    `UPDATE reminders SET label = ?, amount = ?, due_day = ? WHERE id = ?`,
+    [label, Math.round(amount), dueDay, id],
+  );
+  await persist();
+}
+
 export async function setReminderPaid(id, paidFor) {
   const db = await getDb();
   await db.run(`UPDATE reminders SET paid_for = ? WHERE id = ?`, [paidFor, id]);
@@ -167,6 +210,29 @@ export async function addGoal({ label, targetAmount }) {
 export async function addToGoal(id, amount) {
   const db = await getDb();
   await db.run(`UPDATE goals SET saved_amount = saved_amount + ? WHERE id = ?`, [Math.round(amount), id]);
+  await persist();
+}
+
+// Rename a goal, change its target, or correct the amount saved (the running
+// total was previously add-only, so a mistyped contribution was permanent).
+export async function updateGoal(id, { label, targetAmount, savedAmount }) {
+  const sets = [];
+  const values = [];
+  if (label !== undefined) {
+    sets.push('label = ?');
+    values.push(String(label));
+  }
+  if (targetAmount !== undefined) {
+    sets.push('target_amount = ?');
+    values.push(Math.round(targetAmount));
+  }
+  if (savedAmount !== undefined) {
+    sets.push('saved_amount = ?');
+    values.push(Math.max(0, Math.round(savedAmount)));
+  }
+  if (!sets.length) return;
+  const db = await getDb();
+  await db.run(`UPDATE goals SET ${sets.join(', ')} WHERE id = ?`, [...values, id]);
   await persist();
 }
 

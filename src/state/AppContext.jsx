@@ -672,6 +672,64 @@ export function AppProvider({ children }) {
     [set, showToast],
   );
 
+  // ── editing ──
+  // Change an existing transaction. Anything imported from SMS is marked as
+  // hand-corrected so a later re-scan can't quietly undo the user's edit.
+  const editTransaction = useCallback(
+    async (id, patch) => {
+      const next = { ...patch };
+      if (next.occurredAt !== undefined) {
+        next.occurred_at = next.occurredAt;
+        next.date = new Date(next.occurredAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+        delete next.occurredAt;
+      }
+      if (next.cat !== undefined) {
+        next.category_id = next.cat;
+        delete next.cat;
+      }
+      await repo.updateTransaction(id, next);
+      set({ txns: await repo.listTransactions() });
+      showToast('Transaction updated');
+    },
+    [set, showToast],
+  );
+
+  const editBudget = useCallback(
+    async (catId, limit) => {
+      await repo.upsertBudget(catId, limit);
+      set({ budgets: await repo.listBudgets(), budgetSheetOpen: false });
+      showToast('Budget updated');
+    },
+    [set, showToast],
+  );
+
+  const removeBudget = useCallback(
+    async (catId) => {
+      await repo.deleteBudget(catId);
+      set({ budgets: await repo.listBudgets() });
+      showToast('Budget removed');
+    },
+    [set, showToast],
+  );
+
+  const editGoal = useCallback(
+    async (id, patch) => {
+      await repo.updateGoal(id, patch);
+      set({ goals: await repo.listGoals() });
+      showToast('Goal updated');
+    },
+    [set, showToast],
+  );
+
+  const editReminder = useCallback(
+    async (id, patch) => {
+      await repo.updateReminder(id, patch);
+      set({ reminders: await repo.listReminders() });
+      showToast('Bill updated');
+    },
+    [set, showToast],
+  );
+
   // Attach / edit a free-text note on a transaction.
   const setTransactionNote = useCallback(
     async (id, note) => {
@@ -835,6 +893,11 @@ export function AppProvider({ children }) {
       openCategorySheet,
       closeCategorySheet,
       setTxnCategory,
+      editTransaction,
+      editBudget,
+      removeBudget,
+      editGoal,
+      editReminder,
       setTransactionNote,
       ignoreSmsTransaction,
       addUnmatchedAsTransaction,
@@ -890,6 +953,11 @@ export function AppProvider({ children }) {
       openCategorySheet,
       closeCategorySheet,
       setTxnCategory,
+      editTransaction,
+      editBudget,
+      removeBudget,
+      editGoal,
+      editReminder,
       setTransactionNote,
       ignoreSmsTransaction,
       addUnmatchedAsTransaction,

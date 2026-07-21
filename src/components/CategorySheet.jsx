@@ -6,11 +6,28 @@ import { listSmsForTxn } from '../db/repo';
 
 const METHOD_LABELS = { cash: 'paid in cash', upi: 'paid by UPI', card: 'paid by card', bank: 'bank transfer' };
 
+const METHODS = [
+  { key: 'cash', label: 'Cash' },
+  { key: 'upi', label: 'UPI' },
+  { key: 'card', label: 'Card' },
+  { key: 'bank', label: 'Bank' },
+];
+
+function dateInputValue(ms) {
+  const d = ms ? new Date(ms) : new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export default function CategorySheet() {
-  const { state, closeCategorySheet, setTxnCategory, addCategory, setTransactionNote, ignoreSmsTransaction, deleteTransaction, splitMergedSms } = useApp();
+  const { state, closeCategorySheet, setTxnCategory, addCategory, setTransactionNote, ignoreSmsTransaction, deleteTransaction, splitMergedSms, editTransaction } = useApp();
   const [newCat, setNewCat] = useState('');
   const [note, setNote] = useState('');
   const [smsRows, setSmsRows] = useState([]);
+  // Edit mode is opt-in so the sheet stays a quick "what was this?" glance by
+  // default rather than a form every time it opens.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(null);
   const open = !!state.sheetFor;
   const txn = open ? state.txns.find((t) => t.id === state.sheetFor.id) : null;
 
@@ -20,6 +37,8 @@ export default function CategorySheet() {
     if (!txn) return;
     setNote(txn.note || '');
     setSmsRows([]);
+    setEditing(false);
+    setDraft(null);
     if (txn.source === 'sms') {
       listSmsForTxn(txn.id).then(setSmsRows).catch(() => setSmsRows([]));
     }
@@ -27,6 +46,34 @@ export default function CategorySheet() {
   }, [state.sheetFor?.id, state.smsLog]);
 
   if (!open || !txn) return null;
+
+  const startEdit = () => {
+    setDraft({
+      merchant: txn.merchant || '',
+      amount: String(txn.amount ?? ''),
+      type: txn.type,
+      method: txn.method || '',
+      when: dateInputValue(txn.occurred_at || txn.sms_date || txn.created_at),
+    });
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    const amount = Math.round(parseFloat(String(draft.amount).replace(/,/g, '')) || 0);
+    if (amount <= 0) return;
+    const picked = new Date(`${draft.when}T12:00:00`).getTime();
+    const originalDay = dateInputValue(txn.occurred_at || txn.sms_date || txn.created_at);
+    await editTransaction(txn.id, {
+      merchant: draft.merchant.trim() || txn.merchant,
+      amount,
+      type: draft.type,
+      method: draft.method || null,
+      // Only rewrite the timestamp when the day actually changed, so editing
+      // an amount doesn't throw away the original time of day.
+      ...(draft.when !== originalDay ? { occurredAt: picked } : {}),
+    });
+    setEditing(false);
+  };
 
   const isSms = txn.source === 'sms';
   const income = txn.type === 'income';
@@ -58,9 +105,77 @@ export default function CategorySheet() {
         </div>
 
         {/* Meta: bank + date/time */}
-        <div style={{ fontSize: 12.5, color: colors.textSecondary, marginTop: 4, marginBottom: 12 }}>
-          {[bank, when || txn.date, isSms ? 'from SMS' : METHOD_LABELS[txn.method] || 'added by you'].filter(Boolean).join(' · ')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 12 }}>
+          <div style={{ flex: 1, fontSize: 12.5, color: colors.textSecondary, minWidth: 0 }}>
+            {[bank, when || txn.date, isSms ? 'from SMS' : METHOD_LABELS[txn.method] || 'added by you'].filter(Boolean).join(' · ')}
+          </div>
+          {!editing && (
+            <button onClick={startEdit} style={{ fontSize: 13, fontWeight: 600, color: colors.primary, cursor: 'pointer', flexShrink: 0, padding: '2px 4px' }}>
+              Edit
+            </button>
+          )}
         </div>
+
+        {/* Edit form — amount, payee, direction, method and date. Everything
+            here was previously fixed forever once the row existed. */}
+        {editing && draft && (
+          <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: 14, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                { key: 'expense', label: 'Spent' },
+                { key: 'income', label: 'Received' },
+              ].map((o) => (
+                <button
+                  key={o.key}
+                  onClick={() => setDraft({ ...draft, type: o.key })}
+                  style={{ flex: 1, padding: '9px 4px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: draft.type === o.key ? colors.ink : colors.bgApp, color: draft.type === o.key ? colors.bgApp : colors.textSecondary, border: `1px solid ${draft.type === o.key ? 'transparent' : colors.cardBorder}` }}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '10px 14px' }}>
+              <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>₹</span>
+              <input
+                value={draft.amount}
+                onChange={(e) => setDraft({ ...draft, amount: e.target.value.replace(/[^\d.]/g, '') })}
+                inputMode="decimal"
+                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700, color: colors.ink, minWidth: 0 }}
+              />
+            </div>
+            <input
+              value={draft.merchant}
+              onChange={(e) => setDraft({ ...draft, merchant: e.target.value })}
+              placeholder="Name"
+              style={{ width: '100%', background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '10px 14px', fontSize: 14, color: colors.ink }}
+            />
+            <input
+              type="date"
+              value={draft.when}
+              onChange={(e) => setDraft({ ...draft, when: e.target.value })}
+              style={{ width: '100%', background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '10px 14px', fontSize: 14, color: colors.ink }}
+            />
+            <div style={{ display: 'flex', gap: 6 }}>
+              {METHODS.map((m) => (
+                <button
+                  key={m.key}
+                  onClick={() => setDraft({ ...draft, method: draft.method === m.key ? '' : m.key })}
+                  style={{ flex: 1, padding: '8px 2px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: draft.method === m.key ? colors.primary : colors.bgApp, color: draft.method === m.key ? colors.bgApp : colors.textSecondary, border: `1px solid ${draft.method === m.key ? 'transparent' : colors.cardBorder}` }}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setEditing(false)} style={{ flex: 1, background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, borderRadius: 100, padding: 11, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={saveEdit} style={{ flex: 1, background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 11, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                Save changes
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Original SMS. When more than one message sits behind this row they
             were merged as duplicates — show them all, and let a wrong merge be

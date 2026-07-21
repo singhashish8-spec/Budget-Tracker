@@ -5,7 +5,8 @@ import { useApp } from '../state/AppContext';
 import { budgetRows } from '../state/selectors';
 
 export default function BudgetsScreen() {
-  const { state, set, addBudget } = useApp();
+  const { state, set, addBudget, editBudget, removeBudget } = useApp();
+  const [editingCat, setEditingCat] = useState(null);
   const { txns, categories, budgets } = state;
   const rows = budgetRows(txns, categories, budgets);
   const overallLimit = budgets.reduce((a, b) => a + b.limit, 0);
@@ -42,7 +43,11 @@ export default function BudgetsScreen() {
           const barColor = b.status === 'over' ? colors.danger : b.status === 'near' ? colors.warning : colors.primary;
           const statusColor = b.status === 'over' ? colors.danger : b.status === 'near' ? colors.warning : colors.successText;
           return (
-            <div key={b.cat} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              key={b.cat}
+              onClick={() => setEditingCat(b.cat)}
+              style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer' }}
+            >
               <div style={{ width: 38, height: 38, borderRadius: 12, background: tint(b.color), color: b.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                 {b.mono}
               </div>
@@ -59,7 +64,7 @@ export default function BudgetsScreen() {
                 </div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: statusColor }}>{b.statusText}</div>
               </div>
-            </div>
+            </button>
           );
         })}
         {rows.length === 0 && <div style={{ fontSize: 13.5, color: colors.textTertiary, textAlign: 'center', padding: '12px 0' }}>No budgets set yet</div>}
@@ -73,6 +78,67 @@ export default function BudgetsScreen() {
       </button>
 
       {state.budgetSheetOpen && <NewBudgetSheet availableCats={availableCats} onSave={addBudget} onClose={() => set({ budgetSheetOpen: false })} />}
+      {editingCat && (
+        <EditBudgetSheet
+          row={rows.find((r) => r.cat === editingCat)}
+          onSave={async (limit) => {
+            await editBudget(editingCat, limit);
+            setEditingCat(null);
+          }}
+          onRemove={async () => {
+            await removeBudget(editingCat);
+            setEditingCat(null);
+          }}
+          onClose={() => setEditingCat(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Budgets were write-once: the only way to correct a limit was to live with it.
+function EditBudgetSheet({ row, onSave, onRemove, onClose }) {
+  const [amt, setAmt] = useState(String(row?.limit ?? ''));
+  if (!row) return null;
+  const n = parseInt(String(amt).replace(/[^0-9]/g, ''), 10);
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.4)' }} />
+      <div style={{ position: 'relative', background: colors.bgApp, borderRadius: '24px 24px 0 0', padding: '20px 16px 32px', animation: 'sheetup 0.22s ease-out' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 100, background: colors.track, margin: '0 auto 14px' }} />
+        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>{row.label} budget</div>
+        <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 14 }}>
+          {row.spentF} spent so far this month
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 14, padding: '12px 16px', marginBottom: 12 }}>
+          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700 }}>₹</span>
+          <input
+            value={amt}
+            onChange={(e) => setAmt(e.target.value.replace(/[^\d]/g, ''))}
+            inputMode="numeric"
+            autoFocus
+            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700, color: colors.ink, minWidth: 0 }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button
+            onClick={() => n > 0 && onSave(n)}
+            style={{ flex: 2, background: n > 0 ? colors.primary : colors.track, color: colors.bgApp, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: n > 0 ? 'pointer' : 'default' }}
+          >
+            Save changes
+          </button>
+        </div>
+        <button
+          onClick={onRemove}
+          style={{ width: '100%', marginTop: 10, background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, color: colors.dangerDark, borderRadius: 100, padding: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
+        >
+          Remove this budget
+        </button>
+      </div>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { exportCsv, exportHtmlReport } from '../services/exportReport';
 const TAX_80C_LIMIT = 150000;
 
 export default function InsightsScreen() {
-  const { state, go, showToast, addNetWorthItem, deleteNetWorthItem, addGoal, addToGoal, deleteGoal, setTaxRegime, setTax80cInvested } = useApp();
+  const { state, go, showToast, addNetWorthItem, deleteNetWorthItem, addGoal, addToGoal, deleteGoal, editGoal, setTaxRegime, setTax80cInvested } = useApp();
 
   const assets = state.netWorthItems.filter((i) => i.kind === 'asset').reduce((a, i) => a + i.amount, 0);
   const liab = state.netWorthItems.filter((i) => i.kind === 'liability').reduce((a, i) => a + i.amount, 0);
@@ -32,7 +32,7 @@ export default function InsightsScreen() {
       <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 700, padding: '0 4px' }}>Insights</div>
 
       <NetWorthCard assets={assets} liab={liab} items={state.netWorthItems} onAdd={addNetWorthItem} onDelete={deleteNetWorthItem} />
-      <GoalsCard goals={state.goals} onAdd={addGoal} onContribute={addToGoal} onDelete={deleteGoal} />
+      <GoalsCard goals={state.goals} onAdd={addGoal} onContribute={addToGoal} onDelete={deleteGoal} onEdit={editGoal} />
       <TaxCard regime={state.taxRegime} invested={state.tax80cInvested} onRegime={setTaxRegime} onInvested={setTax80cInvested} />
 
       <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px' }}>
@@ -119,10 +119,42 @@ function NetWorthCard({ assets, liab, items, onAdd, onDelete }) {
   );
 }
 
-function GoalsCard({ goals, onAdd, onContribute, onDelete }) {
+// Lets a goal be renamed, re-targeted, or its saved total corrected. The
+// running total used to be add-only, so a mistyped contribution was permanent.
+function GoalEditor({ goal, onSave, onCancel, onDelete }) {
+  const [label, setLabel] = useState(goal.label);
+  const [target, setTarget] = useState(String(goal.target_amount));
+  const [saved, setSaved] = useState(String(goal.saved_amount));
+
+  const save = () => {
+    const targetAmount = parseInt(String(target).replace(/[^0-9]/g, ''), 10);
+    const savedAmount = parseInt(String(saved).replace(/[^0-9]/g, ''), 10);
+    if (!label.trim() || !targetAmount) return;
+    onSave({ label: label.trim(), targetAmount, savedAmount: Number.isFinite(savedAmount) ? savedAmount : goal.saved_amount });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8, background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 14, padding: 12 }}>
+      <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Goal name" style={inputStyle} />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input value={saved} onChange={(e) => setSaved(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="Saved ₹" style={{ ...inputStyle, flex: 1 }} />
+        <input value={target} onChange={(e) => setTarget(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="Target ₹" style={{ ...inputStyle, flex: 1 }} />
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={onCancel} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+        <button onClick={save} style={{ flex: 1, background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+      </div>
+      <button onClick={onDelete} style={{ fontSize: 12.5, fontWeight: 600, color: colors.danger, cursor: 'pointer', padding: 4 }}>Delete this goal</button>
+    </div>
+  );
+}
+
+function GoalsCard({ goals, onAdd, onContribute, onDelete, onEdit }) {
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState('');
   const [target, setTarget] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [addAmt, setAddAmt] = useState({});
 
   const submit = () => {
     const targetAmount = parseInt(String(target).replace(/[^0-9]/g, ''), 10);
@@ -150,10 +182,42 @@ function GoalsCard({ goals, onAdd, onContribute, onDelete }) {
             <div style={{ height: 6, borderRadius: 100, background: colors.divider }}>
               <div style={{ height: '100%', borderRadius: 100, background: colors.primary, width: `${pct}%` }} />
             </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              <button onClick={() => onContribute(g.id, 1000)} style={{ fontSize: 12, fontWeight: 600, color: colors.primary, cursor: 'pointer' }}>+ ₹1,000</button>
-              <button onClick={() => onDelete(g.id)} style={{ fontSize: 12, color: colors.textTertiary, cursor: 'pointer' }}>Remove</button>
-            </div>
+            {editingId === g.id ? (
+              <GoalEditor
+                goal={g}
+                onSave={(patch) => {
+                  onEdit(g.id, patch);
+                  setEditingId(null);
+                }}
+                onCancel={() => setEditingId(null)}
+                onDelete={() => {
+                  onDelete(g.id);
+                  setEditingId(null);
+                }}
+              />
+            ) : (
+              <div style={{ display: 'flex', gap: 10, marginTop: 6, alignItems: 'center' }}>
+                <input
+                  value={addAmt[g.id] ?? ''}
+                  onChange={(e) => setAddAmt({ ...addAmt, [g.id]: e.target.value.replace(/[^\d]/g, '') })}
+                  placeholder="Add ₹"
+                  inputMode="numeric"
+                  style={{ width: 92, background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '7px 12px', fontSize: 12.5, color: colors.ink }}
+                />
+                <button
+                  onClick={() => {
+                    const n = parseInt(addAmt[g.id] || '', 10);
+                    if (!n) return;
+                    onContribute(g.id, n);
+                    setAddAmt({ ...addAmt, [g.id]: '' });
+                  }}
+                  style={{ fontSize: 12, fontWeight: 600, color: colors.primary, cursor: 'pointer' }}
+                >
+                  Add
+                </button>
+                <button onClick={() => setEditingId(g.id)} style={{ fontSize: 12, fontWeight: 600, color: colors.textSecondary, cursor: 'pointer', marginLeft: 'auto' }}>Edit</button>
+              </div>
+            )}
           </div>
         );
       })}
