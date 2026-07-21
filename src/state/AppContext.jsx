@@ -515,8 +515,8 @@ export function AppProvider({ children }) {
 
   // ── savings goals ──
   const addGoal = useCallback(
-    async ({ label, targetAmount }) => {
-      await repo.addGoal({ label, targetAmount });
+    async ({ label, targetAmount, targetDate = null }) => {
+      await repo.addGoal({ label, targetAmount, targetDate });
       set({ goals: await repo.listGoals() });
       showToast(`Goal "${label}" added`);
     },

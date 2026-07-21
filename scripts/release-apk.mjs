@@ -16,7 +16,7 @@
 // app) so it installs AS AN UPDATE. This script never builds or signs — it only
 // uploads whatever APK you point it at.
 
-import { execSync, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, copyFileSync, mkdirSync, existsSync } from 'node:fs';
 
 const OWNER = 'singhashish8-spec';
@@ -98,7 +98,7 @@ try {
       { stdio: 'inherit' },
     );
   }
-} catch (e) {
+} catch {
   console.error('\n❌ gh failed to publish the release. Is it authenticated? Try:  gh auth status\n');
   process.exit(1);
 }

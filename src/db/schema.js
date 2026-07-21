@@ -125,6 +125,15 @@ export const MIGRATIONS = [
       `ALTER TABLE budgets ADD COLUMN ends_at INTEGER;`,
     ],
   },
+  {
+    // Additive only.
+    version: 6,
+    statements: [
+      // Optional deadline (ms timestamp) for a savings goal, so we can show how
+      // much per month is needed to reach it in time and whether you're on pace.
+      `ALTER TABLE goals ADD COLUMN target_date INTEGER;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
