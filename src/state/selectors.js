@@ -97,7 +97,17 @@ export function budgetRows(txns, categories, budgets) {
 export function filterTransactions(txns, { search = '', filter = 'all' } = {}) {
   const q = search.trim().toLowerCase();
   let list = txns;
-  if (q) list = list.filter((t) => t.merchant.toLowerCase().includes(q));
+  if (q) {
+    // Match the payee, the note, or the amount — typing "60807" should find a
+    // payment even when its name is something generic like "Credit".
+    const qDigits = q.replace(/[^\d]/g, '');
+    list = list.filter(
+      (t) =>
+        (t.merchant || '').toLowerCase().includes(q) ||
+        (t.note || '').toLowerCase().includes(q) ||
+        (qDigits && String(t.amount).includes(qDigits)),
+    );
+  }
   if (filter === 'review') list = list.filter((t) => !t.cat);
   return list;
 }

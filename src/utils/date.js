@@ -53,6 +53,24 @@ export function daysUntilPayday(salaryDay, now = new Date()) {
   return Math.max(0, Math.round(ms / 86400000));
 }
 
+// When a transaction happened, as a short human label with the time of day.
+// Prefers the original SMS timestamp; `date` on the row is only ever a display
+// string ("16 Jun") with no year or time, so it's the last resort.
+export function txnWhen(t) {
+  const ms = t?.sms_date || t?.created_at;
+  if (!ms) return t?.date || '';
+  const d = new Date(ms);
+  const now = new Date();
+  const time = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const daysApart = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  if (daysApart === 0) return `Today, ${time}`;
+  if (daysApart === 1) return `Yesterday, ${time}`;
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const day = d.toLocaleDateString('en-IN', sameYear ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
+  return `${day}, ${time}`;
+}
+
 export function salaryDayLabel(salaryDay) {
   if (!salaryDay) return 'Calendar month (1st)';
   if (salaryDay === 32) return 'Last day of month';

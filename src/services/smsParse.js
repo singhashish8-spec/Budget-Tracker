@@ -30,14 +30,23 @@ function detectBnpl(body) {
 // The bank/UPI reference number — a payment's unique id. Two messages carrying
 // DIFFERENT refs are definitively different payments however alike they look,
 // which is what stops two same-amount payments minutes apart being merged.
-const REF_RE = /(?:UPI\/(?:CR|DR)\/|\bref(?:erence)?(?:\s*(?:no|id))?\.?[:\s#]\s*)(\w{6,})/i;
+const REF_PATTERNS = [
+  /UPI\/(?:CR|DR)\/(\w{6,})/i,
+  // NEFT/IMPS salary & transfer credits: "Ref NEFT CR-HDFCN52026071502577343".
+  /\b(?:NEFT|IMPS|RTGS)\s+(?:CR|DR)-(\w{6,})/i,
+  /\bref(?:erence)?(?:\s*(?:no|id))?\.?[:\s#]\s*(\w{6,})/i,
+];
 
 // OTPs quote amounts but are never transactions.
 const OTP_RE = /\bOTP\b|one[-\s]?time password|do not share/i;
 
 export function extractRef(body) {
-  const m = String(body || '').match(REF_RE);
-  return m ? m[1].toUpperCase() : null;
+  const s = String(body || '');
+  for (const re of REF_PATTERNS) {
+    const m = s.match(re);
+    if (m && m[1]) return m[1].toUpperCase();
+  }
+  return null;
 }
 
 // True when a message mentions money at all — used to surface the messages we
@@ -78,6 +87,10 @@ export function extractMerchant(body) {
     // the payee name follows the numeric reference. Stops at a slash, " Bal",
     // or line end so trailing balance text isn't swallowed.
     /UPI\/(?:CR|DR)\/\w+\/([A-Za-z][A-Za-z0-9 .*&_-]+?)(?=\/|\s+Bal\b|[\r\n]|$)/i,
+    // NEFT/IMPS credits put the sender after the reference: "Ref NEFT
+    // CR-HDFCN52026071502577343 -HITEN SE. Bal INR ..." — without this a
+    // salary credit falls back to the useless label "Credit".
+    /\b(?:NEFT|IMPS|RTGS)\s+(?:CR|DR)-\S+\s+-\s*([A-Za-z][A-Za-z0-9 .&_-]+?)(?=\.|\s+Bal\b|[\r\n]|$)/i,
     /\bto VPA\s+([^\s.,]+)/i,
     /\bat\s+([A-Z0-9][A-Za-z0-9*&._-]+(?:\s+[A-Za-z0-9*&._-]+){0,2})/,
     /\bto\s+([A-Z0-9][A-Za-z0-9*&._@-]+(?:\s+[A-Za-z0-9*&._-]+){0,2})/,

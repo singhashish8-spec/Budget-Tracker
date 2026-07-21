@@ -1,5 +1,6 @@
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
+import { txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { alertCount, filterTransactions } from '../state/selectors';
 
@@ -81,9 +82,18 @@ export default function TransactionsScreen() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant}</div>
-                <div style={{ fontSize: 12.5, color: uncat ? colors.danger : colors.textSecondary, fontWeight: uncat ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {uncat ? 'Needs review — tap to categorise' : `${t.date} · ${cat.label}`}
+                {/* Date and time always show. They used to be swapped out for
+                    the review prompt, so every uncategorised row — which is
+                    most of them — appeared with no date at all. */}
+                <div style={{ fontSize: 12.5, color: colors.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {txnWhen(t)}
+                  {!uncat && cat ? ` · ${cat.label}` : ''}
                 </div>
+                {uncat && (
+                  <div style={{ fontSize: 12, color: colors.danger, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    Needs review — tap to categorise
+                  </div>
+                )}
                 {t.note && (
                   <div style={{ fontSize: 12, color: colors.textTertiary, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     “{t.note}”
