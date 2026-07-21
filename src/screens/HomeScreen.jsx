@@ -5,7 +5,7 @@ import { useApp } from '../state/AppContext';
 import { alertCount, topCategories, homeTotals, inWindow, goalsSummary } from '../state/selectors';
 
 export default function HomeScreen() {
-  const { state, go, goReview, openCategorySheet } = useApp();
+  const { state, go, goReview, openCategorySheet, openDetail } = useApp();
   const { txns, categories } = state;
   const alerts = alertCount(txns);
   // Spending resets on payday, not on the 1st — so the headline figure matches
@@ -78,7 +78,11 @@ export default function HomeScreen() {
         </div>
         {top.length === 0 && <div style={{ fontSize: 13.5, color: colors.textTertiary }}>No categorised spending yet</div>}
         {top.map((c) => (
-          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+          <button
+            key={c.id}
+            onClick={() => openDetail({ kind: 'category', id: c.id })}
+            style={{ display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer', textAlign: 'left', width: '100%' }}
+          >
             <div style={{ width: 32, height: 32, borderRadius: 10, background: tint(c.color), color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
               {c.mono}
             </div>
@@ -91,7 +95,8 @@ export default function HomeScreen() {
                 <div style={{ height: '100%', borderRadius: 100, background: c.color, width: `${c.barPct}%` }} />
               </div>
             </div>
-          </div>
+            <span style={{ color: colors.textTertiary, fontWeight: 600, fontSize: 15 }}>›</span>
+          </button>
         ))}
       </div>
 
