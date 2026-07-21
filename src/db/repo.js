@@ -208,12 +208,12 @@ export async function listGoals() {
   return res.values ?? [];
 }
 
-export async function addGoal({ label, targetAmount }) {
+export async function addGoal({ label, targetAmount, targetDate = null }) {
   const db = await getDb();
   const id = newId('goal');
   await db.run(
-    `INSERT INTO goals (id, label, target_amount, saved_amount, created_at) VALUES (?,?,?,0,?)`,
-    [id, label, Math.round(targetAmount), Date.now()],
+    `INSERT INTO goals (id, label, target_amount, saved_amount, created_at, target_date) VALUES (?,?,?,0,?,?)`,
+    [id, label, Math.round(targetAmount), Date.now(), targetDate ? Math.round(targetDate) : null],
   );
   await persist();
   return id;
@@ -227,7 +227,7 @@ export async function addToGoal(id, amount) {
 
 // Rename a goal, change its target, or correct the amount saved (the running
 // total was previously add-only, so a mistyped contribution was permanent).
-export async function updateGoal(id, { label, targetAmount, savedAmount }) {
+export async function updateGoal(id, { label, targetAmount, savedAmount, targetDate }) {
   const sets = [];
   const values = [];
   if (label !== undefined) {
@@ -241,6 +241,11 @@ export async function updateGoal(id, { label, targetAmount, savedAmount }) {
   if (savedAmount !== undefined) {
     sets.push('saved_amount = ?');
     values.push(Math.max(0, Math.round(savedAmount)));
+  }
+  // Passing null clears the deadline; a number sets it.
+  if (targetDate !== undefined) {
+    sets.push('target_date = ?');
+    values.push(targetDate === null ? null : Math.round(targetDate));
   }
   if (!sets.length) return;
   const db = await getDb();
@@ -402,8 +407,8 @@ export async function importBackup(data) {
   }
   for (const g of data.goals ?? []) {
     await db.run(
-      `INSERT OR REPLACE INTO goals (id, label, target_amount, saved_amount, created_at) VALUES (?,?,?,?,?)`,
-      [g.id, g.label, Math.round(g.target_amount), Math.round(g.saved_amount ?? 0), g.created_at ?? Date.now()],
+      `INSERT OR REPLACE INTO goals (id, label, target_amount, saved_amount, created_at, target_date) VALUES (?,?,?,?,?,?)`,
+      [g.id, g.label, Math.round(g.target_amount), Math.round(g.saved_amount ?? 0), g.created_at ?? Date.now(), g.target_date ?? null],
     );
     counts.goals++;
   }

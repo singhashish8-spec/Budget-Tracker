@@ -3,6 +3,7 @@ import { useApp } from '../state/AppContext';
 
 const ITEMS = [
   { key: 'settings', label: 'Settings', mono: 'ST', color: colors.primary },
+  { key: 'goals', label: 'Savings goals', mono: 'SG', color: colors.primary },
   { key: 'reminders', label: 'Bill reminders', mono: 'BR', color: colors.warning },
   { key: 'patterns', label: 'Smart patterns', mono: 'SP', color: colors.warning },
   { key: 'upload', label: 'Upload bills', mono: 'UP', color: '#2D6E8F' },

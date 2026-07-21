@@ -2,7 +2,7 @@ import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleWindow } from '../utils/date';
 import { useApp } from '../state/AppContext';
-import { alertCount, topCategories, homeTotals, inWindow } from '../state/selectors';
+import { alertCount, topCategories, homeTotals, inWindow, goalsSummary } from '../state/selectors';
 
 export default function HomeScreen() {
   const { state, go, goReview, openCategorySheet } = useApp();
@@ -26,6 +26,7 @@ export default function HomeScreen() {
     .slice(0, 2);
 
   const monthLabel = currentMonthLabel();
+  const goals = goalsSummary(state.goals);
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -93,6 +94,40 @@ export default function HomeScreen() {
           </div>
         ))}
       </div>
+
+      <button
+        onClick={() => go('goals')}
+        style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 12, cursor: 'pointer', textAlign: 'left', width: '100%' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%' }}>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600 }}>Savings goals</div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>{goals.count > 0 ? 'Manage' : 'Set one'} ›</span>
+        </div>
+        {goals.count === 0 ? (
+          <div style={{ fontSize: 13.5, color: colors.textTertiary }}>No goals yet — set one and I'll track how close you're getting.</div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%', fontSize: 13.5 }}>
+              <span style={{ color: colors.textSecondary }}>{goals.count} goal{goals.count === 1 ? '' : 's'}{goals.behind > 0 ? ` · ${goals.behind} behind pace` : ''}</span>
+              <span><span style={{ fontWeight: 700 }}>{goals.totalSavedF}</span><span style={{ color: colors.textSecondary }}> / {goals.totalTargetF}</span></span>
+            </div>
+            <div style={{ height: 6, borderRadius: 100, background: colors.divider, width: '100%', overflow: 'hidden' }}>
+              <div style={{ height: '100%', borderRadius: 100, background: colors.primary, width: `${goals.pct}%` }} />
+            </div>
+            {goals.rows.slice(0, 2).map((r) => (
+              <div key={r.id} style={{ width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                  <span style={{ fontWeight: 500 }}>{r.label}</span>
+                  <span style={{ color: r.onTrack === false ? colors.warningDark : colors.textSecondary, fontWeight: r.onTrack === false ? 600 : 400 }}>{r.pct}%</span>
+                </div>
+                <div style={{ height: 4, borderRadius: 100, background: colors.divider, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: 100, background: r.onTrack === false ? colors.warning : colors.primary, width: `${r.pct}%` }} />
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+      </button>
 
       {upcomingBills.length > 0 && (
         <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>

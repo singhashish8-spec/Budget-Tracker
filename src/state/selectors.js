@@ -167,6 +167,104 @@ export function suggestedLimit(txns, catId, now = new Date()) {
   return Math.max(100, Math.round(total / months / 100) * 100);
 }
 
+// ── savings goals ──
+
+const MONTH_MS = 2592000000; // 30 days — an "average" month, good enough for pace
+
+// Derived view of one goal: progress, and — from how long it's been open and how
+// much is saved — the pace you're actually keeping versus the pace a deadline
+// needs. Everything the screen shows is computed here so it stays testable.
+export function goalRow(goal, now = new Date()) {
+  const saved = goal.saved_amount || 0;
+  const target = goal.target_amount || 0;
+  const remaining = Math.max(0, target - saved);
+  const pct = target ? Math.min(100, Math.round((saved / target) * 100)) : 0;
+  const reached = target > 0 && saved >= target;
+
+  // How fast money has actually gone in, on average, since the goal was created.
+  const monthsOpen = Math.max(0.5, (now.getTime() - (goal.created_at || now.getTime())) / MONTH_MS);
+  const avgPerMonth = Math.round(saved / monthsOpen);
+
+  const deadline = goal.target_date ? new Date(goal.target_date) : null;
+  let needPerMonth = null;
+  let daysLeft = null;
+  let onTrack = null;
+  let deadlineLabel = null;
+  if (deadline) {
+    deadlineLabel = deadline.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    daysLeft = Math.round((deadline - today) / DAY_MS);
+    const monthsLeft = (deadline - now) / MONTH_MS;
+    needPerMonth = monthsLeft > 0 ? Math.round(remaining / monthsLeft) : remaining;
+    // On pace if you're already putting away at least what the deadline needs.
+    onTrack = reached || (monthsLeft > 0 && avgPerMonth >= needPerMonth);
+  }
+
+  // Projected finish date at the current average pace (no deadline case).
+  let projectedLabel = null;
+  if (!reached && remaining > 0 && avgPerMonth > 0) {
+    const proj = new Date(now.getTime() + (remaining / avgPerMonth) * MONTH_MS);
+    projectedLabel = proj.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  }
+
+  // One-line verdict shown under the bar.
+  let paceText;
+  if (reached) {
+    paceText = 'Reached — well done 🎉';
+  } else if (deadline) {
+    if (daysLeft <= 0) {
+      paceText = `Deadline passed · ${fmt(remaining)} to go`;
+    } else {
+      paceText = `Save ${fmt(needPerMonth)}/mo to reach it by ${deadlineLabel}`;
+    }
+  } else if (avgPerMonth > 0) {
+    paceText = projectedLabel ? `Saving ~${fmt(avgPerMonth)}/mo · on track for ${projectedLabel}` : `Saving ~${fmt(avgPerMonth)}/mo`;
+  } else {
+    paceText = `${fmt(remaining)} to go`;
+  }
+
+  return {
+    id: goal.id,
+    label: goal.label,
+    saved,
+    target,
+    remaining,
+    pct,
+    reached,
+    savedF: fmt(saved),
+    targetF: fmt(target),
+    remainingF: fmt(remaining),
+    avgPerMonth,
+    avgPerMonthF: fmt(avgPerMonth),
+    needPerMonth,
+    needPerMonthF: needPerMonth == null ? null : fmt(needPerMonth),
+    deadline: goal.target_date || null,
+    deadlineLabel,
+    daysLeft,
+    onTrack,
+    projectedLabel,
+    paceText,
+  };
+}
+
+// Roll-up for the Home card: overall progress across every goal.
+export function goalsSummary(goals, now = new Date()) {
+  const rows = goals.map((g) => goalRow(g, now));
+  const totalSaved = rows.reduce((a, r) => a + r.saved, 0);
+  const totalTarget = rows.reduce((a, r) => a + r.target, 0);
+  const pct = totalTarget ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0;
+  return {
+    count: rows.length,
+    rows,
+    totalSaved,
+    totalTarget,
+    pct,
+    totalSavedF: fmt(totalSaved),
+    totalTargetF: fmt(totalTarget),
+    behind: rows.filter((r) => r.onTrack === false).length,
+  };
+}
+
 export function filterTransactions(txns, { search = '', filter = 'all' } = {}) {
   const q = search.trim().toLowerCase();
   let list = txns;
