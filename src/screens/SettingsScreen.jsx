@@ -63,6 +63,32 @@ export default function SettingsScreen() {
           </div>
           <div style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>Restore</div>
         </button>
+
+        {/* Automatic snapshot status. Stated plainly — a snapshot kept in the
+            app's own storage does NOT survive the app being reinstalled, and
+            claiming otherwise would give false confidence about real data. */}
+        <div style={{ marginTop: 13, paddingTop: 13, borderTop: `1px solid ${colors.divider}` }}>
+          <div style={{ fontSize: 14.5, fontWeight: 600 }}>Automatic copy on this phone</div>
+          {state.lastAutoBackup ? (
+            <>
+              <div style={{ fontSize: 12.5, color: colors.textSecondary, marginTop: 2 }}>
+                Last saved {new Date(state.lastAutoBackup.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}
+              </div>
+              <div style={{ fontSize: 12.5, color: state.lastAutoBackup.durable ? colors.successText : colors.warningDark, marginTop: 4, lineHeight: 1.5 }}>
+                {state.lastAutoBackup.durable
+                  ? 'Saved to your Documents folder — this survives reinstalling the app.'
+                  : 'Saved inside the app’s own storage, which is erased if the app is reinstalled. Use "Back up to Google Drive" above for a copy that lasts.'}
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 12.5, color: colors.textSecondary, marginTop: 2 }}>
+              Saves by itself a few seconds after your data changes.
+            </div>
+          )}
+          <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: 6, lineHeight: 1.5 }}>
+            A copy on this phone can’t help if the phone is lost — back up to Drive for that.
+          </div>
+        </div>
       </div>
 
       <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>

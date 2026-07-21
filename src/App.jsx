@@ -43,6 +43,12 @@ function Shell() {
     return <LockScreen />;
   }
 
+  // The database came up empty but a snapshot exists — offer it back rather
+  // than marching the user through onboarding on top of their own data.
+  if (state.recoverable) {
+    return <RecoveryScreen found={state.recoverable} />;
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', background: colors.bgApp, color: colors.ink }}>
       {state.screen === 'onboarding' && <Onboarding />}
@@ -63,6 +69,41 @@ function Shell() {
       <HamburgerDrawer />
       <ProcessingOverlay />
       <Toast />
+    </div>
+  );
+}
+
+function RecoveryScreen({ found }) {
+  const { restoreFound, dismissRecovery } = useApp();
+  const when = found.exportedAt ? new Date(found.exportedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true }) : null;
+  const n = found.data;
+  const bits = [
+    n.transactions?.length ? `${n.transactions.length} transactions` : null,
+    n.budgets?.length ? `${n.budgets.length} budgets` : null,
+    n.reminders?.length ? `${n.reminders.length} bills` : null,
+    n.goals?.length ? `${n.goals.length} goals` : null,
+  ].filter(Boolean);
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: colors.bgApp, padding: 32, textAlign: 'center', gap: 12 }}>
+      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700 }}>We found your data</div>
+      <div style={{ fontSize: 14, color: colors.textSecondary, maxWidth: 340, lineHeight: 1.55 }}>
+        This phone has a saved copy{when ? ` from ${when}` : ''}. You can put it back instead of starting over.
+      </div>
+      {bits.length > 0 && (
+        <div style={{ background: colors.successTint, border: `1px solid ${colors.successBorder}`, color: colors.successText, borderRadius: 14, padding: '12px 16px', fontSize: 13.5, fontWeight: 600 }}>
+          {bits.join(' · ')}
+        </div>
+      )}
+      <button
+        onClick={restoreFound}
+        style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '14px 30px', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 6 }}
+      >
+        Restore my data
+      </button>
+      <button onClick={dismissRecovery} style={{ fontSize: 13.5, color: colors.textTertiary, cursor: 'pointer', padding: 8 }}>
+        Start fresh instead
+      </button>
     </div>
   );
 }

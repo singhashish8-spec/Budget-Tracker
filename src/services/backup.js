@@ -9,7 +9,7 @@ import * as repo from '../db/repo';
 // needs a Google Cloud project set up under the user's own account. See
 // README "Backup".
 
-async function gatherData() {
+export async function gatherData() {
   const [categories, transactions, budgets, reminders, goals, netWorthItems] = await Promise.all([
     repo.listCategories(),
     repo.listTransactions(),

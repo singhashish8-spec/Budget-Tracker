@@ -6,6 +6,7 @@ import { checkLockAvailable, unlock as biometricUnlock } from '../services/appLo
 import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransactions } from '../services/smsReader';
 import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
 import { setGeminiKey } from '../services/aiExtract';
+import { writeAutoBackup, readAutoBackup } from '../services/autoBackup';
 
 const AppStateContext = createContext(null);
 
@@ -53,6 +54,12 @@ const initialState = {
   // Money-mentioning messages the parser couldn't interpret. Surfaced to the
   // user rather than dropped, so nothing goes missing silently.
   smsUnmatched: [],
+  // A snapshot found on disk when the database came up empty — offered as
+  // recovery instead of sending the user through onboarding again.
+  recoverable: null,
+  // { at, durable } for the last automatic snapshot, shown in Settings so the
+  // user can see whether they're actually protected.
+  lastAutoBackup: null,
 };
 
 function reducer(state, action) {
@@ -153,6 +160,18 @@ export function AppProvider({ children }) {
           loading: false,
         });
         setGeminiKey(geminiKeyStr || '');
+
+        // Database came up empty (wiped by a reinstall, most likely). Before
+        // sending the user through onboarding and losing everything, see
+        // whether an automatic snapshot is sitting on disk to offer back.
+        if (!onboarded && txns.length === 0) {
+          try {
+            const found = await readAutoBackup();
+            if (found) set({ recoverable: found });
+          } catch {
+            /* nothing recoverable — onboarding proceeds as normal */
+          }
+        }
       } catch (err) {
         set({ loading: false, loadError: err?.message || 'Could not open the local database' });
       }
@@ -346,6 +365,42 @@ export function AppProvider({ children }) {
     }
     return res;
   }, [set, showToast]);
+
+  // ── automatic snapshots ──
+  // Rewrite the snapshot shortly after anything changes. Debounced so a burst
+  // of SMS imports produces one write, not dozens.
+  useEffect(() => {
+    if (state.loading || !state.onboarded) return undefined;
+    const t = setTimeout(async () => {
+      try {
+        const res = await writeAutoBackup();
+        if (res.ok) set({ lastAutoBackup: { at: res.at, durable: res.durable } });
+      } catch {
+        /* snapshot is best-effort; never interrupt the user */
+      }
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [state.loading, state.onboarded, state.txns, state.budgets, state.reminders, state.goals, state.netWorthItems, set]);
+
+  // Restore the snapshot found at startup. importBackup merges on original
+  // ids, so running it more than once can't duplicate anything.
+  const restoreFound = useCallback(async () => {
+    const found = state.recoverable;
+    if (!found) return;
+    set({ processing: true, procTitle: 'Restoring your data', procSub: 'One moment…' });
+    try {
+      await repo.importBackup(found.data);
+      await repo.setSetting('onboarded', '1');
+      await reloadData();
+      set({ onboarded: true, screen: 'home', recoverable: null, processing: false });
+      showToast('Your data is back');
+    } catch (err) {
+      set({ processing: false });
+      showToast(err?.message || 'Couldn’t restore that backup');
+    }
+  }, [state.recoverable, set, showToast, reloadData]);
+
+  const dismissRecovery = useCallback(() => set({ recoverable: null }), [set]);
 
   const obNext = useCallback(() => set({ obStep: Math.min(3, state.obStep + 1) }), [state.obStep, set]);
   const obBack = useCallback(() => set({ obStep: Math.max(1, state.obStep - 1) }), [state.obStep, set]);
@@ -734,6 +789,8 @@ export function AppProvider({ children }) {
       closeMenu,
       reloadData,
       resetApp,
+      restoreFound,
+      dismissRecovery,
       showToast,
       toggleAccount,
       setCurrency,
@@ -786,6 +843,8 @@ export function AppProvider({ children }) {
       closeMenu,
       reloadData,
       resetApp,
+      restoreFound,
+      dismissRecovery,
       showToast,
       toggleAccount,
       setCurrency,
