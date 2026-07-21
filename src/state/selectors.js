@@ -265,6 +265,72 @@ export function goalsSummary(goals, now = new Date()) {
   };
 }
 
+// ── drill-down dashboard ──
+
+// Everything the reusable detail screen shows for one spending category:
+// a headline for the current cycle, this-vs-last comparison, a 6-month trend,
+// the top merchants, and the full transaction list. Pure, so it's testable.
+export function categoryDetail(txns, categories, catId, { salaryDay = 0, now = new Date() } = {}) {
+  const cat = categoryById(categories, catId);
+  const catTxns = txns.filter((t) => t.type === 'expense' && t.cat === catId);
+
+  const cycle = payCycleWindow(salaryDay, now);
+  // A moment inside the previous cycle = one day before this cycle started.
+  const prevCycle = payCycleWindow(salaryDay, new Date(+cycle.start - DAY_MS));
+  const thisTotal = inWindow(catTxns, cycle).reduce((a, t) => a + t.amount, 0);
+  const lastTotal = inWindow(catTxns, prevCycle).reduce((a, t) => a + t.amount, 0);
+  const delta = thisTotal - lastTotal;
+
+  // Last 6 calendar months, oldest → newest, for a small bar chart.
+  const trend = [];
+  let maxMonth = 0;
+  for (let i = 5; i >= 0; i--) {
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    const total = inWindow(catTxns, { start, end }).reduce((a, t) => a + t.amount, 0);
+    trend.push({ label: start.toLocaleDateString('en-IN', { month: 'short' }), total });
+    if (total > maxMonth) maxMonth = total;
+  }
+  const trendBars = trend.map((m) => ({ ...m, pct: maxMonth ? Math.max(2, Math.round((m.total / maxMonth) * 100)) : 0, totalF: fmt(m.total) }));
+
+  // Top merchants across all time in this category.
+  const byMerchant = {};
+  catTxns.forEach((t) => {
+    const k = (t.merchant || '—').trim().toLowerCase();
+    if (!byMerchant[k]) byMerchant[k] = { merchant: t.merchant || '—', count: 0, total: 0 };
+    byMerchant[k].count += 1;
+    byMerchant[k].total += t.amount;
+  });
+  const topMerchants = Object.values(byMerchant)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5)
+    .map((m) => ({ ...m, totalF: fmt(m.total) }));
+
+  const list = [...catTxns].sort((a, b) => txnTime(b) - txnTime(a));
+  const allTimeTotal = catTxns.reduce((a, t) => a + t.amount, 0);
+
+  return {
+    kind: 'category',
+    id: catId,
+    title: cat?.label ?? 'Category',
+    color: cat?.color ?? '#8A8577',
+    mono: cat?.mono ?? '?',
+    cycleLabel: cycle.calendar ? 'this month' : 'this cycle',
+    thisTotal,
+    lastTotal,
+    delta,
+    thisTotalF: fmt(thisTotal),
+    lastTotalF: fmt(lastTotal),
+    deltaF: fmt(Math.abs(delta)),
+    deltaUp: delta > 0,
+    trend: trendBars,
+    topMerchants,
+    txns: list,
+    count: catTxns.length,
+    allTimeTotalF: fmt(allTimeTotal),
+  };
+}
+
 export function filterTransactions(txns, { search = '', filter = 'all' } = {}) {
   const q = search.trim().toLowerCase();
   let list = txns;

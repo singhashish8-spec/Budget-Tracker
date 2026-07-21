@@ -10,6 +10,7 @@ import UploadScreen from './screens/UploadScreen';
 import ReviewImportScreen from './screens/ReviewImportScreen';
 import InsightsScreen from './screens/InsightsScreen';
 import GoalsScreen from './screens/GoalsScreen';
+import DetailScreen from './screens/DetailScreen';
 import RemindersScreen from './screens/RemindersScreen';
 import PatternsScreen from './screens/PatternsScreen';
 import SmsScreen from './screens/SmsScreen';
@@ -61,6 +62,7 @@ function Shell() {
       {state.screen === 'review' && <ReviewImportScreen />}
       {state.screen === 'insights' && <InsightsScreen />}
       {state.screen === 'goals' && <GoalsScreen />}
+      {state.screen === 'detail' && <DetailScreen />}
       {state.screen === 'reminders' && <RemindersScreen />}
       {state.screen === 'patterns' && <PatternsScreen />}
       {state.screen === 'sms' && <SmsScreen />}

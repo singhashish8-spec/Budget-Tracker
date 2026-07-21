@@ -64,6 +64,9 @@ const initialState = {
   // { at, durable } for the last automatic snapshot, shown in Settings so the
   // user can see whether they're actually protected.
   lastAutoBackup: null,
+  // The subject of the drill-down dashboard, e.g. { kind: 'category', id: 'food' }.
+  // One reusable detail screen renders whatever is set here.
+  detail: null,
 };
 
 function reducer(state, action) {
@@ -85,6 +88,11 @@ function reducer(state, action) {
       const navStack = state.navStack.slice(0, -1);
       const screen = state.navStack[state.navStack.length - 1];
       return { ...state, screen, navStack, sheetFor: null, addSheetOpen: false, menuOpen: false };
+    }
+    case 'OPEN_DETAIL': {
+      // Always push (detail subjects vary), so back returns where we came from.
+      const navStack = [...state.navStack, state.screen];
+      return { ...state, screen: 'detail', detail: action.subject, navStack, sheetFor: null, addSheetOpen: false, menuOpen: false };
     }
     default:
       return state;
@@ -245,6 +253,9 @@ export function AppProvider({ children }) {
 
   const go = useCallback((screen) => dispatch({ type: 'GO', screen }), []);
   const goBack = useCallback(() => dispatch({ type: 'BACK' }), []);
+  // Open the reusable drill-down dashboard for a subject, e.g.
+  // openDetail({ kind: 'category', id: 'food' }).
+  const openDetail = useCallback((subject) => dispatch({ type: 'OPEN_DETAIL', subject }), []);
 
   // Android back gesture / button. Capacitor raises this for the swipe too.
   // Nothing listened for it before, so the gesture had no history to walk and
@@ -869,6 +880,7 @@ export function AppProvider({ children }) {
       set,
       go,
       goBack,
+      openDetail,
       goReview,
       openMenu,
       closeMenu,
@@ -929,6 +941,7 @@ export function AppProvider({ children }) {
       set,
       go,
       goBack,
+      openDetail,
       goReview,
       openMenu,
       closeMenu,
