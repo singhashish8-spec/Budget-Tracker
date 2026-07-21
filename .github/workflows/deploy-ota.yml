@@ -55,15 +55,21 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(tr -d '[:space:]' < web-version.txt)"
-          # Drop any previous bundle zips so only the current one remains served.
-          git rm --quiet --ignore-unmatch 'budget-tracker-web-*.zip' >/dev/null 2>&1 || true
+          # Publish only when the version actually changed. Builds aren't byte-for-byte
+          # reproducible, so gate on latest.json (which changes only with the version),
+          # not on the zip's bytes — otherwise every run would commit an identical-version
+          # bundle. latest.json's content is driven solely by web-version.txt.
           cp "_site/latest.json" "./latest.json"
-          cp "_site/budget-tracker-web-${VERSION}.zip" "./budget-tracker-web-${VERSION}.zip"
-          git add latest.json "budget-tracker-web-${VERSION}.zip"
-          if git diff --cached --quiet; then
-            echo "No OTA changes to publish (version ${VERSION} already live)."
+          git add latest.json
+          if git diff --cached --quiet -- latest.json; then
+            echo "Version ${VERSION} already live — nothing to publish."
             exit 0
           fi
+          # Version changed: swap in the new bundle, dropping older ones so only
+          # the current version is served.
+          git rm --quiet --ignore-unmatch 'budget-tracker-web-*.zip' >/dev/null 2>&1 || true
+          cp "_site/budget-tracker-web-${VERSION}.zip" "./budget-tracker-web-${VERSION}.zip"
+          git add "budget-tracker-web-${VERSION}.zip"
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Publish web bundle ${VERSION} (automated)"
