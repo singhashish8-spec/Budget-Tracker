@@ -1,4 +1,5 @@
 import { fmt } from '../utils/currency';
+import { payCycleWindow } from '../utils/date';
 
 // Pure derived-value helpers, mirroring the design prototype's renderVals()
 // but split out so screens/tests can call them without a live DB connection.
@@ -69,14 +70,50 @@ export function homeTotals(txns, window) {
   return { spend, income, spendPct };
 }
 
-export function budgetRows(txns, categories, budgets) {
-  const byCat = spendByCategory(txns);
+// The stretch of time a budget is measured over.
+export function budgetWindow(budget, salaryDay = 0, now = new Date()) {
+  if (budget.period === 'custom' && budget.endsAt) {
+    return { start: new Date(budget.startsAt || now), end: new Date(budget.endsAt), kind: 'custom' };
+  }
+  if (budget.period === 'cycle') {
+    const w = payCycleWindow(salaryDay, now);
+    return { start: w.start, end: w.end, kind: 'cycle' };
+  }
+  return {
+    start: new Date(now.getFullYear(), now.getMonth(), 1),
+    end: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+    kind: 'month',
+  };
+}
+
+const DAY_MS = 86400000;
+
+export function budgetRows(txns, categories, budgets, { salaryDay = 0, now = new Date() } = {}) {
   return budgets.map((b) => {
     const cat = categoryById(categories, b.cat);
-    const spent = byCat[b.cat] || 0;
+    const win = budgetWindow(b, salaryDay, now);
+    // Only spending inside the window counts. Previously every transaction
+    // ever recorded was summed, so a budget could never actually reset.
+    const spent = inWindow(txns, win)
+      .filter((t) => t.type === 'expense' && t.cat === b.cat)
+      .reduce((a, t) => a + t.amount, 0);
+
     const pct = b.limit ? Math.round((spent / b.limit) * 100) : 0;
     const over = spent > b.limit;
     const near = !over && pct >= 80;
+    const remaining = Math.max(0, b.limit - spent);
+
+    // Days left counts today as usable, so a budget on its final day still
+    // shows what's spendable rather than zero.
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const daysLeft = Math.max(0, Math.ceil((win.end - today) / DAY_MS));
+    // Overspending shrinks tomorrow's allowance automatically: less money is
+    // divided across fewer days, so the figure self-corrects each day.
+    const perDay = daysLeft > 0 ? Math.floor(remaining / daysLeft) : remaining;
+    const totalDays = Math.max(1, Math.round((win.end - win.start) / DAY_MS));
+    const idealPace = Math.round((b.limit / totalDays) * Math.max(0, totalDays - daysLeft));
+    const aheadOfPace = spent > idealPace;
+
     return {
       cat: b.cat,
       label: cat?.label ?? b.cat,
@@ -91,8 +128,43 @@ export function budgetRows(txns, categories, budgets) {
       statusText: over
         ? `Over by ${fmt(spent - b.limit)}`
         : `${fmt(b.limit - spent)} left${near ? ' — almost there' : ''}`,
+      period: b.period || 'month',
+      window: win,
+      daysLeft,
+      remaining,
+      perDay,
+      perDayF: fmt(perDay),
+      aheadOfPace,
+      // The one-line verdict shown under the bar.
+      paceText: over
+        ? 'Nothing left in this budget'
+        : daysLeft <= 0
+          ? `${fmt(remaining)} unspent`
+          : `${fmt(perDay)}/day for ${daysLeft} more day${daysLeft === 1 ? '' : 's'}`,
     };
   });
+}
+
+// A starting limit suggested from what the category actually costs: the mean
+// of the last three complete months, so it's grounded rather than guessed.
+export function suggestedLimit(txns, catId, now = new Date()) {
+  let total = 0;
+  let months = 0;
+  for (let i = 1; i <= 3; i++) {
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    const sum = inWindow(txns, { start, end })
+      .filter((t) => t.type === 'expense' && t.cat === catId)
+      .reduce((a, t) => a + t.amount, 0);
+    if (sum > 0) {
+      total += sum;
+      months += 1;
+    }
+  }
+  if (!months) return 0;
+  // Rounded to the nearest 100 so the suggestion reads as a decision, not a
+  // computed artefact like Rs.3,847.
+  return Math.max(100, Math.round(total / months / 100) * 100);
 }
 
 export function filterTransactions(txns, { search = '', filter = 'all' } = {}) {

@@ -476,8 +476,8 @@ export function AppProvider({ children }) {
   );
 
   const addBudget = useCallback(
-    async (catId, limit) => {
-      await repo.upsertBudget(catId, limit);
+    async (catId, limit, opts) => {
+      await repo.upsertBudget(catId, limit, opts);
       const budgets = await repo.listBudgets();
       set({ budgets, budgetSheetOpen: false });
       showToast('Budget saved');
@@ -695,8 +695,8 @@ export function AppProvider({ children }) {
   );
 
   const editBudget = useCallback(
-    async (catId, limit) => {
-      await repo.upsertBudget(catId, limit);
+    async (catId, limit, opts) => {
+      await repo.upsertBudget(catId, limit, opts);
       set({ budgets: await repo.listBudgets(), budgetSheetOpen: false });
       showToast('Budget updated');
     },

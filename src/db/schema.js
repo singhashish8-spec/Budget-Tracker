@@ -112,6 +112,19 @@ export const MIGRATIONS = [
       `ALTER TABLE transactions ADD COLUMN occurred_at INTEGER;`,
     ],
   },
+  {
+    // Additive only.
+    version: 5,
+    statements: [
+      // What stretch of time a budget covers: 'month' (calendar, the old and
+      // still-default behaviour), 'cycle' (payday to payday, which is when the
+      // money actually arrives), or 'custom' (a deadline the user picks).
+      `ALTER TABLE budgets ADD COLUMN period TEXT;`,
+      // Only used by 'custom' — the window it runs between.
+      `ALTER TABLE budgets ADD COLUMN starts_at INTEGER;`,
+      `ALTER TABLE budgets ADD COLUMN ends_at INTEGER;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

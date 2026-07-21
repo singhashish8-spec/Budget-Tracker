@@ -112,15 +112,27 @@ export async function setTransactionCategory(id, categoryId) {
 export async function listBudgets() {
   const db = await getDb();
   const res = await db.query(`SELECT * FROM budgets`);
-  return (res.values ?? []).map((b) => ({ cat: b.category_id, limit: b.monthly_limit }));
+  return (res.values ?? []).map((b) => ({
+    cat: b.category_id,
+    limit: b.monthly_limit,
+    // Rows created before periods existed have no value here and fall back to
+    // the calendar month, which is how they already behaved.
+    period: b.period || 'month',
+    startsAt: b.starts_at ?? null,
+    endsAt: b.ends_at ?? null,
+  }));
 }
 
-export async function upsertBudget(categoryId, monthlyLimit) {
+export async function upsertBudget(categoryId, monthlyLimit, { period = 'month', startsAt = null, endsAt = null } = {}) {
   const db = await getDb();
   await db.run(
-    `INSERT INTO budgets (category_id, monthly_limit) VALUES (?,?)
-     ON CONFLICT(category_id) DO UPDATE SET monthly_limit = excluded.monthly_limit`,
-    [categoryId, Math.round(monthlyLimit)],
+    `INSERT INTO budgets (category_id, monthly_limit, period, starts_at, ends_at) VALUES (?,?,?,?,?)
+     ON CONFLICT(category_id) DO UPDATE SET
+       monthly_limit = excluded.monthly_limit,
+       period = excluded.period,
+       starts_at = excluded.starts_at,
+       ends_at = excluded.ends_at`,
+    [categoryId, Math.round(monthlyLimit), period, startsAt, endsAt],
   );
   await persist();
 }
