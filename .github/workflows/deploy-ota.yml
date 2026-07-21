@@ -1,8 +1,14 @@
 name: Publish OTA web bundle
 
-# Builds the web layer and publishes it to GitHub Pages so the app's over-the-air
-# updater can find it. Runs automatically whenever the web layer changes on main,
-# and can also be run by hand from the Actions tab (Run workflow).
+# Builds the web layer and publishes the over-the-air update files (the bundle
+# zip + latest.json) to the TOP OF MAIN, which is where GitHub Pages serves this
+# repo from. Runs automatically whenever the web layer changes on main, and can
+# also be run by hand from the Actions tab (Run workflow).
+#
+# Why commit to main root instead of using the newer "GitHub Actions" Pages
+# deployment: this repo's Pages source is "Deploy from a branch: main /(root)",
+# so only files committed there are actually served. Keeping the files here also
+# means a later source push can't silently wipe them — this job re-publishes them.
 on:
   push:
     branches: [main]
@@ -17,19 +23,17 @@ on:
       - '.github/workflows/deploy-ota.yml'
   workflow_dispatch:
 
-# Let the deploy step publish to Pages.
+# Needs to push the built files back to main.
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# Never run two publishes at once; let a newer one finish rather than cancel.
+# Never run two publishes at once.
 concurrency:
-  group: pages
+  group: ota-publish
   cancel-in-progress: false
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,25 +48,24 @@ jobs:
 
       - run: npm run build
 
+      # Produces _site/latest.json and _site/budget-tracker-web-<version>.zip
       - run: node scripts/build-ota.mjs
 
-      - name: Configure Pages (enable Actions as the source if needed)
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - name: Upload the OTA payload
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish update files to main root (the Pages source)
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '[:space:]' < web-version.txt)"
+          # Drop any previous bundle zips so only the current one remains served.
+          git rm --quiet --ignore-unmatch 'budget-tracker-web-*.zip' >/dev/null 2>&1 || true
+          cp "_site/latest.json" "./latest.json"
+          cp "_site/budget-tracker-web-${VERSION}.zip" "./budget-tracker-web-${VERSION}.zip"
+          git add latest.json "budget-tracker-web-${VERSION}.zip"
+          if git diff --cached --quiet; then
+            echo "No OTA changes to publish (version ${VERSION} already live)."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Publish web bundle ${VERSION} (automated)"
+          git push
+          echo "Published version ${VERSION} to main root."
