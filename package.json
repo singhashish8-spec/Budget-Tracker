@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "release:web": "node scripts/release-web.mjs"
+    "release:web": "node scripts/release-web.mjs",
+    "release:apk": "node scripts/release-apk.mjs"
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",

@@ -1,0 +1,68 @@
+name: Publish OTA web bundle
+
+# Builds the web layer and publishes it to GitHub Pages so the app's over-the-air
+# updater can find it. Runs automatically whenever the web layer changes on main,
+# and can also be run by hand from the Actions tab (Run workflow).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'web-version.txt'
+      - 'vite.config.js'
+      - 'package.json'
+      - 'scripts/build-ota.mjs'
+      - '.github/workflows/deploy-ota.yml'
+  workflow_dispatch:
+
+# Let the deploy step publish to Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two publishes at once; let a newer one finish rather than cancel.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # --legacy-peer-deps: one native plugin (capacitor-sms-inbox) pins an older
+      # @capacitor/core peer; it doesn't affect the web build.
+      - run: npm install --legacy-peer-deps --no-audit --no-fund
+
+      - run: npm run build
+
+      - run: node scripts/build-ota.mjs
+
+      - name: Configure Pages (enable Actions as the source if needed)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload the OTA payload
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
