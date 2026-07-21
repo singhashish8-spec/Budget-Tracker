@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- API 31+. Same intent as backup_rules.xml: keep the encrypted database out
-     of cloud backup and device-to-device transfer, since its Keystore key
-     can't travel with it. -->
+<!-- API 31+. Same intent as backup_rules.xml, for both cloud backup and
+     device-to-device transfer: the app's own JSON snapshot is the only thing
+     allowed to leave, because the encrypted database's SQLCipher key is
+     Keystore-bound and cannot travel with it — a restored database without its
+     key is permanently undecryptable.
+
+     An include-list already excludes everything it does not name, so no
+     explicit <exclude> for the database is needed (or allowed). -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="database" path="." />
-        <exclude domain="sharedpref" path="." />
+        <include domain="file" path="budget-tracker-autobackup.json" />
     </cloud-backup>
     <device-transfer>
-        <exclude domain="database" path="." />
-        <exclude domain="sharedpref" path="." />
+        <include domain="file" path="budget-tracker-autobackup.json" />
     </device-transfer>
 </data-extraction-rules>

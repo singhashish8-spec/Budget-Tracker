@@ -68,16 +68,19 @@ export default function SettingsScreen() {
             app's own storage does NOT survive the app being reinstalled, and
             claiming otherwise would give false confidence about real data. */}
         <div style={{ marginTop: 13, paddingTop: 13, borderTop: `1px solid ${colors.divider}` }}>
-          <div style={{ fontSize: 14.5, fontWeight: 600 }}>Automatic copy on this phone</div>
+          <div style={{ fontSize: 14.5, fontWeight: 600 }}>Automatic backup</div>
           {state.lastAutoBackup ? (
             <>
               <div style={{ fontSize: 12.5, color: colors.textSecondary, marginTop: 2 }}>
                 Last saved {new Date(state.lastAutoBackup.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}
               </div>
-              <div style={{ fontSize: 12.5, color: state.lastAutoBackup.durable ? colors.successText : colors.warningDark, marginTop: 4, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 12.5, color: colors.successText, marginTop: 4, lineHeight: 1.5 }}>
+                {state.lastAutoBackup.cloud ? '✓ Included in your Google account backup — comes back on a new phone.' : null}
+              </div>
+              <div style={{ fontSize: 12.5, color: state.lastAutoBackup.durable ? colors.successText : colors.warningDark, marginTop: 2, lineHeight: 1.5 }}>
                 {state.lastAutoBackup.durable
-                  ? 'Saved to your Documents folder — this survives reinstalling the app.'
-                  : 'Saved inside the app’s own storage, which is erased if the app is reinstalled. Use "Back up to Google Drive" above for a copy that lasts.'}
+                  ? '✓ Also saved to your Documents folder — survives reinstalling the app.'
+                  : 'Not saved to Documents on this phone, so a reinstall relies on the Google backup above.'}
               </div>
             </>
           ) : (
@@ -86,7 +89,7 @@ export default function SettingsScreen() {
             </div>
           )}
           <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: 6, lineHeight: 1.5 }}>
-            A copy on this phone can’t help if the phone is lost — back up to Drive for that.
+            Google’s backup runs on its own schedule (usually overnight, on Wi-Fi while charging). For a copy you control right now, use “Back up to Google Drive” above.
           </div>
         </div>
       </div>

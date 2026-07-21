@@ -2,17 +2,24 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-      allowBackup=false is deliberate. The SQLite database is encrypted with a
-      key held in the Android Keystore, which is hardware-bound and can NEVER
-      be backed up/restored. With auto-backup on, a reinstall could restore the
-      old encrypted DB file WITHOUT its key, leaving the app unable to decrypt
-      it ("Couldn't open the local database"). We ship our own JSON backup
-      (Settings > Backup & restore) instead, so Android's raw-DB backup is both
-      unnecessary and harmful. fullBackupContent/dataExtractionRules exclude
-      the databases as belt-and-suspenders for OEMs that ignore allowBackup.
+      Backup is ON, but strictly limited to ONE file: the app's own JSON
+      snapshot (files/budget-tracker-autobackup.json). See backup_rules.xml and
+      data_extraction_rules.xml, which use include-lists so nothing else can
+      travel by accident.
+
+      The encrypted SQLite database must NEVER be backed up. Its SQLCipher key
+      lives in the Android Keystore and is hardware-bound, so it cannot be
+      backed up or restored with the file. A restored database WITHOUT its key
+      is permanently undecryptable and bricked the app on a previous build
+      ("Couldn't open the local database"). The JSON snapshot carries the same
+      information in a form that can actually be restored anywhere, which is
+      why it — and only it — is allowed out.
+
+      This is what makes the data survive a reinstall or a new phone, instead
+      of the user losing everything and being sent back through onboarding.
     -->
     <application
-        android:allowBackup="false"
+        android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"

@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- API < 31. Never back up the encrypted database or prefs: the SQLCipher key
-     lives in the Keystore and can't be restored, so a restored DB would be
-     undecryptable. The app has its own JSON backup instead. -->
+<!-- API < 31.
+
+     Include-list ONLY: naming an <include> makes Android back up nothing but
+     what is listed, so the encrypted database can never travel by accident.
+     Its SQLCipher key is Keystore-bound and cannot be restored alongside it,
+     which would leave a restored copy permanently undecryptable.
+
+     The one file allowed out is the app's own JSON snapshot, which restores
+     cleanly on any device. No <exclude> for the database is needed — or even
+     permitted here — because an include-list already excludes everything it
+     does not name. -->
 <full-backup-content>
-    <exclude domain="database" path="." />
-    <exclude domain="sharedpref" path="." />
+    <include domain="file" path="budget-tracker-autobackup.json" />
 </full-backup-content>

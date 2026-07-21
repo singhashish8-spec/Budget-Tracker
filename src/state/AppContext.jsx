@@ -374,7 +374,7 @@ export function AppProvider({ children }) {
     const t = setTimeout(async () => {
       try {
         const res = await writeAutoBackup();
-        if (res.ok) set({ lastAutoBackup: { at: res.at, durable: res.durable } });
+        if (res.ok) set({ lastAutoBackup: { at: res.at, durable: res.durable, cloud: res.cloud } });
       } catch {
         /* snapshot is best-effort; never interrupt the user */
       }
