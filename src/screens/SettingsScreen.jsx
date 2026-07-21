@@ -205,6 +205,7 @@ export default function SettingsScreen() {
 
       <div style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', padding: '4px 20px' }}>
         Budget Tracker · transactions are encrypted at rest on this device
+        <div style={{ marginTop: 4, fontWeight: 600 }}>Version {import.meta.env.VITE_APP_VERSION}</div>
       </div>
     </div>
   );
