@@ -318,6 +318,34 @@ export function billRow(r, now = new Date()) {
   return { ...base, typeLabel: 'Bill', badge: null, typeText: null };
 }
 
+// Finds transactions that are the same bank SMS imported more than once. A real
+// duplicate shares the exact SMS timestamp + amount + direction — a fingerprint
+// two genuinely different payments would never share. Only SMS-sourced rows are
+// considered; hand-entered cash is never touched (two ₹100 cash entries can be
+// legitimately different). Returns the ids to remove, keeping the best copy of
+// each group (a categorised one over an uncategorised one, else the earliest).
+export function duplicateTxnIds(txns) {
+  const groups = {};
+  for (const t of txns) {
+    if (t.source !== 'sms' || !t.sms_date) continue;
+    const key = `${t.sms_date}|${t.amount}|${t.type}`;
+    (groups[key] = groups[key] || []).push(t);
+  }
+  const remove = [];
+  for (const key in groups) {
+    const g = groups[key];
+    if (g.length < 2) continue;
+    g.sort((a, b) => {
+      const ac = a.cat ? 1 : 0;
+      const bc = b.cat ? 1 : 0;
+      if (ac !== bc) return bc - ac; // keep a categorised copy first
+      return (a.created_at || 0) - (b.created_at || 0); // else the earliest
+    });
+    for (let i = 1; i < g.length; i++) remove.push(g[i].id);
+  }
+  return remove;
+}
+
 // ── drill-down dashboard ──
 
 // Everything the reusable detail screen shows for one spending category:
