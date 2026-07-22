@@ -173,9 +173,9 @@ const pillBtn = (active) => ({
   fontSize: 12.5,
   fontWeight: 600,
   cursor: 'pointer',
-  background: active ? colors.ink : colors.cardSurface,
+  background: active ? colors.primary : colors.cardSurface,
   color: active ? colors.onPrimary : colors.ink,
-  border: `1px solid ${active ? colors.ink : colors.cardBorder}`,
+  border: `1px solid ${active ? colors.primary : colors.cardBorder}`,
 });
 
 const inputStyle = {
