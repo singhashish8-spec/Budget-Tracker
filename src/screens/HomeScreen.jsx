@@ -1,6 +1,6 @@
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
-import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleWindow } from '../utils/date';
+import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleWindow, txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { alertCount, topCategories, homeTotals, inWindow, goalsSummary } from '../state/selectors';
 
@@ -192,7 +192,7 @@ export default function HomeScreen() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant}</div>
                 <div style={{ fontSize: 12.5, color: uncat ? colors.danger : colors.textSecondary, fontWeight: uncat ? 600 : 400 }}>
-                  {uncat ? 'Needs review — tap to categorise' : `${t.date} · ${cat.label}`}
+                  {uncat ? 'Needs review — tap to categorise' : `${txnWhen(t)} · ${cat.label}`}
                 </div>
               </div>
               <div style={{ fontSize: 14, fontWeight: 600, color: income_ ? colors.primary : colors.ink }}>
