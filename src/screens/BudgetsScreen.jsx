@@ -34,7 +34,7 @@ function PeriodPicker({ period, setPeriod, endsAt, setEndsAt, salaryDay }) {
               fontWeight: 600,
               cursor: 'pointer',
               background: period === o.key ? colors.primary : colors.cardSurface,
-              color: period === o.key ? colors.bgApp : colors.textSecondary,
+              color: period === o.key ? colors.onPrimary : colors.textSecondary,
               border: `1px solid ${period === o.key ? 'transparent' : colors.cardBorder}`,
             }}
           >
@@ -83,7 +83,7 @@ export default function BudgetsScreen() {
         <div style={{ fontSize: 13, color: colors.textSecondary }}>{monthLabel}</div>
       </div>
 
-      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: 18, color: colors.bgApp }}>
+      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: 18, color: colors.onPrimary }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
           <div style={{ fontSize: 13, color: colors.accentGreen3 }}>Overall</div>
           <div style={{ fontSize: 14 }}>
@@ -222,7 +222,7 @@ function EditBudgetSheet({ row, onSave, onRemove, onClose, salaryDay }) {
                 endsAt: period === 'custom' ? new Date(`${endsAt}T23:59:59`).getTime() : null,
               })
             }
-            style={{ flex: 2, background: n > 0 ? colors.primary : colors.track, color: colors.bgApp, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: n > 0 ? 'pointer' : 'default' }}
+            style={{ flex: 2, background: n > 0 ? colors.primary : colors.track, color: colors.onPrimary, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: n > 0 ? 'pointer' : 'default' }}
           >
             Save changes
           </button>
@@ -291,7 +291,7 @@ function NewBudgetSheet({ availableCats, onSave, onClose, txns, salaryDay }) {
             placeholder="Limit e.g. 3000"
             style={{ flex: 1, minWidth: 0, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '11px 16px', fontSize: 14, color: colors.ink }}
           />
-          <button onClick={save} style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '11px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={save} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '11px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             Save
           </button>
         </div>

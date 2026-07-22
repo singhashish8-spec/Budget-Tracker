@@ -29,7 +29,7 @@ export default function TransactionsScreen() {
             fontWeight: 600,
             cursor: 'pointer',
             background: filter === 'all' ? colors.ink : colors.cardSurface,
-            color: filter === 'all' ? colors.bgApp : colors.ink,
+            color: filter === 'all' ? colors.onPrimary : colors.ink,
             border: `1px solid ${filter === 'all' ? colors.ink : colors.cardBorder}`,
           }}
         >

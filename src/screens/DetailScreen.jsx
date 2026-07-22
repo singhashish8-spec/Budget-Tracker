@@ -28,7 +28,7 @@ export default function DetailScreen() {
   return (
     <Shell title={d.title} mono={d.mono} color={d.color} onBack={goBack}>
       {/* Headline: what this category cost this cycle, vs last */}
-      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.bgApp }}>
+      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.onPrimary }}>
         <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>Spent {d.cycleLabel}</div>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 34, fontWeight: 700, margin: '5px 0 8px' }}>{d.thisTotalF}</div>
         <div style={{ fontSize: 13, color: colors.accentGreen3 }}>
@@ -78,7 +78,7 @@ function PatternDetail({ signature }) {
 
   return (
     <Shell title={d.title} mono={d.mono} color={d.color} onBack={goBack}>
-      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.bgApp }}>
+      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.onPrimary }}>
         <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>Recurring · {d.categoryLabel}</div>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 34, fontWeight: 700, margin: '5px 0 8px' }}>Seen {d.count}×</div>
         <div style={{ fontSize: 13, color: colors.accentGreen3 }}>{d.totalF} total · {d.avgF} on average</div>
@@ -194,8 +194,8 @@ const backBtnStyle = {
 
 function BackIcon() {
   return (
-    <svg width="9" height="15" viewBox="0 0 9 15">
-      <path d="M8 1L2 7.5 8 14" stroke="#1B1F23" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="9" height="15" viewBox="0 0 9 15" style={{ color: 'var(--c-ink)' }}>
+      <path d="M8 1L2 7.5 8 14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

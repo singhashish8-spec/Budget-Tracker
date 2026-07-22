@@ -27,7 +27,7 @@ export default function BottomNav() {
         right: 0,
         bottom: 0,
         zIndex: 30,
-        background: 'rgba(255,255,255,0.94)',
+        background: colors.cardSurface,
         backdropFilter: 'blur(12px)',
         borderTop: `1px solid ${colors.cardBorder}`,
         display: 'flex',
@@ -83,7 +83,7 @@ export default function BottomNav() {
                 marginTop: -26,
                 boxShadow: '0 8px 20px rgba(14,110,79,0.4)',
                 border: `4px solid ${colors.bgApp}`,
-                color: colors.bgApp,
+                color: colors.onPrimary,
                 fontSize: 26,
                 lineHeight: 1,
               }}

@@ -81,7 +81,7 @@ export default function PatternsScreen() {
                   borderRadius: 100,
                   cursor: 'pointer',
                   background: p.confirmed ? colors.successTint : colors.primary,
-                  color: p.confirmed ? colors.primary : colors.bgApp,
+                  color: p.confirmed ? colors.primary : colors.onPrimary,
                   border: `1px solid ${p.confirmed ? colors.successBorder : colors.primary}`,
                 }}
               >
@@ -103,7 +103,7 @@ export default function PatternsScreen() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {state.customPatterns.map((p) => (
           <div key={p.id} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: tint(colors.primary), color: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: colors.primaryTint, color: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
               {p.label.slice(0, 2).toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -129,7 +129,7 @@ export default function PatternsScreen() {
             <option value="yearly">Yearly</option>
           </select>
         </div>
-        <button onClick={submitCustom} style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 12, textAlign: 'center', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={submitCustom} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 12, textAlign: 'center', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
           Add recurring expense
         </button>
       </div>
@@ -166,8 +166,8 @@ const backBtnStyle = {
 
 function BackIcon() {
   return (
-    <svg width="9" height="15" viewBox="0 0 9 15">
-      <path d="M8 1L2 7.5 8 14" stroke="#1B1F23" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="9" height="15" viewBox="0 0 9 15" style={{ color: 'var(--c-ink)' }}>
+      <path d="M8 1L2 7.5 8 14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

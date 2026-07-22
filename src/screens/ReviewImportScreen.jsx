@@ -78,7 +78,7 @@ export default function ReviewImportScreen() {
           onClick={confirmReview}
           style={{
             background: needCount > 0 ? colors.textSecondary : colors.primary,
-            color: colors.bgApp,
+            color: colors.onPrimary,
             borderRadius: 100,
             padding: 16,
             textAlign: 'center',
@@ -152,8 +152,8 @@ const backBtnStyle = {
 
 function BackIcon() {
   return (
-    <svg width="9" height="15" viewBox="0 0 9 15">
-      <path d="M8 1L2 7.5 8 14" stroke="#1B1F23" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="9" height="15" viewBox="0 0 9 15" style={{ color: 'var(--c-ink)' }}>
+      <path d="M8 1L2 7.5 8 14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -1,7 +1,97 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
+/* ── Design tokens ──────────────────────────────────────────────────────────
+   Light values live in :root; dark values are applied when the OS prefers dark
+   (and the user hasn't forced light) or when dark is explicitly chosen. The
+   accent group (--c-primary / --c-surfaceDark / --c-accentGreen*) is overridden
+   at runtime by services/theme.js and is the same in both modes. */
 :root {
+  /* neutrals — light */
+  --c-bgApp: #F7F4EE;
+  --c-bgDesk: #ECE7DD;
+  --c-ink: #1B1F23;
+  --c-textSecondary: #7C7668;
+  --c-textTertiary: #A39D91;
+  --c-cardSurface: #FFFFFF;
+  --c-cardBorder: #E7E2D9;
+  --c-divider: #F0EBE2;
+  --c-track: #D5CEC1;
+
+  /* semantic — light */
+  --c-successTint: #E7F2EC;
+  --c-successBorder: #C9E0D3;
+  --c-successText: #4A7A63;
+  --c-danger: #D9432F;
+  --c-dangerDark: #A32E1E;
+  --c-dangerTint: #FBEAE6;
+  --c-dangerBorder: #F0CCC2;
+  --c-warning: #B8892B;
+  --c-warningDark: #8A6415;
+  --c-warningTint: #F6EEDC;
+  --c-warningBorder: #E8D9B4;
+
+  /* accent (green default — overridden by theme.js per chosen accent) */
+  --c-primary: #0E6E4F;
+  --c-primaryHover: #0B5940;
+  --c-primaryTint: #0E6E4F1F;
+  --c-onPrimary: #F7F4EE;
+  --c-surfaceDark: #10241C;
+  --c-accentGreen1: #4FA57F;
+  --c-accentGreen2: #7FD1A8;
+  --c-accentGreen3: #9DB8AC;
+
   color-scheme: light;
+}
+
+/* Dark neutrals + semantic tints. Two selectors share one block: the media
+   query covers "System" mode, the attribute covers an explicit "Dark" choice. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --c-bgApp: #14171A;
+    --c-bgDesk: #0D0F11;
+    --c-ink: #ECE9E3;
+    --c-textSecondary: #9C968B;
+    --c-textTertiary: #6E6A61;
+    --c-cardSurface: #1E2227;
+    --c-cardBorder: #2C3138;
+    --c-divider: #262B31;
+    --c-track: #3A4048;
+    --c-successTint: #16271E;
+    --c-successBorder: #274A37;
+    --c-successText: #6FBF95;
+    --c-danger: #F06A57;
+    --c-dangerDark: #F5917F;
+    --c-dangerTint: #2E1714;
+    --c-dangerBorder: #4A2620;
+    --c-warning: #D8A94B;
+    --c-warningDark: #E8C57E;
+    --c-warningTint: #2A2113;
+    --c-warningBorder: #443619;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --c-bgApp: #14171A;
+  --c-bgDesk: #0D0F11;
+  --c-ink: #ECE9E3;
+  --c-textSecondary: #9C968B;
+  --c-textTertiary: #6E6A61;
+  --c-cardSurface: #1E2227;
+  --c-cardBorder: #2C3138;
+  --c-divider: #262B31;
+  --c-track: #3A4048;
+  --c-successTint: #16271E;
+  --c-successBorder: #274A37;
+  --c-successText: #6FBF95;
+  --c-danger: #F06A57;
+  --c-dangerDark: #F5917F;
+  --c-dangerTint: #2E1714;
+  --c-dangerBorder: #4A2620;
+  --c-warning: #D8A94B;
+  --c-warningDark: #E8C57E;
+  --c-warningTint: #2A2113;
+  --c-warningBorder: #443619;
+  color-scheme: dark;
 }
 
 html, body, #root {
@@ -11,7 +101,7 @@ html, body, #root {
 }
 
 body {
-  background: #ECE7DD;
+  background: var(--c-bgDesk);
   font-family: 'IBM Plex Sans', sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
@@ -20,7 +110,7 @@ body {
   box-sizing: border-box;
 }
 
-input, button {
+input, button, select {
   font-family: inherit;
 }
 

@@ -41,7 +41,7 @@ function StepSignIn() {
             height: 52,
             borderRadius: 15,
             background: colors.primary,
-            color: colors.bgApp,
+            color: colors.onPrimary,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -63,7 +63,7 @@ function StepSignIn() {
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button
           onClick={obNext}
-          style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 16, textAlign: 'center', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}
+          style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 16, textAlign: 'center', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}
         >
           Get started
         </button>
@@ -107,7 +107,7 @@ function StepTrack() {
         <button onClick={obBack} style={{ flex: 1, background: colors.cardSurface, border: `1.5px solid ${colors.cardBorder}`, borderRadius: 100, padding: 15, textAlign: 'center', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
           Back
         </button>
-        <button onClick={obNext} style={{ flex: 2, background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 16, textAlign: 'center', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={obNext} style={{ flex: 2, background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 16, textAlign: 'center', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
           Continue
         </button>
       </div>
@@ -169,7 +169,7 @@ function StepCategories() {
           placeholder="Add your own category"
           style={{ flex: 1, minWidth: 0, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '11px 16px', fontSize: 14, color: colors.ink }}
         />
-        <button onClick={submit} style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '11px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={submit} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '11px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
           Add
         </button>
       </div>
@@ -177,7 +177,7 @@ function StepCategories() {
         <button onClick={obBack} style={{ flex: 1, background: colors.cardSurface, border: `1.5px solid ${colors.cardBorder}`, borderRadius: 100, padding: 15, textAlign: 'center', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
           Back
         </button>
-        <button onClick={finishOnboarding} style={{ flex: 2, background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 16, textAlign: 'center', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={finishOnboarding} style={{ flex: 2, background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 16, textAlign: 'center', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
           Start tracking
         </button>
       </div>

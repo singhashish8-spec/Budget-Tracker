@@ -4,9 +4,10 @@ import { CURRENCIES } from '../utils/currency';
 import { salaryDayLabel } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { backupToDrive, restoreFromFile } from '../services/backup';
+import { MODES, ACCENTS } from '../services/theme';
 
 export default function SettingsScreen() {
-  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setGeminiApiKey, toggleAccount, toggleAppLock, reloadData } = useApp();
+  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setGeminiApiKey, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent } = useApp();
   const restoreRef = useRef(null);
   const [keyDraft, setKeyDraft] = useState(state.geminiKey || '');
 
@@ -38,6 +39,39 @@ export default function SettingsScreen() {
           <BackIcon />
         </button>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>Settings</div>
+      </div>
+
+      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
+        <div style={sectionLabel}>Appearance</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, marginBottom: 8 }}>Theme</div>
+        <div style={{ display: 'flex', gap: 6, background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: 3, marginBottom: 16 }}>
+          {MODES.map((m) => {
+            const on = state.themeMode === m.key;
+            return (
+              <button
+                key={m.key}
+                onClick={() => setThemeMode(m.key)}
+                style={{ flex: 1, padding: '9px 6px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: on ? colors.primary : 'transparent', color: on ? colors.onPrimary : colors.textSecondary }}
+              >
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, marginBottom: 10 }}>Accent colour</div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {ACCENTS.map((a) => {
+            const on = state.themeAccent === a.key;
+            return (
+              <button
+                key={a.key}
+                onClick={() => setThemeAccent(a.key)}
+                title={a.label}
+                style={{ width: 36, height: 36, borderRadius: '50%', background: a.primary, cursor: 'pointer', border: on ? `3px solid ${colors.ink}` : `2px solid ${colors.cardBorder}`, boxShadow: on ? `0 0 0 2px ${colors.cardSurface} inset` : 'none' }}
+              />
+            );
+          })}
+        </div>
       </div>
 
       <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
@@ -110,7 +144,7 @@ export default function SettingsScreen() {
                   fontWeight: 600,
                   cursor: 'pointer',
                   background: active ? colors.primary : colors.cardSurface,
-                  color: active ? colors.bgApp : colors.ink,
+                  color: active ? colors.onPrimary : colors.ink,
                   border: `1px solid ${active ? colors.primary : colors.cardBorder}`,
                 }}
               >
@@ -172,7 +206,7 @@ export default function SettingsScreen() {
             setGeminiApiKey(keyDraft);
             showToast(keyDraft.trim() ? 'Gemini key saved' : 'Gemini key cleared');
           }}
-          style={{ marginTop: 10, background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '11px', width: '100%', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+          style={{ marginTop: 10, background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '11px', width: '100%', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
         >
           Save key
         </button>
@@ -281,8 +315,8 @@ const backBtnStyle = {
 
 function BackIcon() {
   return (
-    <svg width="9" height="15" viewBox="0 0 9 15">
-      <path d="M8 1L2 7.5 8 14" stroke="#1B1F23" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="9" height="15" viewBox="0 0 9 15" style={{ color: 'var(--c-ink)' }}>
+      <path d="M8 1L2 7.5 8 14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

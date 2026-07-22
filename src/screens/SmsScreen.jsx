@@ -50,7 +50,7 @@ export default function SmsScreen() {
       <button
         onClick={scan}
         disabled={scanning}
-        style={{ background: colors.surfaceDark, color: colors.bgApp, borderRadius: 100, padding: 14, textAlign: 'center', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: scanning ? 0.6 : 1 }}
+        style={{ background: colors.surfaceDark, color: colors.onPrimary, borderRadius: 100, padding: 14, textAlign: 'center', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: scanning ? 0.6 : 1 }}
       >
         {scanning ? 'Reading your messages…' : 'Scan my messages'}
       </button>
@@ -151,8 +151,8 @@ const backBtnStyle = {
 
 function BackIcon() {
   return (
-    <svg width="9" height="15" viewBox="0 0 9 15">
-      <path d="M8 1L2 7.5 8 14" stroke="#1B1F23" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="9" height="15" viewBox="0 0 9 15" style={{ color: 'var(--c-ink)' }}>
+      <path d="M8 1L2 7.5 8 14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

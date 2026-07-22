@@ -3,6 +3,11 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { initLiveUpdates } from './services/liveUpdate'
+import { applyTheme, loadCachedTheme } from './services/theme'
+
+// Apply the saved appearance before the first paint so there's no flash of the
+// wrong theme. The database re-confirms it once it loads.
+applyTheme(loadCachedTheme())
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

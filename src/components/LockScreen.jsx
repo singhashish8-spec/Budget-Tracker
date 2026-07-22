@@ -35,7 +35,7 @@ export default function LockScreen() {
           height: 52,
           borderRadius: 15,
           background: colors.primary,
-          color: colors.bgApp,
+          color: colors.onPrimary,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -52,7 +52,7 @@ export default function LockScreen() {
         onClick={unlockApp}
         style={{
           background: colors.primary,
-          color: colors.bgApp,
+          color: colors.onPrimary,
           borderRadius: 100,
           padding: '14px 28px',
           fontSize: 15,

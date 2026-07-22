@@ -56,7 +56,7 @@ export default function HomeScreen() {
         </button>
       )}
 
-      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '20px 18px', color: colors.bgApp }}>
+      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '20px 18px', color: colors.onPrimary }}>
         <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>{spentLabel}</div>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 36, fontWeight: 700, margin: '6px 0 14px' }}>{fmt(spend)}</div>
         <div style={{ height: 6, borderRadius: 100, background: 'rgba(247,244,238,0.15)', overflow: 'hidden' }}>

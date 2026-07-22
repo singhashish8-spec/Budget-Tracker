@@ -2,11 +2,11 @@ import { colors } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 
 const ITEMS = [
-  { key: 'settings', label: 'Settings', mono: 'ST', color: colors.primary },
-  { key: 'goals', label: 'Savings goals', mono: 'SG', color: colors.primary },
-  { key: 'reminders', label: 'Bill reminders', mono: 'BR', color: colors.warning },
-  { key: 'patterns', label: 'Smart patterns', mono: 'SP', color: colors.warning },
-  { key: 'upload', label: 'Upload bills', mono: 'UP', color: '#2D6E8F' },
+  { key: 'settings', label: 'Settings', mono: 'ST', color: colors.primary, tintBg: colors.primaryTint },
+  { key: 'goals', label: 'Savings goals', mono: 'SG', color: colors.primary, tintBg: colors.primaryTint },
+  { key: 'reminders', label: 'Bill reminders', mono: 'BR', color: colors.warning, tintBg: colors.warningTint },
+  { key: 'patterns', label: 'Smart patterns', mono: 'SP', color: colors.warning, tintBg: colors.warningTint },
+  { key: 'upload', label: 'Upload bills', mono: 'UP', color: '#2D6E8F', tintBg: '#2D6E8F1F' },
 ];
 
 export default function HamburgerDrawer() {
@@ -56,7 +56,7 @@ export default function HamburgerDrawer() {
                 width: 32,
                 height: 32,
                 borderRadius: 10,
-                background: item.color + '1F',
+                background: item.tintBg,
                 color: item.color,
                 display: 'flex',
                 alignItems: 'center',

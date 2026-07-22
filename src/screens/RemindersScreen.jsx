@@ -91,7 +91,7 @@ export default function RemindersScreen() {
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
                     onClick={() => toggleReminderPaid(b.id, monthKey)}
-                    style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 100, cursor: 'pointer', background: paid ? colors.successTint : colors.primary, color: paid ? colors.primary : colors.bgApp, border: `1px solid ${paid ? colors.successBorder : colors.primary}` }}
+                    style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 100, cursor: 'pointer', background: paid ? colors.successTint : colors.primary, color: paid ? colors.primary : colors.onPrimary, border: `1px solid ${paid ? colors.successBorder : colors.primary}` }}
                   >
                     {paid ? 'Paid' : 'Mark paid'}
                   </button>
@@ -135,7 +135,7 @@ export default function RemindersScreen() {
 
         <label style={{ fontSize: 12.5, color: colors.textSecondary, paddingLeft: 4 }}>Due date {kind === 'subscription' && cadence === 'yearly' ? '(renews yearly)' : '(repeats monthly on this day)'}</label>
         <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ ...inputStyle, color: dueDate ? colors.ink : colors.textTertiary }} />
-        <button onClick={submit} style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 12, textAlign: 'center', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={submit} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 12, textAlign: 'center', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
           Add {kind === 'emi' ? 'EMI' : kind === 'subscription' ? 'subscription' : 'bill'}
         </button>
       </div>
@@ -154,7 +154,7 @@ function SegPicker({ options, value, onChange }) {
           <button
             key={o.key}
             onClick={() => onChange(o.key)}
-            style={{ flex: 1, padding: '8px 6px', borderRadius: 100, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: on ? colors.primary : 'transparent', color: on ? colors.bgApp : colors.textSecondary, border: 'none' }}
+            style={{ flex: 1, padding: '8px 6px', borderRadius: 100, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: on ? colors.primary : 'transparent', color: on ? colors.onPrimary : colors.textSecondary, border: 'none' }}
           >
             {o.label}
           </button>
@@ -189,8 +189,8 @@ const backBtnStyle = {
 
 function BackIcon() {
   return (
-    <svg width="9" height="15" viewBox="0 0 9 15">
-      <path d="M8 1L2 7.5 8 14" stroke="#1B1F23" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="9" height="15" viewBox="0 0 9 15" style={{ color: 'var(--c-ink)' }}>
+      <path d="M8 1L2 7.5 8 14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -256,7 +256,7 @@ function EditReminderSheet({ reminder, onSave, onClose }) {
           <button onClick={onClose} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
             Cancel
           </button>
-          <button onClick={save} style={{ flex: 2, background: valid ? colors.primary : colors.track, color: colors.bgApp, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: valid ? 'pointer' : 'default' }}>
+          <button onClick={save} style={{ flex: 2, background: valid ? colors.primary : colors.track, color: colors.onPrimary, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: valid ? 'pointer' : 'default' }}>
             Save changes
           </button>
         </div>
