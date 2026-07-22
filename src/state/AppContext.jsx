@@ -31,6 +31,8 @@ const initialState = {
   goals: [],
   netWorthItems: [],
   patternPrefs: [],
+  // merchant signature → category_id: "payments here always go in this category".
+  merchantRules: {},
   smsLog: [],
   search: '',
   filter: 'all',
@@ -119,6 +121,7 @@ export function AppProvider({ children }) {
           netWorthItems,
           patternPrefs,
           smsLog,
+          merchantRulesList,
           onboardedFlag,
           accountsJson,
           appLockFlag,
@@ -140,6 +143,7 @@ export function AppProvider({ children }) {
           repo.listNetWorthItems(),
           repo.listPatternPrefs(),
           repo.listSmsLog(),
+          repo.listMerchantRules(),
           repo.getSetting('onboarded', '0'),
           repo.getSetting('accounts', null),
           repo.getSetting('appLock', '0'),
@@ -164,6 +168,7 @@ export function AppProvider({ children }) {
           netWorthItems,
           patternPrefs,
           smsLog,
+          merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])),
           onboarded,
           accounts: accountsJson ? JSON.parse(accountsJson) : DEFAULT_ACCOUNTS,
           screen: onboarded ? 'home' : 'onboarding',
@@ -211,7 +216,7 @@ export function AppProvider({ children }) {
 
   // Re-read all table-backed data into state (used after a restore-from-backup).
   const reloadData = useCallback(async () => {
-    const [categories, txns, budgets, reminders, goals, netWorthItems, patternPrefs, smsLog] = await Promise.all([
+    const [categories, txns, budgets, reminders, goals, netWorthItems, patternPrefs, smsLog, merchantRulesList] = await Promise.all([
       repo.listCategories(),
       repo.listTransactions(),
       repo.listBudgets(),
@@ -220,8 +225,9 @@ export function AppProvider({ children }) {
       repo.listNetWorthItems(),
       repo.listPatternPrefs(),
       repo.listSmsLog(),
+      repo.listMerchantRules(),
     ]);
-    set({ categories, txns, budgets, reminders, goals, netWorthItems, patternPrefs, smsLog });
+    set({ categories, txns, budgets, reminders, goals, netWorthItems, patternPrefs, smsLog, merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])) });
   }, [set]);
 
   // Refs so the once-registered lifecycle listener always sees current values.
@@ -613,6 +619,24 @@ export function AppProvider({ children }) {
     [set],
   );
 
+  // Teach the app that a merchant always belongs in a category: remember the
+  // rule (so future SMS auto-file), and apply it to matching past transactions
+  // now (so they stop being flagged). Passing null clears the rule.
+  const setMerchantCategory = useCallback(
+    async (signature, categoryId) => {
+      if (categoryId) {
+        await repo.setMerchantRule(signature, categoryId);
+        await repo.categorizeByMerchant(signature, categoryId);
+      } else {
+        await repo.deleteMerchantRule(signature);
+      }
+      const [txns, rules] = await Promise.all([repo.listTransactions(), repo.listMerchantRules()]);
+      set({ txns, merchantRules: Object.fromEntries(rules.map((r) => [r.signature, r.category_id])) });
+      if (categoryId) showToast('Category saved — future payments will file here');
+    },
+    [set, showToast],
+  );
+
   // User-defined recurring items shown alongside auto-detected patterns.
   const addCustomPattern = useCallback(
     ({ label, amount, cadence }) => {
@@ -664,18 +688,24 @@ export function AppProvider({ children }) {
         // wrongly merged two different same-amount payments on one day) and is
         // race-proof even if the high-water mark lags.
         const importedBodies = new Set((await repo.listImportedSmsBodies()).map((b) => (b || '').trim()));
+        // Merchant → category rules the user has set, so recurring payments file
+        // themselves instead of landing in "needs review" every time.
+        const ruleMap = Object.fromEntries((await repo.listMerchantRules()).map((r) => [r.signature, r.category_id]));
         let added = 0;
         for (const t of found) {
           const bodyKey = (t.rawSms || '').trim();
           if (importedBodies.has(bodyKey)) continue;
           importedBodies.add(bodyKey);
           const dayLabel = new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          // Auto-file if the user has taught us this merchant; BNPL still needs
+          // confirming, so never auto-categorise those.
+          const autoCat = t.bnpl ? null : ruleMap[(t.merchant || '').trim().toLowerCase()] ?? null;
           const id = await repo.addTransaction({
             merchant: t.merchant,
             account: t.address || 'SMS · auto-tracked',
             date: dayLabel,
             amount: t.amount,
-            cat: null, // always left for review; BNPL especially needs confirming
+            cat: autoCat,
             type: t.type,
             source: 'sms',
             note: t.bnpl ? `Pay-later (${t.bnpl}) — confirm what this was` : null,
@@ -960,6 +990,7 @@ export function AppProvider({ children }) {
       deleteNetWorthItem,
       setPatternPref,
       clearPatternPref,
+      setMerchantCategory,
       addCustomPattern,
       deleteCustomPattern,
       scanSms,
@@ -1023,6 +1054,7 @@ export function AppProvider({ children }) {
       deleteNetWorthItem,
       setPatternPref,
       clearPatternPref,
+      setMerchantCategory,
       addCustomPattern,
       deleteCustomPattern,
       scanSms,
