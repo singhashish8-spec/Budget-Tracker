@@ -3,6 +3,7 @@ import { fmt } from '../utils/currency';
 import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleWindow, txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { alertCount, topCategories, homeTotals, inWindow, goalsSummary } from '../state/selectors';
+import QuickAddBar from '../components/QuickAddBar';
 
 export default function HomeScreen() {
   const { state, go, goReview, openCategorySheet, openDetail } = useApp();
@@ -41,6 +42,8 @@ export default function HomeScreen() {
           </div>
         )}
       </div>
+
+      <QuickAddBar />
 
       {alerts > 0 && (
         <button
