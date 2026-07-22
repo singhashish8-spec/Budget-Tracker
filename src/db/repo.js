@@ -160,6 +160,14 @@ export async function setSetting(key, value) {
   await persist();
 }
 
+// All settings rows, for backup. Excludes the app-lock preference so a restore
+// can never lock the user out on a device whose biometrics aren't set up.
+export async function listSettingsForBackup() {
+  const db = await getDb();
+  const res = await db.query(`SELECT key, value FROM settings WHERE key != 'appLock'`);
+  return res.values ?? [];
+}
+
 // ── reminders (bills) ──
 
 export async function listReminders() {
@@ -367,6 +375,15 @@ export async function listSmsLog(limit = 20) {
   return res.values ?? [];
 }
 
+// Every sms_log row, for backup. This is the SMS de-duplication memory; if a
+// restore doesn't bring it back, the next scan re-imports every message and
+// doubles all SMS transactions — so it MUST be included in backups.
+export async function listAllSmsLog() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM sms_log`);
+  return res.values ?? [];
+}
+
 // All raw SMS bodies we've already turned into transactions — used for exact
 // de-duplication so the same physical message is never imported twice.
 export async function listImportedSmsBodies() {
@@ -436,9 +453,9 @@ export async function importBackup(data) {
   }
   for (const t of data.transactions ?? []) {
     await db.run(
-      `INSERT OR REPLACE INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [t.id, t.merchant, t.account ?? null, t.date, Math.round(Math.abs(t.amount)), t.category_id ?? t.cat ?? null, t.type === 'income' ? 'income' : 'expense', t.source ?? 'manual', t.created_at ?? Date.now(), t.note ?? null, t.sms_address ?? null, t.sms_date ?? null],
+      `INSERT OR REPLACE INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [t.id, t.merchant, t.account ?? null, t.date, Math.round(Math.abs(t.amount)), t.category_id ?? t.cat ?? null, t.type === 'income' ? 'income' : 'expense', t.source ?? 'manual', t.created_at ?? Date.now(), t.note ?? null, t.sms_address ?? null, t.sms_date ?? null, t.method ?? null, t.occurred_at ?? null],
     );
     counts.transactions++;
   }
@@ -475,6 +492,30 @@ export async function importBackup(data) {
     await db.run(
       `INSERT OR REPLACE INTO merchant_rules (signature, category_id) VALUES (?,?)`,
       [m.signature, m.category_id],
+    );
+  }
+  // Restore the SMS de-dup memory so the next scan doesn't re-import (and thus
+  // double) every message. Without this, a restore silently doubled all data.
+  for (const s of data.smsLog ?? []) {
+    if (!s.id || !s.raw_sms) continue;
+    await db.run(
+      `INSERT OR REPLACE INTO sms_log (id, raw_sms, txn_id, created_at) VALUES (?,?,?,?)`,
+      [s.id, s.raw_sms, s.txn_id ?? null, s.created_at ?? Date.now()],
+    );
+  }
+  for (const s of data.smsIgnores ?? []) {
+    const sig = s.signature ?? s;
+    if (!sig) continue;
+    await db.run(`INSERT OR IGNORE INTO sms_ignores (signature, created_at) VALUES (?,?)`, [sig, Date.now()]);
+  }
+  // Restore settings (salary day, currency, theme, and crucially smsLastRead —
+  // the scan high-water mark). appLock is intentionally excluded on export.
+  for (const kv of data.settings ?? []) {
+    if (!kv.key) continue;
+    await db.run(
+      `INSERT INTO settings (key, value) VALUES (?,?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [kv.key, String(kv.value ?? '')],
     );
   }
   await persist();
