@@ -688,6 +688,14 @@ export function AppProvider({ children }) {
         // wrongly merged two different same-amount payments on one day) and is
         // race-proof even if the high-water mark lags.
         const importedBodies = new Set((await repo.listImportedSmsBodies()).map((b) => (b || '').trim()));
+        // Second, independent guard against duplicates: never add an SMS whose
+        // exact timestamp + amount + direction already exists as a transaction.
+        // This makes re-scanning idempotent even if the sms_log de-dup memory is
+        // ever lost (e.g. an old backup), which used to double every entry.
+        const txnKey = (ms, amt, type) => `${ms}|${Math.round(Math.abs(amt))}|${type}`;
+        const existingKeys = new Set(
+          (await repo.listTransactions()).filter((x) => x.sms_date).map((x) => txnKey(x.sms_date, x.amount, x.type)),
+        );
         // Merchant → category rules the user has set, so recurring payments file
         // themselves instead of landing in "needs review" every time.
         const ruleMap = Object.fromEntries((await repo.listMerchantRules()).map((r) => [r.signature, r.category_id]));
@@ -695,6 +703,9 @@ export function AppProvider({ children }) {
         for (const t of found) {
           const bodyKey = (t.rawSms || '').trim();
           if (importedBodies.has(bodyKey)) continue;
+          const key = txnKey(t.date, t.amount, t.type);
+          if (existingKeys.has(key)) { importedBodies.add(bodyKey); continue; }
+          existingKeys.add(key);
           importedBodies.add(bodyKey);
           const dayLabel = new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
           // Auto-file if the user has taught us this merchant; BNPL still needs

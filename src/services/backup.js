@@ -10,7 +10,7 @@ import * as repo from '../db/repo';
 // README "Backup".
 
 export async function gatherData() {
-  const [categories, transactions, budgets, reminders, goals, netWorthItems, merchantRules] = await Promise.all([
+  const [categories, transactions, budgets, reminders, goals, netWorthItems, merchantRules, smsLog, smsIgnores, settings] = await Promise.all([
     repo.listCategories(),
     repo.listTransactions(),
     repo.listBudgets(),
@@ -18,10 +18,13 @@ export async function gatherData() {
     repo.listGoals(),
     repo.listNetWorthItems(),
     repo.listMerchantRules(),
+    repo.listAllSmsLog(),
+    repo.listSmsIgnores(),
+    repo.listSettingsForBackup(),
   ]);
   return {
     app: 'Budget Tracker',
-    backupVersion: 1,
+    backupVersion: 2,
     exportedAt: new Date().toISOString(),
     categories,
     transactions,
@@ -30,6 +33,11 @@ export async function gatherData() {
     goals,
     netWorthItems,
     merchantRules,
+    // The SMS de-dup memory + high-water mark + settings, so a restore doesn't
+    // trigger a full SMS re-import (which doubled every transaction).
+    smsLog,
+    smsIgnores,
+    settings,
   };
 }
 
