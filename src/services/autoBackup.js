@@ -15,10 +15,10 @@ import { gatherData } from './backup';
 //   Documents (shared)    — survives uninstall/reinstall on the same phone, but
 //                           never leaves the device.
 //
-// Only the JSON goes to the cloud, never the SQLite file: that database is
-// encrypted with a Keystore key which cannot travel between devices, so a
-// restored copy of it would be permanently undecryptable (see the manifest's
-// backup rules, which exclude the database domain).
+// Only the JSON goes to the cloud, never the SQLite file: the JSON is a
+// portable, mergeable snapshot that restores cleanly onto any install, whereas
+// the raw database file is device-local plumbing (see the manifest's backup
+// rules, which exclude the database domain).
 
 const FILE = 'budget-tracker-autobackup.json';
 

@@ -4,7 +4,7 @@
   "webDir": "dist",
   "plugins": {
     "CapacitorSQLite": {
-      "androidIsEncryption": true,
+      "androidIsEncryption": false,
       "androidBiometric": {
         "biometricAuth": false
       }

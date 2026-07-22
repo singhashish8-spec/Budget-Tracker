@@ -3,10 +3,19 @@ import { CapacitorSQLite, SQLiteConnection } from '@capacitor-community/sqlite';
 import { MIGRATIONS, LATEST_SCHEMA_VERSION, BUILTIN_CATEGORIES } from './schema';
 
 // Financial transaction history lives here. On native this is a real SQLite
-// file, encrypted at rest with SQLCipher (see ensureEncryptionSecret below);
-// in the browser (dev / `npm run dev`) it's backed by jeep-sqlite + sql.js
-// (IndexedDB-persisted, unencrypted — dev convenience only) so the same code
-// path works without a device.
+// file; in the browser (dev / `npm run dev`) it's backed by jeep-sqlite +
+// sql.js (IndexedDB-persisted) so the same code path works without a device.
+//
+// The database is stored UNENCRYPTED. It used to be encrypted at rest with
+// SQLCipher, keyed by a secret in the Android Keystore — but an app update
+// could lose that key, leaving the whole database undecryptable. The app then
+// created a fresh, empty one and the user landed in recovery on every update.
+// A plaintext database can't be locked out this way. It's still protected:
+// Android sandboxes the app's private storage, and the ONLY thing ever copied
+// off the device is the JSON auto-backup (never the raw database file). When an
+// old encrypted database from a previous build is still on disk, opening it
+// plaintext fails; the app then rebuilds a clean database and silently restores
+// the latest auto-backup (see AppContext bootstrap).
 
 const DB_NAME = 'budget_tracker';
 const sqlite = new SQLiteConnection(CapacitorSQLite);
@@ -97,33 +106,17 @@ async function runMigrations(db) {
   if (isWeb()) await sqlite.saveToStore(DB_NAME);
 }
 
-// The plugin persists the encryption secret itself via the OS's secure
-// storage (Android Keystore-backed) once set — we never store or see the
-// passphrase again after this call. isSecretStored() MUST be checked first:
-// calling setEncryptionSecret a second time would try to re-encrypt with a
-// new secret and make the existing database unreadable.
-async function ensureEncryptionSecret() {
-  if (!isNative()) return;
-  const { result: stored } = await sqlite.isSecretStored();
-  if (stored) return;
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  const passphrase = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-  await sqlite.setEncryptionSecret(passphrase);
-}
-
-// Connection mode note: the plugin's 'encryption' mode is a one-time
-// plaintext→encrypted migration for a database that already exists on disk
-// (it fails with "not found" on a fresh install, since there's nothing to
-// migrate). 'secret' is the mode for creating/opening a database that's
-// encrypted from the moment it's created — that's what we want here.
 async function openDb() {
   await ensureWebStore();
-  await ensureEncryptionSecret();
-  const encrypted = isNative();
+  // Always open the database in plaintext ('no-encryption'). If a database
+  // file left over from a previous, ENCRYPTED build is still on disk, this
+  // open() will reject (SQLCipher header isn't valid plaintext SQLite). We let
+  // that error propagate: the app's bootstrap catches it and recovers by
+  // rebuilding the database from the JSON auto-backup.
   const isConn = (await sqlite.isConnection(DB_NAME, false)).result;
   const db = isConn
     ? await sqlite.retrieveConnection(DB_NAME, false)
-    : await sqlite.createConnection(DB_NAME, encrypted, encrypted ? 'secret' : 'no-encryption', 1, false);
+    : await sqlite.createConnection(DB_NAME, false, 'no-encryption', 1, false);
   await db.open();
   await runMigrations(db);
   return db;
@@ -134,18 +127,21 @@ export function getDb() {
   return dbPromise;
 }
 
-// Recovery for an unopenable database — e.g. an OS auto-backup restored the
-// encrypted DB file onto a device whose Keystore key didn't come with it, so
-// it can't be decrypted. The data is already unrecoverable in that state, so
-// we delete the file and start fresh. Also resets the encryption secret so the
-// new database is created cleanly. Returns true if a reset happened.
+// Recovery for an unopenable database — most importantly, an old SQLCipher-
+// encrypted database left on disk by a previous build that this plaintext code
+// can no longer read. We delete the file so a clean plaintext database can be
+// created, then the caller restores data from the JSON auto-backup. Also clears
+// any leftover Keystore encryption secret from the old build so nothing lingers.
+// Returns true if a reset happened.
 export async function resetDatabase() {
   dbPromise = null;
+  // The stale file might be encrypted, so a 'no-encryption' connection can't
+  // open it — but delete() only needs the connection to exist, not to open.
   try {
     const isConn = (await sqlite.isConnection(DB_NAME, false)).result;
     const db = isConn
       ? await sqlite.retrieveConnection(DB_NAME, false)
-      : await sqlite.createConnection(DB_NAME, isNative(), isNative() ? 'secret' : 'no-encryption', 1, false);
+      : await sqlite.createConnection(DB_NAME, false, 'no-encryption', 1, false);
     try { await db.close(); } catch { /* not open — fine */ }
     await db.delete(); // removes the DB file
   } catch {
@@ -154,6 +150,8 @@ export async function resetDatabase() {
   }
   try { await sqlite.closeConnection(DB_NAME, false); } catch { /* ignore */ }
   if (isNative()) {
+    // Best-effort: drop the old encryption secret. Harmless (and may be a no-op)
+    // now that encryption is disabled; wrapped so it can't block recovery.
     try { await sqlite.clearEncryptionSecret(); } catch { /* ignore */ }
   }
   return true;

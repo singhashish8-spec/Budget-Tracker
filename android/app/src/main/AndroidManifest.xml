@@ -7,13 +7,13 @@
       data_extraction_rules.xml, which use include-lists so nothing else can
       travel by accident.
 
-      The encrypted SQLite database must NEVER be backed up. Its SQLCipher key
-      lives in the Android Keystore and is hardware-bound, so it cannot be
-      backed up or restored with the file. A restored database WITHOUT its key
-      is permanently undecryptable and bricked the app on a previous build
-      ("Couldn't open the local database"). The JSON snapshot carries the same
-      information in a form that can actually be restored anywhere, which is
-      why it — and only it — is allowed out.
+      The raw SQLite database is deliberately NOT backed up. It's device-local
+      plumbing; the JSON snapshot carries the same information in a portable,
+      mergeable form that restores cleanly onto any install or new phone, which
+      is why it — and only it — is allowed out. (Historically the database was
+      SQLCipher-encrypted with a hardware-bound Keystore key that couldn't
+      travel with the file, so a restored copy was undecryptable and bricked
+      the app; the database is now plaintext, but excluding it is still correct.)
 
       This is what makes the data survive a reinstall or a new phone, instead
       of the user losing everything and being sent back through onboarding.
