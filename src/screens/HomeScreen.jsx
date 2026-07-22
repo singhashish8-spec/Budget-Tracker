@@ -4,6 +4,7 @@ import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleW
 import { useApp } from '../state/AppContext';
 import { alertCount, topCategories, homeTotals, inWindow, goalsSummary } from '../state/selectors';
 import QuickAddBar from '../components/QuickAddBar';
+import DuplicateBanner from '../components/DuplicateBanner';
 
 export default function HomeScreen() {
   const { state, go, goReview, openCategorySheet, openDetail } = useApp();
@@ -44,6 +45,8 @@ export default function HomeScreen() {
       </div>
 
       <QuickAddBar />
+
+      <DuplicateBanner />
 
       {alerts > 0 && (
         <button

@@ -59,6 +59,18 @@ export async function addTransaction(txn) {
   return id;
 }
 
+// Bulk-delete transactions by id (used by the duplicate cleanup). Orphaned
+// sms_log rows are left in place — their bodies still serve de-dup.
+export async function deleteTransactions(ids) {
+  if (!ids || !ids.length) return 0;
+  const db = await getDb();
+  for (const id of ids) {
+    await db.run(`DELETE FROM transactions WHERE id = ?`, [id]);
+  }
+  await persist();
+  return ids.length;
+}
+
 export async function setTransactionNote(id, note) {
   const db = await getDb();
   await db.run(`UPDATE transactions SET note = ? WHERE id = ?`, [note || null, id]);
@@ -494,15 +506,9 @@ export async function importBackup(data) {
       [m.signature, m.category_id],
     );
   }
-  // Restore the SMS de-dup memory so the next scan doesn't re-import (and thus
-  // double) every message. Without this, a restore silently doubled all data.
-  for (const s of data.smsLog ?? []) {
-    if (!s.id || !s.raw_sms) continue;
-    await db.run(
-      `INSERT OR REPLACE INTO sms_log (id, raw_sms, txn_id, created_at) VALUES (?,?,?,?)`,
-      [s.id, s.raw_sms, s.txn_id ?? null, s.created_at ?? Date.now()],
-    );
-  }
+  // Note: sms_log is intentionally NOT restored. It could be hundreds of rows
+  // (which made restore freeze), and de-dup no longer depends on it — the SMS
+  // import guard skips any message whose time+amount+direction already exists.
   for (const s of data.smsIgnores ?? []) {
     const sig = s.signature ?? s;
     if (!sig) continue;

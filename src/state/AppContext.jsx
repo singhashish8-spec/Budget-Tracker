@@ -8,6 +8,7 @@ import { smsSignature, parseSms, extractAmount, extractMerchant } from '../servi
 import { setGeminiKey } from '../services/aiExtract';
 import { writeAutoBackup, readAutoBackup } from '../services/autoBackup';
 import { applyTheme } from '../services/theme';
+import { duplicateTxnIds } from './selectors';
 
 const AppStateContext = createContext(null);
 
@@ -195,7 +196,25 @@ export function AppProvider({ children }) {
         if (!onboarded && txns.length === 0) {
           try {
             const found = await readAutoBackup();
-            if (found) set({ recoverable: found });
+            if (found && found.count > 0) {
+              // The database came up empty — a known issue where an app update
+              // can reset it. Instead of a recovery prompt that could hang,
+              // restore the latest snapshot automatically and silently, then
+              // reload into a clean state. A once-per-launch guard avoids any
+              // reload loop if the restore somehow doesn't stick.
+              let alreadyTried = false;
+              try { alreadyTried = sessionStorage.getItem('bt-autorestore') === '1'; } catch { /* no sessionStorage */ }
+              if (alreadyTried) {
+                set({ recoverable: found }); // fall back to the manual prompt
+              } else {
+                try { sessionStorage.setItem('bt-autorestore', '1'); } catch { /* ignore */ }
+                set({ processing: true, procTitle: 'Restoring your data', procSub: 'Just a moment…' });
+                await repo.importBackup(found.data);
+                await repo.setSetting('onboarded', '1');
+                window.location.reload();
+                return;
+              }
+            }
           } catch {
             /* nothing recoverable — onboarding proceeds as normal */
           }
@@ -640,6 +659,17 @@ export function AppProvider({ children }) {
   // Turn a detected recurring merchant into a real bill reminder: name it after
   // the merchant, use the average as the amount, and infer the due-day from the
   // most recent payment. Marks the pattern 'confirmed' so it reads "tracked".
+  // Remove bank-SMS transactions that were imported more than once (exact
+  // time + amount + direction), keeping one of each. Cash entries are untouched.
+  const cleanupDuplicates = useCallback(async () => {
+    const ids = duplicateTxnIds(backStateRef.current.txns || []);
+    if (!ids.length) { showToast('No duplicates found'); return 0; }
+    await repo.deleteTransactions(ids);
+    set({ txns: await repo.listTransactions() });
+    showToast(`Removed ${ids.length} duplicate${ids.length === 1 ? '' : 's'}`);
+    return ids.length;
+  }, [set, showToast]);
+
   const trackPatternAsBill = useCallback(
     async ({ signature, merchant, amount, cat }) => {
       const matches = (backStateRef.current.txns || []).filter((t) => (t.merchant || '').trim().toLowerCase() === signature);
@@ -1025,6 +1055,7 @@ export function AppProvider({ children }) {
       clearPatternPref,
       setMerchantCategory,
       trackPatternAsBill,
+      cleanupDuplicates,
       addCustomPattern,
       deleteCustomPattern,
       scanSms,
@@ -1090,6 +1121,7 @@ export function AppProvider({ children }) {
       clearPatternPref,
       setMerchantCategory,
       trackPatternAsBill,
+      cleanupDuplicates,
       addCustomPattern,
       deleteCustomPattern,
       scanSms,
