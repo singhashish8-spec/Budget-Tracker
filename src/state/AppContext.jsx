@@ -498,8 +498,8 @@ export function AppProvider({ children }) {
 
   // ── bill reminders ──
   const addReminder = useCallback(
-    async ({ label, amount, dueDay }) => {
-      await repo.addReminder({ label, amount, dueDay });
+    async ({ label, amount, dueDay, kind = null, cadence = null, termCount = null, startAt = null }) => {
+      await repo.addReminder({ label, amount, dueDay, kind, cadence, termCount, startAt });
       set({ reminders: await repo.listReminders() });
       showToast(`"${label}" added to reminders`);
     },
