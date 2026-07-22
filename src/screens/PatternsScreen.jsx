@@ -6,7 +6,7 @@ import { detectPatterns } from '../state/selectors';
 import { unlock as biometricUnlock } from '../services/appLock';
 
 export default function PatternsScreen() {
-  const { state, goBack, setPatternPref, clearPatternPref, showToast, addCustomPattern, deleteCustomPattern } = useApp();
+  const { state, goBack, openDetail, setPatternPref, clearPatternPref, showToast, addCustomPattern, deleteCustomPattern } = useApp();
   const patterns = detectPatterns(state.txns, state.categories, state.patternPrefs);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [cpLabel, setCpLabel] = useState('');
@@ -53,10 +53,10 @@ export default function PatternsScreen() {
               <div style={{ width: 34, height: 34, borderRadius: 10, background: tint(p.color), color: p.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
                 {p.mono}
               </div>
-              <div style={{ flex: 1 }}>
+              <button onClick={() => openDetail({ kind: 'pattern', id: p.signature })} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', cursor: 'pointer' }}>
                 <div style={{ fontSize: 14.5, fontWeight: 600 }}>{p.merchant}</div>
-                <div style={{ fontSize: 12, color: colors.textTertiary }}>Seen {p.count} times · avg {p.avgF}</div>
-              </div>
+                <div style={{ fontSize: 12, color: colors.textTertiary }}>Seen {p.count} times · avg {p.avgF} · tap for details ›</div>
+              </button>
               <button
                 onClick={() => requestDelete(p)}
                 title="Dismiss pattern"
