@@ -150,6 +150,19 @@ export const MIGRATIONS = [
       `ALTER TABLE reminders ADD COLUMN start_at INTEGER;`,
     ],
   },
+  {
+    // Additive only.
+    version: 8,
+    statements: [
+      // Remembers "payments to this merchant always go in this category", so
+      // future SMS transactions auto-file and stop being flagged for review.
+      // signature = the normalized merchant name (lower-cased, trimmed).
+      `CREATE TABLE IF NOT EXISTS merchant_rules (
+        signature TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL
+      );`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

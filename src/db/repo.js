@@ -326,6 +326,39 @@ export async function clearPatternPref(signature) {
   await persist();
 }
 
+// ── merchant → category rules ──
+
+export async function listMerchantRules() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM merchant_rules`);
+  return res.values ?? [];
+}
+
+export async function setMerchantRule(signature, categoryId) {
+  const db = await getDb();
+  await db.run(
+    `INSERT INTO merchant_rules (signature, category_id) VALUES (?,?)
+     ON CONFLICT(signature) DO UPDATE SET category_id = excluded.category_id`,
+    [signature, categoryId],
+  );
+  await persist();
+}
+
+export async function deleteMerchantRule(signature) {
+  const db = await getDb();
+  await db.run(`DELETE FROM merchant_rules WHERE signature = ?`, [signature]);
+  await persist();
+}
+
+// Apply a rule to transactions already recorded, so setting a category also
+// clears the existing "needs review" flags for that merchant. Matches on the
+// normalized merchant name (lower-cased, trimmed) — the same signature.
+export async function categorizeByMerchant(signature, categoryId) {
+  const db = await getDb();
+  await db.run(`UPDATE transactions SET category_id = ? WHERE TRIM(LOWER(merchant)) = ?`, [categoryId, signature]);
+  await persist();
+}
+
 // ── SMS log ──
 
 export async function listSmsLog(limit = 20) {
@@ -436,6 +469,13 @@ export async function importBackup(data) {
       [n.id, n.kind, n.label, Math.round(n.amount), n.created_at ?? Date.now()],
     );
     counts.netWorthItems++;
+  }
+  for (const m of data.merchantRules ?? []) {
+    if (!m.signature || !m.category_id) continue;
+    await db.run(
+      `INSERT OR REPLACE INTO merchant_rules (signature, category_id) VALUES (?,?)`,
+      [m.signature, m.category_id],
+    );
   }
   await persist();
   return counts;

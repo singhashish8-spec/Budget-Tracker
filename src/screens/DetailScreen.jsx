@@ -73,8 +73,10 @@ export default function DetailScreen() {
 // Detail view for a detected pattern: the evidence behind the flag, a 6-month
 // trend, and every transaction that makes up the pattern.
 function PatternDetail({ signature }) {
-  const { state, goBack, openCategorySheet } = useApp();
+  const { state, goBack, openCategorySheet, setMerchantCategory } = useApp();
   const d = patternDetail(state.txns, state.categories, signature);
+  const ruleCat = state.merchantRules[signature] || null;
+  const cats = state.categories.filter((c) => !(state.disabledCats || []).includes(c.id));
 
   return (
     <Shell title={d.title} mono={d.mono} color={d.color} onBack={goBack}>
@@ -83,6 +85,35 @@ function PatternDetail({ signature }) {
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 34, fontWeight: 700, margin: '5px 0 8px' }}>Seen {d.count}×</div>
         <div style={{ fontSize: 13, color: colors.accentGreen3 }}>{d.totalF} total · {d.avgF} on average</div>
       </div>
+
+      <Card title="Always file under">
+        <div style={{ fontSize: 12.5, color: colors.textSecondary, marginTop: -4 }}>
+          {ruleCat
+            ? 'New payments to this merchant file here automatically. Tap another to change it.'
+            : `Pick a category and every ${d.title} payment — past and future — files there automatically, no more review flags.`}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {cats.map((c) => {
+            const on = ruleCat === c.id;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setMerchantCategory(signature, on ? null : c.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 100, cursor: 'pointer',
+                  background: on ? colors.primaryTint : colors.bgApp,
+                  border: `1.5px solid ${on ? colors.primary : colors.cardBorder}`,
+                  color: on ? colors.primary : colors.ink, fontSize: 13, fontWeight: 600,
+                }}
+              >
+                <span style={{ width: 20, height: 20, borderRadius: 6, background: tint(c.color), color: c.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 9 }}>{c.mono}</span>
+                {c.label}
+                {on && <span style={{ marginLeft: 2 }}>✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
 
       <Card title="Why this is flagged">
         <div style={{ fontSize: 13.5, lineHeight: 1.55, color: colors.textSecondary }}>{d.whyText}</div>

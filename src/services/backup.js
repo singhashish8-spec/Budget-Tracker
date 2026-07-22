@@ -10,13 +10,14 @@ import * as repo from '../db/repo';
 // README "Backup".
 
 export async function gatherData() {
-  const [categories, transactions, budgets, reminders, goals, netWorthItems] = await Promise.all([
+  const [categories, transactions, budgets, reminders, goals, netWorthItems, merchantRules] = await Promise.all([
     repo.listCategories(),
     repo.listTransactions(),
     repo.listBudgets(),
     repo.listReminders(),
     repo.listGoals(),
     repo.listNetWorthItems(),
+    repo.listMerchantRules(),
   ]);
   return {
     app: 'Budget Tracker',
@@ -28,6 +29,7 @@ export async function gatherData() {
     reminders,
     goals,
     netWorthItems,
+    merchantRules,
   };
 }
 
