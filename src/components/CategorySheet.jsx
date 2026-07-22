@@ -128,7 +128,7 @@ export default function CategorySheet() {
                 <button
                   key={o.key}
                   onClick={() => setDraft({ ...draft, type: o.key })}
-                  style={{ flex: 1, padding: '9px 4px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: draft.type === o.key ? colors.ink : colors.bgApp, color: draft.type === o.key ? colors.onPrimary : colors.textSecondary, border: `1px solid ${draft.type === o.key ? 'transparent' : colors.cardBorder}` }}
+                  style={{ flex: 1, padding: '9px 4px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: draft.type === o.key ? colors.primary : colors.bgApp, color: draft.type === o.key ? colors.onPrimary : colors.textSecondary, border: `1px solid ${draft.type === o.key ? 'transparent' : colors.cardBorder}` }}
                 >
                   {o.label}
                 </button>

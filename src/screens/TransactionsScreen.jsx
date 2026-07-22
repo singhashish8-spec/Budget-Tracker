@@ -28,9 +28,9 @@ export default function TransactionsScreen() {
             fontSize: 13.5,
             fontWeight: 600,
             cursor: 'pointer',
-            background: filter === 'all' ? colors.ink : colors.cardSurface,
+            background: filter === 'all' ? colors.primary : colors.cardSurface,
             color: filter === 'all' ? colors.onPrimary : colors.ink,
-            border: `1px solid ${filter === 'all' ? colors.ink : colors.cardBorder}`,
+            border: `1px solid ${filter === 'all' ? colors.primary : colors.cardBorder}`,
           }}
         >
           All

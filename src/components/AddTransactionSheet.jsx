@@ -90,7 +90,7 @@ export default function AddTransactionSheet() {
                 fontSize: 14.5,
                 fontWeight: 600,
                 cursor: 'pointer',
-                background: type === o.key ? (o.key === 'income' ? colors.primary : colors.ink) : colors.cardSurface,
+                background: type === o.key ? colors.primary : colors.cardSurface,
                 color: type === o.key ? colors.onPrimary : colors.textSecondary,
                 border: `1px solid ${type === o.key ? 'transparent' : colors.cardBorder}`,
               }}
