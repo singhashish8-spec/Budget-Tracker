@@ -103,7 +103,7 @@ function RecoveryScreen({ found }) {
       )}
       <button
         onClick={restoreFound}
-        style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '14px 30px', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 6 }}
+        style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '14px 30px', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 6 }}
       >
         Restore my data
       </button>
@@ -136,7 +136,7 @@ function DatabaseErrorScreen({ message }) {
       <button
         onClick={doReset}
         disabled={resetting}
-        style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '14px 28px', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 8, opacity: resetting ? 0.6 : 1 }}
+        style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '14px 28px', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 8, opacity: resetting ? 0.6 : 1 }}
       >
         {resetting ? 'Resetting…' : 'Reset & start fresh'}
       </button>

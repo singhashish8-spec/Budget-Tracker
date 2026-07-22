@@ -7,6 +7,7 @@ import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransaction
 import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
 import { setGeminiKey } from '../services/aiExtract';
 import { writeAutoBackup, readAutoBackup } from '../services/autoBackup';
+import { applyTheme } from '../services/theme';
 
 const AppStateContext = createContext(null);
 
@@ -43,6 +44,8 @@ const initialState = {
   reviewSource: '',
   toast: '',
   currency: 'INR',
+  themeMode: 'system', // 'system' | 'light' | 'dark'
+  themeAccent: 'green',
   taxRegime: 'new',
   tax80cInvested: 0,
   salaryDay: 0, // 0 = not set (use calendar month); 1-31 = pay day; 32 = last day of month
@@ -126,6 +129,8 @@ export function AppProvider({ children }) {
           customPatternsJson,
           salaryDayStr,
           geminiKeyStr,
+          themeModeStr,
+          themeAccentStr,
         ] = await Promise.all([
           repo.listCategories(),
           repo.listTransactions(),
@@ -145,6 +150,8 @@ export function AppProvider({ children }) {
           repo.getSetting('customPatterns', null),
           repo.getSetting('salaryDay', '0'),
           repo.getSetting('geminiKey', ''),
+          repo.getSetting('themeMode', 'system'),
+          repo.getSetting('themeAccent', 'green'),
         ]);
         const onboarded = onboardedFlag === '1';
         const appLock = appLockFlag === '1';
@@ -169,9 +176,13 @@ export function AppProvider({ children }) {
           customPatterns: customPatternsJson ? JSON.parse(customPatternsJson) : [],
           salaryDay: Number(salaryDayStr) || 0,
           geminiKey: geminiKeyStr || '',
+          themeMode: themeModeStr || 'system',
+          themeAccent: themeAccentStr || 'green',
           loading: false,
         });
         setGeminiKey(geminiKeyStr || '');
+        // Re-apply from the authoritative (DB) values in case the cache differed.
+        applyTheme({ mode: themeModeStr || 'system', accent: themeAccentStr || 'green' });
 
         // Database came up empty (wiped by a reinstall, most likely). Before
         // sending the user through onboarding and losing everything, see
@@ -299,6 +310,24 @@ export function AppProvider({ children }) {
     (code) => {
       set({ currency: code });
       repo.setSetting('currency', code);
+    },
+    [set],
+  );
+
+  const setThemeMode = useCallback(
+    (mode) => {
+      set({ themeMode: mode });
+      repo.setSetting('themeMode', mode);
+      applyTheme({ mode, accent: backStateRef.current.themeAccent });
+    },
+    [set],
+  );
+
+  const setThemeAccent = useCallback(
+    (accent) => {
+      set({ themeAccent: accent });
+      repo.setSetting('themeAccent', accent);
+      applyTheme({ mode: backStateRef.current.themeMode, accent });
     },
     [set],
   );
@@ -891,6 +920,8 @@ export function AppProvider({ children }) {
       showToast,
       toggleAccount,
       setCurrency,
+      setThemeMode,
+      setThemeAccent,
       setSalaryDay,
       setGeminiApiKey,
       toggleCategoryEnabled,
@@ -952,6 +983,8 @@ export function AppProvider({ children }) {
       showToast,
       toggleAccount,
       setCurrency,
+      setThemeMode,
+      setThemeAccent,
       setSalaryDay,
       setGeminiApiKey,
       toggleCategoryEnabled,

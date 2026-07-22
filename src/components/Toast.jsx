@@ -20,7 +20,7 @@ export default function Toast() {
       <div
         style={{
           background: colors.surfaceDark,
-          color: colors.bgApp,
+          color: colors.onPrimary,
           borderRadius: 100,
           padding: '10px 20px',
           fontSize: 13.5,

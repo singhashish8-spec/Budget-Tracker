@@ -91,7 +91,7 @@ export default function AddTransactionSheet() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 background: type === o.key ? (o.key === 'income' ? colors.primary : colors.ink) : colors.cardSurface,
-                color: type === o.key ? colors.bgApp : colors.textSecondary,
+                color: type === o.key ? colors.onPrimary : colors.textSecondary,
                 border: `1px solid ${type === o.key ? 'transparent' : colors.cardBorder}`,
               }}
             >
@@ -138,7 +138,7 @@ export default function AddTransactionSheet() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 background: method === m.key ? colors.primary : colors.cardSurface,
-                color: method === m.key ? colors.bgApp : colors.textSecondary,
+                color: method === m.key ? colors.onPrimary : colors.textSecondary,
                 border: `1px solid ${method === m.key ? 'transparent' : colors.cardBorder}`,
               }}
             >
@@ -193,7 +193,7 @@ export default function AddTransactionSheet() {
           <button
             onClick={save}
             disabled={!valid || saving}
-            style={{ flex: 2, background: valid ? colors.primary : colors.track, color: colors.bgApp, borderRadius: 100, padding: 14, fontSize: 15, fontWeight: 600, cursor: valid ? 'pointer' : 'default', opacity: saving ? 0.6 : 1 }}
+            style={{ flex: 2, background: valid ? colors.primary : colors.track, color: colors.onPrimary, borderRadius: 100, padding: 14, fontSize: 15, fontWeight: 600, cursor: valid ? 'pointer' : 'default', opacity: saving ? 0.6 : 1 }}
           >
             {saving ? 'Saving…' : income ? 'Add money in' : 'Add spend'}
           </button>

@@ -31,7 +31,7 @@ export default function GoalsScreen() {
       </div>
 
       {summary.count > 0 && (
-        <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.bgApp }}>
+        <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.onPrimary }}>
           <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>Saved across all goals</div>
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 30, fontWeight: 700, margin: '5px 0 12px' }}>
             {summary.totalSavedF} <span style={{ fontSize: 15, color: colors.accentGreen3 }}>/ {summary.totalTargetF}</span>
@@ -106,7 +106,7 @@ function GoalCard({ r, onContribute, onEdit, onDelete }) {
             onContribute(r.id, n);
             setAddAmt('');
           }}
-          style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
         >
           Add
         </button>
@@ -151,7 +151,7 @@ function GoalEditor({ r, onSave, onCancel, onDelete }) {
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
         <button onClick={onCancel} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, borderRadius: 100, padding: 11, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-        <button onClick={save} style={{ flex: 1, background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 11, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+        <button onClick={save} style={{ flex: 1, background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 11, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save</button>
       </div>
       <button onClick={onDelete} style={{ fontSize: 12.5, fontWeight: 600, color: colors.danger, cursor: 'pointer', padding: 4 }}>Delete this goal</button>
     </div>
@@ -191,7 +191,7 @@ function AddGoal({ onAdd, txns }) {
   if (!open) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <button onClick={() => setOpen(true)} style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '13px 20px', fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>+ New savings goal</button>
+        <button onClick={() => setOpen(true)} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '13px 20px', fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>+ New savings goal</button>
         <button onClick={startEmergency} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.primary, borderRadius: 100, padding: '12px 20px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>🛟 Start an emergency fund</button>
       </div>
     );
@@ -207,7 +207,7 @@ function AddGoal({ onAdd, txns }) {
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
         <button onClick={() => { setOpen(false); setLabel(''); setTarget(''); setMonth(''); }} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, borderRadius: 100, padding: 11, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-        <button onClick={submit} style={{ flex: 1, background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 11, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save goal</button>
+        <button onClick={submit} style={{ flex: 1, background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 11, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save goal</button>
       </div>
     </div>
   );
@@ -239,8 +239,8 @@ const backBtnStyle = {
 
 function BackIcon() {
   return (
-    <svg width="9" height="15" viewBox="0 0 9 15">
-      <path d="M8 1L2 7.5 8 14" stroke="#1B1F23" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="9" height="15" viewBox="0 0 9 15" style={{ color: 'var(--c-ink)' }}>
+      <path d="M8 1L2 7.5 8 14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -20,7 +20,7 @@ export default function TopBar() {
           justifyContent: 'center',
           cursor: 'pointer',
           boxShadow: '0 4px 12px rgba(14,110,79,0.3)',
-          color: colors.bgApp,
+          color: colors.onPrimary,
           fontSize: 19,
         }}
       >
@@ -36,8 +36,8 @@ export default function TopBar() {
           width: 40,
           height: 40,
           borderRadius: '50%',
-          background: 'rgba(255,255,255,0.94)',
-          backdropFilter: 'blur(8px)',
+          background: colors.cardSurface,
+          color: colors.ink,
           border: `1px solid ${colors.cardBorder}`,
           display: 'flex',
           alignItems: 'center',
@@ -47,7 +47,7 @@ export default function TopBar() {
         }}
       >
         <svg width="18" height="14" viewBox="0 0 18 14">
-          <path d="M1 1h16M1 7h16M1 13h10" stroke="#1B1F23" strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M1 1h16M1 7h16M1 13h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       </button>
     </div>

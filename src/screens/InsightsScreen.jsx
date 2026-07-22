@@ -39,7 +39,7 @@ export default function InsightsScreen() {
       <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px' }}>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600, marginBottom: 12 }}>Export report</div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={doExportReport} style={{ flex: 1, textAlign: 'center', padding: 12, borderRadius: 100, background: colors.primary, color: colors.bgApp, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={doExportReport} style={{ flex: 1, textAlign: 'center', padding: 12, borderRadius: 100, background: colors.primary, color: colors.onPrimary, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             Report
           </button>
           <button onClick={doExportCsv} style={{ flex: 1, textAlign: 'center', padding: 12, borderRadius: 100, background: colors.cardSurface, color: colors.primary, border: `1.5px solid ${colors.primary}`, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
@@ -112,7 +112,7 @@ function NetWorthCard({ assets, liab, items, onAdd, onDelete }) {
           <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Savings account" style={inputStyle} />
           <div style={{ display: 'flex', gap: 8 }}>
             <input value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="₹ amount" style={{ ...inputStyle, flex: 1 }} />
-            <button onClick={submit} style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '11px 18px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+            <button onClick={submit} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '11px 18px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save</button>
           </div>
         </div>
       )}
@@ -147,7 +147,7 @@ function TaxCard({ regime, invested, onRegime, onInvested }) {
               onInvested(parseInt(String(val).replace(/[^0-9]/g, ''), 10) || 0);
               setEditing(false);
             }}
-            style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '11px 18px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
+            style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '11px 18px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
           >
             Save
           </button>
@@ -174,7 +174,7 @@ const pillBtn = (active) => ({
   fontWeight: 600,
   cursor: 'pointer',
   background: active ? colors.ink : colors.cardSurface,
-  color: active ? colors.bgApp : colors.ink,
+  color: active ? colors.onPrimary : colors.ink,
   border: `1px solid ${active ? colors.ink : colors.cardBorder}`,
 });
 

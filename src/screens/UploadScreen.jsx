@@ -80,7 +80,7 @@ export default function UploadScreen() {
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>Add expenses</div>
       </div>
 
-      <button onClick={captureBill} style={{ background: colors.primary, borderRadius: 20, padding: '22px 18px', color: colors.bgApp, cursor: 'pointer', textAlign: 'left', border: 'none' }}>
+      <button onClick={captureBill} style={{ background: colors.primary, borderRadius: 20, padding: '22px 18px', color: colors.onPrimary, cursor: 'pointer', textAlign: 'left', border: 'none' }}>
         <svg width="30" height="30" viewBox="0 0 30 30" style={{ marginBottom: 10 }}>
           <rect x="3" y="6" width="24" height="18" rx="4" stroke="#F7F4EE" strokeWidth="2" fill="none" />
           <circle cx="15" cy="15" r="5" stroke="#F7F4EE" strokeWidth="2" fill="none" />
@@ -150,8 +150,8 @@ const backBtnStyle = {
 
 function BackIcon() {
   return (
-    <svg width="9" height="15" viewBox="0 0 9 15">
-      <path d="M8 1L2 7.5 8 14" stroke="#1B1F23" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="9" height="15" viewBox="0 0 9 15" style={{ color: 'var(--c-ink)' }}>
+      <path d="M8 1L2 7.5 8 14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

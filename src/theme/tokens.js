@@ -1,38 +1,47 @@
 // Ported from the "Budget Tracker v2" design handoff (Budget Tracker v2.dc.html / README.md).
 // Keep this the single source of truth for color/type/shape so screens never hardcode hex values.
 
+// Every token is a CSS custom property so the whole app themes from one place:
+// the concrete hex values live in index.css (light + dark sets) and are
+// overridden at runtime for the accent colour and light/dark mode
+// (see services/theme.js). Because ~290 inline styles read these tokens, they
+// all re-theme automatically without touching a single screen.
 export const colors = {
-  bgApp: '#F7F4EE',
-  bgDesk: '#ECE7DD',
-  ink: '#1B1F23',
-  textSecondary: '#7C7668',
-  textTertiary: '#A39D91',
+  bgApp: 'var(--c-bgApp)',
+  bgDesk: 'var(--c-bgDesk)',
+  ink: 'var(--c-ink)',
+  textSecondary: 'var(--c-textSecondary)',
+  textTertiary: 'var(--c-textTertiary)',
 
-  primary: '#0E6E4F',
-  primaryHover: '#0B5940',
-  surfaceDark: '#10241C',
-  accentGreen1: '#4FA57F',
-  accentGreen2: '#7FD1A8',
-  accentGreen3: '#9DB8AC',
+  primary: 'var(--c-primary)',
+  primaryHover: 'var(--c-primaryHover)',
+  primaryTint: 'var(--c-primaryTint)',
+  // Text/icons that sit ON the primary or a dark surface — stays light in both
+  // themes (dark text on a green button would be unreadable in dark mode).
+  onPrimary: 'var(--c-onPrimary)',
+  surfaceDark: 'var(--c-surfaceDark)',
+  accentGreen1: 'var(--c-accentGreen1)',
+  accentGreen2: 'var(--c-accentGreen2)',
+  accentGreen3: 'var(--c-accentGreen3)',
 
-  successTint: '#E7F2EC',
-  successBorder: '#C9E0D3',
-  successText: '#4A7A63',
+  successTint: 'var(--c-successTint)',
+  successBorder: 'var(--c-successBorder)',
+  successText: 'var(--c-successText)',
 
-  danger: '#D9432F',
-  dangerDark: '#A32E1E',
-  dangerTint: '#FBEAE6',
-  dangerBorder: '#F0CCC2',
+  danger: 'var(--c-danger)',
+  dangerDark: 'var(--c-dangerDark)',
+  dangerTint: 'var(--c-dangerTint)',
+  dangerBorder: 'var(--c-dangerBorder)',
 
-  warning: '#B8892B',
-  warningDark: '#8A6415',
-  warningTint: '#F6EEDC',
-  warningBorder: '#E8D9B4',
+  warning: 'var(--c-warning)',
+  warningDark: 'var(--c-warningDark)',
+  warningTint: 'var(--c-warningTint)',
+  warningBorder: 'var(--c-warningBorder)',
 
-  cardSurface: '#FFFFFF',
-  cardBorder: '#E7E2D9',
-  divider: '#F0EBE2',
-  track: '#D5CEC1',
+  cardSurface: 'var(--c-cardSurface)',
+  cardBorder: 'var(--c-cardBorder)',
+  divider: 'var(--c-divider)',
+  track: 'var(--c-track)',
 };
 
 // category color + this alpha suffix = tint background for icon chips

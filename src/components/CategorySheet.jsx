@@ -128,7 +128,7 @@ export default function CategorySheet() {
                 <button
                   key={o.key}
                   onClick={() => setDraft({ ...draft, type: o.key })}
-                  style={{ flex: 1, padding: '9px 4px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: draft.type === o.key ? colors.ink : colors.bgApp, color: draft.type === o.key ? colors.bgApp : colors.textSecondary, border: `1px solid ${draft.type === o.key ? 'transparent' : colors.cardBorder}` }}
+                  style={{ flex: 1, padding: '9px 4px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: draft.type === o.key ? colors.ink : colors.bgApp, color: draft.type === o.key ? colors.onPrimary : colors.textSecondary, border: `1px solid ${draft.type === o.key ? 'transparent' : colors.cardBorder}` }}
                 >
                   {o.label}
                 </button>
@@ -160,7 +160,7 @@ export default function CategorySheet() {
                 <button
                   key={m.key}
                   onClick={() => setDraft({ ...draft, method: draft.method === m.key ? '' : m.key })}
-                  style={{ flex: 1, padding: '8px 2px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: draft.method === m.key ? colors.primary : colors.bgApp, color: draft.method === m.key ? colors.bgApp : colors.textSecondary, border: `1px solid ${draft.method === m.key ? 'transparent' : colors.cardBorder}` }}
+                  style={{ flex: 1, padding: '8px 2px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: draft.method === m.key ? colors.primary : colors.onPrimary, color: draft.method === m.key ? colors.onPrimary : colors.textSecondary, border: `1px solid ${draft.method === m.key ? 'transparent' : colors.cardBorder}` }}
                 >
                   {m.label}
                 </button>
@@ -170,7 +170,7 @@ export default function CategorySheet() {
               <button onClick={() => setEditing(false)} style={{ flex: 1, background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, borderRadius: 100, padding: 11, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                 Cancel
               </button>
-              <button onClick={saveEdit} style={{ flex: 1, background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: 11, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              <button onClick={saveEdit} style={{ flex: 1, background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 11, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                 Save changes
               </button>
             </div>
@@ -240,7 +240,7 @@ export default function CategorySheet() {
             placeholder="Add your own category"
             style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '11px 16px', fontSize: 14, color: colors.ink }}
           />
-          <button onClick={submitNewCat} style={{ background: colors.primary, color: colors.bgApp, borderRadius: 100, padding: '11px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={submitNewCat} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '11px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             Add
           </button>
         </div>
