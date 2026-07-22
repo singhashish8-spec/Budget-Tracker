@@ -50,7 +50,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Capacitor CLI (@capacitor/cli) requires Node >=22 for `cap sync`.
+          node-version: 22
 
       - uses: actions/setup-java@v4
         with:
