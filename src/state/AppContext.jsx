@@ -220,7 +220,37 @@ export function AppProvider({ children }) {
           }
         }
       } catch (err) {
-        set({ loading: false, loadError: err?.message || 'Could not open the local database' });
+        // The database couldn't be opened. The expected cause right after this
+        // release is the OLD encrypted database still on disk from the previous
+        // (SQLCipher) build — plaintext code can't read it. If a usable auto-
+        // backup exists, transparently rebuild a clean plaintext database and
+        // restore from it: the user just sees a brief "updating" screen, never
+        // an error. A once-per-launch guard prevents any reset/reload loop, and
+        // we only ever delete the old file when we've confirmed real data to
+        // put back — otherwise we fall through to the manual recovery screen.
+        let recovered = false;
+        try {
+          let alreadyTried = false;
+          try { alreadyTried = sessionStorage.getItem('bt-dbreset') === '1'; } catch { /* no sessionStorage */ }
+          if (!alreadyTried) {
+            const found = await readAutoBackup();
+            if (found && found.count > 0) {
+              try { sessionStorage.setItem('bt-dbreset', '1'); } catch { /* ignore */ }
+              set({ processing: true, procTitle: 'Updating your data store', procSub: 'Keeping your records safe…' });
+              await resetDatabase();
+              await repo.importBackup(found.data);
+              await repo.setSetting('onboarded', '1');
+              window.location.reload();
+              recovered = true;
+              return;
+            }
+          }
+        } catch {
+          /* recovery failed — fall through to the manual recovery screen */
+        }
+        if (!recovered) {
+          set({ loading: false, loadError: err?.message || 'Could not open the local database' });
+        }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

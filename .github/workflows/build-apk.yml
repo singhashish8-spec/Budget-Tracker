@@ -1,0 +1,111 @@
+name: Build signed APK
+
+# Builds the Android app in the cloud and publishes a SIGNED release APK to
+# GitHub Releases — so a new APK can ship without the Windows build PC.
+#
+# ── One-time setup (do this once, from the PC that holds the keystore) ──────
+# Add these four repository secrets (Settings → Secrets and variables →
+# Actions). They must come from the SAME keystore that signed the installed
+# app, or the new APK won't install as an update over it:
+#   ANDROID_KEYSTORE_BASE64   base64 of the .keystore/.jks file
+#   ANDROID_KEYSTORE_PASSWORD store password
+#   ANDROID_KEY_ALIAS         key alias
+#   ANDROID_KEY_PASSWORD      key password
+# To make the base64 on the PC (Git Bash):
+#   base64 -w0 D:/CLAUUD/your-release.keystore > keystore.b64
+# then paste the contents of keystore.b64 into ANDROID_KEYSTORE_BASE64.
+#
+# ── Running it ─────────────────────────────────────────────────────────────
+# Actions tab → "Build signed APK" → Run workflow. It builds, signs, and (when
+# the keystore secrets are present) publishes to the release tagged v<version>,
+# always as the fixed asset name BudgetTracker.apk, so this link always points
+# at the newest build:
+#   https://github.com/singhashish8-spec/Budget-Tracker/releases/latest/download/BudgetTracker.apk
+# Bump versionCode/versionName in android/app/build.gradle before each release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish the APK to GitHub Releases (needs keystore secrets)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # secrets can't be read inside `if:` on some runners, so surface a plain
+      # boolean once here and gate the signing/publish steps on it.
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install the SDK packages this project builds against
+        run: |
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      # --legacy-peer-deps: one native plugin (capacitor-sms-inbox) pins an
+      # older @capacitor/core peer; it doesn't affect the build.
+      - run: npm install --legacy-peer-deps --no-audit --no-fund
+
+      - name: Build the web layer
+        run: npm run build
+
+      - name: Copy web + native config into the Android project
+        run: npx cap sync android
+
+      - name: Decode the release keystore and write signing config
+        if: env.HAS_KEYSTORE == 'true'
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/android/app/release.keystore"
+          cat > "$GITHUB_WORKSPACE/android/keystore.properties" <<EOF
+          storeFile=$GITHUB_WORKSPACE/android/app/release.keystore
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: Assemble the release APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Upload the APK as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: budget-tracker-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Publish the signed APK to GitHub Releases
+        if: ${{ env.HAS_KEYSTORE == 'true' && inputs.publish }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/release-apk.mjs android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Note when signing was skipped
+        if: env.HAS_KEYSTORE != 'true'
+        run: |
+          echo "::warning::Keystore secrets are not set, so the APK was built UNSIGNED and NOT published." \
+               "Add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and" \
+               "ANDROID_KEY_PASSWORD (see the header of this workflow) and re-run to get an installable APK."
