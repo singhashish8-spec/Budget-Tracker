@@ -2,14 +2,18 @@ import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
-import { categoryDetail } from '../state/selectors';
+import { categoryDetail, patternDetail } from '../state/selectors';
 
 // One reusable drill-down dashboard. state.detail = { kind, id } picks the
-// subject; today it renders a spending category, and is shaped so budget / goal
-// / bill subjects can slot in later without a new screen.
+// subject; it renders a spending category or a detected pattern, and is shaped
+// so budget / goal / bill subjects can slot in later without a new screen.
 export default function DetailScreen() {
   const { state, goBack, openCategorySheet } = useApp();
   const subject = state.detail;
+
+  if (subject?.kind === 'pattern') {
+    return <PatternDetail signature={subject.id} />;
+  }
 
   if (!subject || subject.kind !== 'category') {
     return (
@@ -38,18 +42,7 @@ export default function DetailScreen() {
 
       {/* 6-month trend */}
       <Card title="Last 6 months">
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 108, padding: '4px 2px 0' }}>
-          {d.trend.map((m, i) => {
-            const current = i === d.trend.length - 1;
-            return (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
-                <div style={{ fontSize: 10, color: colors.textTertiary, fontWeight: 600 }}>{m.total > 0 ? shortAmt(m.total) : ''}</div>
-                <div style={{ width: '100%', maxWidth: 34, height: `${m.pct}%`, minHeight: m.total > 0 ? 4 : 0, borderRadius: 6, background: current ? d.color : tint(d.color) }} />
-                <div style={{ fontSize: 11, color: current ? colors.ink : colors.textSecondary, fontWeight: current ? 700 : 500 }}>{m.label}</div>
-              </div>
-            );
-          })}
-        </div>
+        <TrendChart trend={d.trend} color={d.color} />
       </Card>
 
       {/* Top merchants */}
@@ -71,27 +64,83 @@ export default function DetailScreen() {
 
       {/* Full transaction list for this category */}
       <Card title={`All transactions (${d.count})`}>
-        {d.txns.length === 0 && <div style={{ fontSize: 13.5, color: colors.textTertiary }}>None yet</div>}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {d.txns.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => openCategorySheet(t.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 0', cursor: 'pointer', textAlign: 'left', width: '100%', borderBottom: `1px solid ${colors.divider}` }}
-            >
-              <div style={{ width: 34, height: 34, borderRadius: 11, background: tint(d.color), color: d.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
-                {d.mono}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant}</div>
-                <div style={{ fontSize: 12.5, color: colors.textSecondary }}>{txnWhen(t)}</div>
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>−{fmt(t.amount)}</div>
-            </button>
-          ))}
-        </div>
+        <TxnList txns={d.txns} color={d.color} mono={d.mono} onTap={openCategorySheet} />
       </Card>
     </Shell>
+  );
+}
+
+// Detail view for a detected pattern: the evidence behind the flag, a 6-month
+// trend, and every transaction that makes up the pattern.
+function PatternDetail({ signature }) {
+  const { state, goBack, openCategorySheet } = useApp();
+  const d = patternDetail(state.txns, state.categories, signature);
+
+  return (
+    <Shell title={d.title} mono={d.mono} color={d.color} onBack={goBack}>
+      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.bgApp }}>
+        <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>Recurring · {d.categoryLabel}</div>
+        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 34, fontWeight: 700, margin: '5px 0 8px' }}>Seen {d.count}×</div>
+        <div style={{ fontSize: 13, color: colors.accentGreen3 }}>{d.totalF} total · {d.avgF} on average</div>
+      </div>
+
+      <Card title="Why this is flagged">
+        <div style={{ fontSize: 13.5, lineHeight: 1.55, color: colors.textSecondary }}>{d.whyText}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: colors.textTertiary, borderTop: `1px solid ${colors.divider}`, paddingTop: 10 }}>
+          <span>First seen {d.firstSeenLabel}</span>
+          <span>Latest {d.lastSeenLabel}</span>
+        </div>
+      </Card>
+
+      <Card title="Last 6 months">
+        <TrendChart trend={d.trend} color={d.color} />
+      </Card>
+
+      <Card title={`All transactions (${d.count})`}>
+        <TxnList txns={d.txns} color={d.color} mono={d.mono} onTap={openCategorySheet} />
+      </Card>
+    </Shell>
+  );
+}
+
+function TrendChart({ trend, color }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 108, padding: '4px 2px 0' }}>
+      {trend.map((m, i) => {
+        const current = i === trend.length - 1;
+        return (
+          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
+            <div style={{ fontSize: 10, color: colors.textTertiary, fontWeight: 600 }}>{m.total > 0 ? shortAmt(m.total) : ''}</div>
+            <div style={{ width: '100%', maxWidth: 34, height: `${m.pct}%`, minHeight: m.total > 0 ? 4 : 0, borderRadius: 6, background: current ? color : tint(color) }} />
+            <div style={{ fontSize: 11, color: current ? colors.ink : colors.textSecondary, fontWeight: current ? 700 : 500 }}>{m.label}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TxnList({ txns, color, mono, onTap }) {
+  if (!txns.length) return <div style={{ fontSize: 13.5, color: colors.textTertiary }}>None yet</div>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {txns.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => onTap(t.id)}
+          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 0', cursor: 'pointer', textAlign: 'left', width: '100%', borderBottom: `1px solid ${colors.divider}` }}
+        >
+          <div style={{ width: 34, height: 34, borderRadius: 11, background: tint(color), color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+            {mono}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant}</div>
+            <div style={{ fontSize: 12.5, color: colors.textSecondary }}>{txnWhen(t)}</div>
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>−{fmt(t.amount)}</div>
+        </button>
+      ))}
+    </div>
   );
 }
 

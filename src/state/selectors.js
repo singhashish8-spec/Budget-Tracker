@@ -384,6 +384,57 @@ export function categoryDetail(txns, categories, catId, { salaryDay = 0, now = n
   };
 }
 
+// Everything the detail screen shows for one detected pattern (a merchant seen
+// 3+ times): the evidence behind the flag and every transaction in it.
+export function patternDetail(txns, categories, signature, now = new Date()) {
+  const matches = txns.filter((t) => t.type === 'expense' && (t.merchant || '').trim().toLowerCase() === signature);
+  const merchant = matches[0]?.merchant || signature;
+
+  // Most common category among the matches decides the icon/colour.
+  const catCounts = {};
+  matches.forEach((t) => { if (t.cat) catCounts[t.cat] = (catCounts[t.cat] || 0) + 1; });
+  const topCatId = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  const cat = categoryById(categories, topCatId);
+
+  const total = matches.reduce((a, t) => a + t.amount, 0);
+  const avg = matches.length ? Math.round(total / matches.length) : 0;
+  const times = matches.map(txnTime).filter(Boolean).sort((a, b) => a - b);
+  const firstSeen = times[0] ? new Date(times[0]) : null;
+  const lastSeen = times[times.length - 1] ? new Date(times[times.length - 1]) : null;
+  const dateLabel = (d) => (d ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+
+  // 6-month trend of this merchant's spend.
+  const trend = [];
+  let maxMonth = 0;
+  for (let i = 5; i >= 0; i--) {
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    const t = inWindow(matches, { start, end }).reduce((a, x) => a + x.amount, 0);
+    trend.push({ label: start.toLocaleDateString('en-IN', { month: 'short' }), total: t });
+    if (t > maxMonth) maxMonth = t;
+  }
+  const trendBars = trend.map((m) => ({ ...m, pct: maxMonth ? Math.max(2, Math.round((m.total / maxMonth) * 100)) : 0, totalF: fmt(m.total) }));
+
+  const list = [...matches].sort((a, b) => txnTime(b) - txnTime(a));
+
+  return {
+    kind: 'pattern',
+    id: signature,
+    title: merchant,
+    color: cat?.color ?? '#8A8577',
+    mono: cat?.mono ?? '?',
+    categoryLabel: cat?.label ?? 'Uncategorised',
+    count: matches.length,
+    totalF: fmt(total),
+    avgF: fmt(avg),
+    firstSeenLabel: dateLabel(firstSeen),
+    lastSeenLabel: dateLabel(lastSeen),
+    whyText: `Flagged because you've paid ${merchant} ${matches.length} times. Budget Tracker highlights any merchant you pay 3 or more times, so recurring spending doesn't slip past you.`,
+    trend: trendBars,
+    txns: list,
+  };
+}
+
 export function filterTransactions(txns, { search = '', filter = 'all' } = {}) {
   const q = search.trim().toLowerCase();
   let list = txns;
