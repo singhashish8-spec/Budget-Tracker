@@ -168,23 +168,41 @@ export async function listReminders() {
   return res.values ?? [];
 }
 
-export async function addReminder({ label, amount, dueDay }) {
+export async function addReminder({ label, amount, dueDay, kind = null, cadence = null, termCount = null, startAt = null }) {
   const db = await getDb();
   const id = newId('rem');
   await db.run(
-    `INSERT INTO reminders (id, label, amount, due_day, paid_for, created_at) VALUES (?,?,?,?,NULL,?)`,
-    [id, label, Math.round(amount), dueDay, Date.now()],
+    `INSERT INTO reminders (id, label, amount, due_day, paid_for, created_at, kind, cadence, term_count, start_at) VALUES (?,?,?,?,NULL,?,?,?,?,?)`,
+    [id, label, Math.round(amount), dueDay, Date.now(), kind, cadence, termCount ? Math.round(termCount) : null, startAt ? Math.round(startAt) : null],
   );
   await persist();
   return id;
 }
 
-export async function updateReminder(id, { label, amount, dueDay }) {
+// Partial update over an allowlist of columns, so callers can patch just the
+// fields they changed (e.g. only the type) without clobbering the rest.
+export async function updateReminder(id, patch) {
+  const cols = {
+    label: (v) => String(v),
+    amount: (v) => Math.round(v),
+    dueDay: (v) => Math.round(v),
+    kind: (v) => (v == null ? null : String(v)),
+    cadence: (v) => (v == null ? null : String(v)),
+    termCount: (v) => (v == null ? null : Math.round(v)),
+    startAt: (v) => (v == null ? null : Math.round(v)),
+  };
+  const dbCol = { label: 'label', amount: 'amount', dueDay: 'due_day', kind: 'kind', cadence: 'cadence', termCount: 'term_count', startAt: 'start_at' };
+  const sets = [];
+  const values = [];
+  for (const [key, cast] of Object.entries(cols)) {
+    if (patch[key] !== undefined) {
+      sets.push(`${dbCol[key]} = ?`);
+      values.push(cast(patch[key]));
+    }
+  }
+  if (!sets.length) return;
   const db = await getDb();
-  await db.run(
-    `UPDATE reminders SET label = ?, amount = ?, due_day = ? WHERE id = ?`,
-    [label, Math.round(amount), dueDay, id],
-  );
+  await db.run(`UPDATE reminders SET ${sets.join(', ')} WHERE id = ?`, [...values, id]);
   await persist();
 }
 
@@ -400,8 +418,8 @@ export async function importBackup(data) {
   }
   for (const r of data.reminders ?? []) {
     await db.run(
-      `INSERT OR REPLACE INTO reminders (id, label, amount, due_day, paid_for, created_at) VALUES (?,?,?,?,?,?)`,
-      [r.id, r.label, Math.round(r.amount), r.due_day, r.paid_for ?? null, r.created_at ?? Date.now()],
+      `INSERT OR REPLACE INTO reminders (id, label, amount, due_day, paid_for, created_at, kind, cadence, term_count, start_at) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [r.id, r.label, Math.round(r.amount), r.due_day, r.paid_for ?? null, r.created_at ?? Date.now(), r.kind ?? null, r.cadence ?? null, r.term_count ?? null, r.start_at ?? null],
     );
     counts.reminders++;
   }

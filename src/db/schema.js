@@ -134,6 +134,22 @@ export const MIGRATIONS = [
       `ALTER TABLE goals ADD COLUMN target_date INTEGER;`,
     ],
   },
+  {
+    // Additive only.
+    version: 7,
+    statements: [
+      // What kind of recurring bill this is: null/'bill' = a plain monthly bill,
+      // 'emi' = a loan instalment, 'subscription' = a recurring service.
+      `ALTER TABLE reminders ADD COLUMN kind TEXT;`,
+      // Subscription billing frequency: 'monthly' | 'yearly'.
+      `ALTER TABLE reminders ADD COLUMN cadence TEXT;`,
+      // EMI: total number of instalments in the loan.
+      `ALTER TABLE reminders ADD COLUMN term_count INTEGER;`,
+      // EMI first-instalment month / yearly-subscription anchor (ms timestamp),
+      // used to work out instalments left, payoff date, and next renewal.
+      `ALTER TABLE reminders ADD COLUMN start_at INTEGER;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

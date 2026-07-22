@@ -265,6 +265,59 @@ export function goalsSummary(goals, now = new Date()) {
   };
 }
 
+// ── recurring bills / EMIs / subscriptions ──
+
+// Type-specific derived view of one reminder. For an EMI: how many instalments
+// are paid, how many remain, and the payoff date. For a subscription: the
+// annualised cost and billing cadence. Plain bills carry no extra info.
+export function billRow(r, now = new Date()) {
+  const kind = r.kind || 'bill';
+  const dueDay = r.due_day || 1;
+  const base = { id: r.id, kind, label: r.label, amount: r.amount, amountF: fmt(r.amount), dueDay };
+
+  if (kind === 'emi') {
+    const total = r.term_count || 0;
+    const start = new Date(r.start_at || r.created_at || now.getTime());
+    const monthsBetween = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+    // Instalments whose due date has already arrived, counting this month's only
+    // once its day has passed.
+    let paid = monthsBetween + (now.getDate() >= dueDay ? 1 : 0);
+    paid = Math.max(0, Math.min(total, paid));
+    const remaining = Math.max(0, total - paid);
+    // Last instalment falls (total-1) months after the first.
+    const payoff = new Date(start.getFullYear(), start.getMonth() + Math.max(0, total - 1), dueDay);
+    const payoffLabel = payoff.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+    const pct = total ? Math.round((paid / total) * 100) : 0;
+    return {
+      ...base,
+      typeLabel: 'EMI',
+      badge: 'EMI',
+      total,
+      paid,
+      remaining,
+      pct,
+      payoffLabel,
+      typeText: total ? `${paid} of ${total} paid · ${remaining} left · payoff ${payoffLabel}` : 'Loan instalment',
+    };
+  }
+
+  if (kind === 'subscription') {
+    const yearly = r.cadence === 'yearly';
+    const annual = yearly ? r.amount : r.amount * 12;
+    return {
+      ...base,
+      typeLabel: 'Subscription',
+      badge: 'SUB',
+      yearly,
+      annual,
+      annualF: fmt(annual),
+      typeText: `≈${fmt(annual)}/yr · billed ${yearly ? 'yearly' : 'monthly'}`,
+    };
+  }
+
+  return { ...base, typeLabel: 'Bill', badge: null, typeText: null };
+}
+
 // ── drill-down dashboard ──
 
 // Everything the reusable detail screen shows for one spending category:
