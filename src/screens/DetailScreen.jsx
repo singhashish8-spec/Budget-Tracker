@@ -2,7 +2,7 @@ import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
-import { categoryDetail, patternDetail } from '../state/selectors';
+import { categoryDetail, patternDetail, budgetRows } from '../state/selectors';
 
 // One reusable drill-down dashboard. state.detail = { kind, id } picks the
 // subject; it renders a spending category or a detected pattern, and is shaped
@@ -24,6 +24,12 @@ export default function DetailScreen() {
   }
 
   const d = categoryDetail(state.txns, state.categories, subject.id, { salaryDay: state.salaryDay });
+  // Budget context for this category, reusing the same logic the Budgets screen
+  // uses, so "am I on track here?" lives right next to the history.
+  const bRow = budgetRows(state.txns, state.categories, state.budgets, { salaryDay: state.salaryDay }).find((r) => r.cat === subject.id);
+  // A monthly reference line makes sense for month/cycle budgets, not for a
+  // one-off deadline budget spread over an arbitrary span.
+  const budgetLine = bRow && bRow.period !== 'custom' ? bRow.limit : null;
 
   return (
     <Shell title={d.title} mono={d.mono} color={d.color} onBack={goBack}>
@@ -40,9 +46,12 @@ export default function DetailScreen() {
         </div>
       </div>
 
+      {/* Budget vs actual */}
+      {bRow && <BudgetBand b={bRow} />}
+
       {/* 6-month trend */}
       <Card title="Last 6 months">
-        <TrendChart trend={d.trend} color={d.color} />
+        <TrendChart trend={d.trend} color={d.color} budgetLine={budgetLine} />
       </Card>
 
       {/* Top merchants */}
@@ -134,20 +143,59 @@ function PatternDetail({ signature }) {
   );
 }
 
-function TrendChart({ trend, color }) {
+function TrendChart({ trend, color, budgetLine = null }) {
+  const BAR_AREA = 92;
+  // Scale bars and the budget line to the same max so the line reads correctly
+  // even in a month that ran over budget.
+  const max = Math.max(1, ...trend.map((m) => m.total), budgetLine || 0);
+  const linePct = budgetLine ? Math.min(100, (budgetLine / max) * 100) : null;
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 108, padding: '4px 2px 0' }}>
-      {trend.map((m, i) => {
-        const current = i === trend.length - 1;
-        return (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
-            <div style={{ fontSize: 10, color: colors.textTertiary, fontWeight: 600 }}>{m.total > 0 ? shortAmt(m.total) : ''}</div>
-            <div style={{ width: '100%', maxWidth: 34, height: `${m.pct}%`, minHeight: m.total > 0 ? 4 : 0, borderRadius: 6, background: current ? color : tint(color) }} />
-            <div style={{ fontSize: 11, color: current ? colors.ink : colors.textSecondary, fontWeight: current ? 700 : 500 }}>{m.label}</div>
+    <div>
+      <div style={{ position: 'relative', height: BAR_AREA, display: 'flex', alignItems: 'flex-end', gap: 8, padding: '0 2px' }}>
+        {linePct != null && (
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: `${linePct}%`, borderTop: `1.5px dashed ${colors.textTertiary}`, pointerEvents: 'none' }}>
+            <span style={{ position: 'absolute', right: 0, top: -13, fontSize: 9, color: colors.textTertiary, fontWeight: 700, background: colors.cardSurface, padding: '0 3px' }}>budget</span>
           </div>
-        );
-      })}
+        )}
+        {trend.map((m, i) => {
+          const current = i === trend.length - 1;
+          const over = budgetLine && m.total > budgetLine;
+          const h = m.total > 0 ? Math.max(4, (m.total / max) * BAR_AREA) : 0;
+          return (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+              <div style={{ fontSize: 10, color: colors.textTertiary, fontWeight: 600, marginBottom: 3 }}>{m.total > 0 ? shortAmt(m.total) : ''}</div>
+              <div style={{ width: '100%', maxWidth: 34, height: h, borderRadius: 6, background: over ? colors.danger : current ? color : tint(color) }} />
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 6, padding: '0 2px' }}>
+        {trend.map((m, i) => (
+          <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 11, color: i === trend.length - 1 ? colors.ink : colors.textSecondary, fontWeight: i === trend.length - 1 ? 700 : 500 }}>{m.label}</div>
+        ))}
+      </div>
     </div>
+  );
+}
+
+// Budget vs actual for one category, using the same figures as the Budgets
+// screen: how much of the limit is used this period, and the daily allowance.
+function BudgetBand({ b }) {
+  const periodLabel = b.period === 'cycle' ? 'this pay cycle' : b.period === 'custom' ? 'this period' : 'this month';
+  const statusColor = b.status === 'over' ? colors.danger : b.status === 'near' ? colors.warning : colors.primary;
+  return (
+    <Card title={`Budget · ${periodLabel}`}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <span style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>
+          {b.spentF} <span style={{ fontSize: 13, fontWeight: 400, color: colors.textSecondary }}>/ {b.limitF}</span>
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: statusColor }}>{b.statusText}</span>
+      </div>
+      <div style={{ height: 8, borderRadius: 100, background: colors.divider, overflow: 'hidden' }}>
+        <div style={{ height: '100%', borderRadius: 100, background: statusColor, width: `${b.barPct}%` }} />
+      </div>
+      <div style={{ fontSize: 12.5, color: colors.textSecondary }}>{b.paceText}</div>
+    </Card>
   );
 }
 
