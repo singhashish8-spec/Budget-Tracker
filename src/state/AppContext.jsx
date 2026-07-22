@@ -637,6 +637,28 @@ export function AppProvider({ children }) {
     [set, showToast],
   );
 
+  // Turn a detected recurring merchant into a real bill reminder: name it after
+  // the merchant, use the average as the amount, and infer the due-day from the
+  // most recent payment. Marks the pattern 'confirmed' so it reads "tracked".
+  const trackPatternAsBill = useCallback(
+    async ({ signature, merchant, amount, cat }) => {
+      const matches = (backStateRef.current.txns || []).filter((t) => (t.merchant || '').trim().toLowerCase() === signature);
+      let latest = 0;
+      for (const t of matches) {
+        const ms = t.occurred_at || t.sms_date || t.created_at || 0;
+        if (ms > latest) latest = ms;
+      }
+      const dueDay = latest ? new Date(latest).getDate() : 1;
+      const kind = cat === 'subscriptions' ? 'subscription' : 'bill';
+      await repo.addReminder({ label: merchant, amount, dueDay, kind, cadence: kind === 'subscription' ? 'monthly' : null });
+      await repo.setPatternPref(signature, 'confirmed');
+      const [reminders, patternPrefs] = await Promise.all([repo.listReminders(), repo.listPatternPrefs()]);
+      set({ reminders, patternPrefs });
+      showToast(`Now tracking ${merchant} as a bill`);
+    },
+    [set, showToast],
+  );
+
   // User-defined recurring items shown alongside auto-detected patterns.
   const addCustomPattern = useCallback(
     ({ label, amount, cadence }) => {
@@ -1002,6 +1024,7 @@ export function AppProvider({ children }) {
       setPatternPref,
       clearPatternPref,
       setMerchantCategory,
+      trackPatternAsBill,
       addCustomPattern,
       deleteCustomPattern,
       scanSms,
@@ -1066,6 +1089,7 @@ export function AppProvider({ children }) {
       setPatternPref,
       clearPatternPref,
       setMerchantCategory,
+      trackPatternAsBill,
       addCustomPattern,
       deleteCustomPattern,
       scanSms,

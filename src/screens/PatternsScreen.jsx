@@ -6,7 +6,7 @@ import { detectPatterns } from '../state/selectors';
 import { unlock as biometricUnlock } from '../services/appLock';
 
 export default function PatternsScreen() {
-  const { state, goBack, openDetail, setPatternPref, clearPatternPref, showToast, addCustomPattern, deleteCustomPattern } = useApp();
+  const { state, go, goBack, openDetail, setPatternPref, trackPatternAsBill, showToast, addCustomPattern, deleteCustomPattern } = useApp();
   const patterns = detectPatterns(state.txns, state.categories, state.patternPrefs);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [cpLabel, setCpLabel] = useState('');
@@ -72,20 +72,26 @@ export default function PatternsScreen() {
               Tagged {p.label} {p.count} times, totalling {p.totalF} so far.
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {p.confirmed ? (
+                <button
+                  onClick={() => go('reminders')}
+                  style={{ fontSize: 13, fontWeight: 600, padding: '7px 15px', borderRadius: 100, cursor: 'pointer', background: colors.successTint, color: colors.successText, border: `1px solid ${colors.successBorder}` }}
+                >
+                  ✓ Tracked as a bill · View
+                </button>
+              ) : (
+                <button
+                  onClick={() => trackPatternAsBill({ signature: p.signature, merchant: p.merchant, amount: p.avgAmount, cat: p.cat })}
+                  style={{ fontSize: 13, fontWeight: 600, padding: '7px 15px', borderRadius: 100, cursor: 'pointer', background: colors.primary, color: colors.onPrimary, border: `1px solid ${colors.primary}` }}
+                >
+                  + Track as a bill
+                </button>
+              )}
               <button
-                onClick={() => (p.confirmed ? clearPatternPref(p.signature) : setPatternPref(p.signature, 'confirmed'))}
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  padding: '7px 15px',
-                  borderRadius: 100,
-                  cursor: 'pointer',
-                  background: p.confirmed ? colors.successTint : colors.primary,
-                  color: p.confirmed ? colors.primary : colors.onPrimary,
-                  border: `1px solid ${p.confirmed ? colors.successBorder : colors.primary}`,
-                }}
+                onClick={() => openDetail({ kind: 'pattern', id: p.signature })}
+                style={{ fontSize: 13, fontWeight: 600, padding: '7px 12px', borderRadius: 100, cursor: 'pointer', background: 'transparent', color: colors.textSecondary }}
               >
-                {p.confirmed ? 'Confirmed pattern' : 'Confirm pattern'}
+                Set category
               </button>
             </div>
           </div>

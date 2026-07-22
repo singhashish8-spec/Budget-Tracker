@@ -485,6 +485,7 @@ export function detectPatterns(txns, categories, patternPrefs) {
         avgAmount: avg,
         avgF: fmt(avg),
         totalF: fmt(g.total),
+        cat: g.cat ?? null,
         label: cat?.label ?? 'Uncategorised',
         mono: cat?.mono ?? '?',
         color: cat?.color ?? '#8A8577',
