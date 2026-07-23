@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleWindow, txnWhen } from '../utils/date';
@@ -31,8 +32,42 @@ export default function HomeScreen() {
   const monthLabel = currentMonthLabel();
   const goals = goalsSummary(state.goals);
 
+  // Collapsing header: once the hero "Spent" card scrolls up out of view, a
+  // compact bar slides down carrying the same figure — so the headline number is
+  // always one glance away. An IntersectionObserver on the hero drives it, so it
+  // works regardless of how many banners sit above the hero on any given day.
+  const scrollRef = useRef(null);
+  const heroRef = useRef(null);
+  const [condensed, setCondensed] = useState(false);
+  useEffect(() => {
+    const root = scrollRef.current;
+    const target = heroRef.current;
+    if (!root || !target || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(([e]) => setCondensed(!e.isIntersecting), { root, threshold: 0 });
+    io.observe(target);
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Condensed header — slides in when the hero card leaves the top. Sits
+          below the floating action icons (zIndex 42 < 45) and its content is
+          left-aligned with room kept on the right so the two never collide. */}
+      <div
+        className="home-condensed"
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 42,
+          padding: 'calc(env(safe-area-inset-top, 0px) + 9px) 150px 9px 20px',
+          background: colors.bgApp, borderBottom: `1px solid ${colors.divider}`,
+          transform: condensed ? 'translateY(0)' : 'translateY(-101%)',
+          opacity: condensed ? 1 : 0,
+          transition: 'transform 0.26s cubic-bezier(0.2,0.75,0.3,1), opacity 0.2s ease',
+          pointerEvents: condensed ? 'auto' : 'none',
+        }}
+      >
+        <div style={{ fontSize: 10.5, letterSpacing: 0.8, textTransform: 'uppercase', color: colors.textTertiary, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{spentLabel}</div>
+        <Amount style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>{fmt(spend)}</Amount>
+      </div>
       <div style={{ padding: '0 4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 700 }}>Home</div>
@@ -63,7 +98,7 @@ export default function HomeScreen() {
         </button>
       )}
 
-      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '20px 18px', color: colors.onPrimary }}>
+      <div ref={heroRef} style={{ background: colors.surfaceDark, borderRadius: 20, padding: '20px 18px', color: colors.onPrimary }}>
         <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>{spentLabel}</div>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 36, fontWeight: 700, margin: '6px 0 14px' }}><Amount>{fmt(spend)}</Amount></div>
         <div style={{ height: 6, borderRadius: 100, background: 'rgba(247,244,238,0.15)', overflow: 'hidden' }}>
