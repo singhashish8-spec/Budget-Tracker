@@ -30,8 +30,65 @@ export const SURFACES = [
   { key: 'glass', label: 'Frosted glass' },
 ];
 
+// Motion level is a three-way dial. 'on' = full (screen transitions + press
+// feedback), 'reduced' = calm (no screen slide, keep the small tactile press),
+// 'off' = nothing moves. Stored as the historical key 'on' so older saves keep
+// working. Haptics (APK) will later ride the same choice.
+export const MOTIONS = [
+  { key: 'on', label: 'On' },
+  { key: 'reduced', label: 'Reduced' },
+  { key: 'off', label: 'Off' },
+];
+
+// Whole-UI comfort scale (accessibility). Applied as a `zoom` multiplier on the
+// app shell so type, spacing and controls all grow together. 'default' is 1×.
+export const FONT_SCALES = [
+  { key: 'small', label: 'Small', value: 0.92 },
+  { key: 'default', label: 'Default', value: 1 },
+  { key: 'large', label: 'Large', value: 1.12 },
+  { key: 'xl', label: 'Larger', value: 1.24 },
+];
+
 const CACHE_KEY = 'bt-theme';
 const DEFAULTS = { mode: 'system', accent: 'green', surface: 'standard' };
+
+// Display preferences that live outside colour/theme — motion level, comfort
+// scale and the privacy blur. Cached separately so they can be applied before
+// the first paint (a font-scale flash would be visible), with the database
+// staying authoritative once it loads. Mirrors the theme-cache pattern above.
+const DISPLAY_KEY = 'bt-display';
+const DISPLAY_DEFAULTS = { motion: 'on', fontScale: 'default', privacy: false };
+
+export function applyDisplay({ motion, fontScale, privacy } = {}) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  const next = { ...loadCachedDisplay() };
+
+  if (motion !== undefined) {
+    root.setAttribute('data-motion', motion);
+    next.motion = motion;
+  }
+  if (fontScale !== undefined) {
+    const fs = FONT_SCALES.find((x) => x.key === fontScale) || FONT_SCALES[1];
+    root.style.setProperty('--bt-font-scale', String(fs.value));
+    next.fontScale = fontScale;
+  }
+  if (privacy !== undefined) {
+    if (privacy) root.setAttribute('data-private', '1');
+    else root.removeAttribute('data-private');
+    next.privacy = !!privacy;
+  }
+
+  try { localStorage.setItem(DISPLAY_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+}
+
+export function loadCachedDisplay() {
+  try {
+    const v = JSON.parse(localStorage.getItem(DISPLAY_KEY));
+    if (v && typeof v === 'object') return { ...DISPLAY_DEFAULTS, ...v };
+  } catch { /* ignore */ }
+  return { ...DISPLAY_DEFAULTS };
+}
 
 export function applyTheme({ mode = 'system', accent = 'green', surface = 'standard' } = {}) {
   if (typeof document === 'undefined') return;

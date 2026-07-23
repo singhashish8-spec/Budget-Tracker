@@ -4,6 +4,7 @@ import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
 import { detectPatterns } from '../state/selectors';
 import { unlock as biometricUnlock } from '../services/appLock';
+import Amount from '../components/Amount';
 
 export default function PatternsScreen() {
   const { state, go, goBack, openDetail, setPatternPref, trackPatternAsBill, showToast, addCustomPattern, deleteCustomPattern } = useApp();
@@ -55,7 +56,7 @@ export default function PatternsScreen() {
               </div>
               <button onClick={() => openDetail({ kind: 'pattern', id: p.signature })} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', cursor: 'pointer' }}>
                 <div style={{ fontSize: 14.5, fontWeight: 600 }}>{p.merchant}</div>
-                <div style={{ fontSize: 12, color: colors.textTertiary }}>Seen {p.count} times · avg {p.avgF} · tap for details ›</div>
+                <div style={{ fontSize: 12, color: colors.textTertiary }}>Seen {p.count} times · avg <Amount>{p.avgF}</Amount> · tap for details ›</div>
               </button>
               <button
                 onClick={() => requestDelete(p)}
@@ -69,7 +70,7 @@ export default function PatternsScreen() {
               </button>
             </div>
             <div style={{ fontSize: 13.5, lineHeight: 1.5, color: colors.textSecondary, marginBottom: 10 }}>
-              Tagged {p.label} {p.count} times, totalling {p.totalF} so far.
+              Tagged {p.label} {p.count} times, totalling <Amount>{p.totalF}</Amount> so far.
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {p.confirmed ? (
@@ -116,7 +117,7 @@ export default function PatternsScreen() {
               <div style={{ fontSize: 14.5, fontWeight: 600 }}>{p.label}</div>
               <div style={{ fontSize: 12, color: colors.textTertiary }}>{p.cadence}</div>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>{fmt(p.amount)}</div>
+            <Amount style={{ fontSize: 14, fontWeight: 600 }}>{fmt(p.amount)}</Amount>
             <button onClick={() => deleteCustomPattern(p.id)} style={{ color: colors.textTertiary, cursor: 'pointer', fontSize: 13, marginLeft: 4 }}>✕</button>
           </div>
         ))}

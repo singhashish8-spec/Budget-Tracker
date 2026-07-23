@@ -3,6 +3,7 @@ import { fmt } from '../utils/currency';
 import { txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { categoryDetail, patternDetail, budgetRows } from '../state/selectors';
+import Amount from '../components/Amount';
 
 // One reusable drill-down dashboard. state.detail = { kind, id } picks the
 // subject; it renders a spending category or a detected pattern, and is shaped
@@ -36,7 +37,7 @@ export default function DetailScreen() {
       {/* Headline: what this category cost this cycle, vs last */}
       <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.onPrimary }}>
         <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>Spent {d.cycleLabel}</div>
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 34, fontWeight: 700, margin: '5px 0 8px' }}>{d.thisTotalF}</div>
+        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 34, fontWeight: 700, margin: '5px 0 8px' }}><Amount>{d.thisTotalF}</Amount></div>
         <div style={{ fontSize: 13, color: colors.accentGreen3 }}>
           {d.lastTotal === 0 && d.thisTotal === 0
             ? 'No spending recorded here yet'
@@ -64,7 +65,7 @@ export default function DetailScreen() {
                   {m.merchant}
                   <span style={{ color: colors.textTertiary, fontSize: 12 }}> · {m.count}×</span>
                 </div>
-                <div style={{ fontWeight: 600 }}>{m.totalF}</div>
+                <Amount style={{ fontWeight: 600 }}>{m.totalF}</Amount>
               </div>
             ))}
           </div>
@@ -92,7 +93,7 @@ function PatternDetail({ signature }) {
       <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.onPrimary }}>
         <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>Recurring · {d.categoryLabel}</div>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 34, fontWeight: 700, margin: '5px 0 8px' }}>Seen {d.count}×</div>
-        <div style={{ fontSize: 13, color: colors.accentGreen3 }}>{d.totalF} total · {d.avgF} on average</div>
+        <div style={{ fontSize: 13, color: colors.accentGreen3 }}><Amount>{d.totalF}</Amount> total · <Amount>{d.avgF}</Amount> on average</div>
       </div>
 
       <Card title="Always file under">
@@ -187,7 +188,7 @@ function BudgetBand({ b }) {
     <Card title={`Budget · ${periodLabel}`}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <span style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>
-          {b.spentF} <span style={{ fontSize: 13, fontWeight: 400, color: colors.textSecondary }}>/ {b.limitF}</span>
+          <Amount>{b.spentF}</Amount> <span style={{ fontSize: 13, fontWeight: 400, color: colors.textSecondary }}>/ <Amount>{b.limitF}</Amount></span>
         </span>
         <span style={{ fontSize: 13, fontWeight: 600, color: statusColor }}>{b.statusText}</span>
       </div>
@@ -216,7 +217,7 @@ function TxnList({ txns, color, mono, onTap }) {
             <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant}</div>
             <div style={{ fontSize: 12.5, color: colors.textSecondary }}>{txnWhen(t)}</div>
           </div>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>−{fmt(t.amount)}</div>
+          <Amount style={{ fontSize: 14, fontWeight: 600 }}>−{fmt(t.amount)}</Amount>
         </button>
       ))}
     </div>

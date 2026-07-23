@@ -3,6 +3,7 @@ import { fmt } from '../utils/currency';
 import { txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { alertCount, filterTransactions } from '../state/selectors';
+import Amount from '../components/Amount';
 
 export default function TransactionsScreen() {
   const { state, set, openCategorySheet } = useApp();
@@ -100,9 +101,9 @@ export default function TransactionsScreen() {
                   </div>
                 )}
               </div>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
+              <Amount style={{ fontSize: 14.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
                 {income ? '+' : '−'}{fmt(t.amount)}
-              </div>
+              </Amount>
             </button>
           );
         })}

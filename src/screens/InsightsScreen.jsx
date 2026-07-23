@@ -3,6 +3,7 @@ import { colors } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
 import { exportCsv, exportHtmlReport } from '../services/exportReport';
+import Amount from '../components/Amount';
 
 const TAX_80C_LIMIT = 150000;
 
@@ -83,21 +84,21 @@ function NetWorthCard({ assets, liab, items, onAdd, onDelete }) {
   return (
     <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px' }}>
       <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.textSecondary, fontWeight: 600 }}>Net worth</div>
-      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 32, fontWeight: 700, margin: '4px 0 12px', color: colors.primary }}>{fmt(assets - liab)}</div>
+      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 32, fontWeight: 700, margin: '4px 0 12px', color: colors.primary }}><Amount>{fmt(assets - liab)}</Amount></div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
         <div style={{ flex: 1, background: colors.successTint, borderRadius: 14, padding: '11px 13px' }}>
           <div style={{ fontSize: 12, color: colors.successText, fontWeight: 600 }}>Assets</div>
-          <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif" }}>{fmt(assets)}</div>
+          <Amount style={{ fontSize: 16, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif" }}>{fmt(assets)}</Amount>
         </div>
         <div style={{ flex: 1, background: colors.dangerTint, borderRadius: 14, padding: '11px 13px' }}>
           <div style={{ fontSize: 12, color: '#A35545', fontWeight: 600 }}>Liabilities</div>
-          <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif" }}>{fmt(liab)}</div>
+          <Amount style={{ fontSize: 16, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif" }}>{fmt(liab)}</Amount>
         </div>
       </div>
       {items.map((i) => (
         <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 13.5 }}>
           <span style={{ flex: 1, color: colors.textSecondary }}>{i.label}</span>
-          <span style={{ fontWeight: 600 }}>{i.kind === 'liability' ? '−' : ''}{fmt(i.amount)}</span>
+          <Amount style={{ fontWeight: 600 }}>{i.kind === 'liability' ? '−' : ''}{fmt(i.amount)}</Amount>
           <button onClick={() => onDelete(i.id)} style={{ color: colors.textTertiary, cursor: 'pointer', fontSize: 12 }}>✕</button>
         </div>
       ))}
@@ -155,7 +156,7 @@ function TaxCard({ regime, invested, onRegime, onInvested }) {
       ) : (
         <>
           <div style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 10 }}>
-            {fmt(invested)} of {fmt(TAX_80C_LIMIT)} invested —{' '}
+            <Amount>{fmt(invested)}</Amount> of <Amount>{fmt(TAX_80C_LIMIT)}</Amount> invested —{' '}
             <button onClick={() => setEditing(true)} style={{ color: colors.primary, fontWeight: 600, cursor: 'pointer' }}>edit</button>
           </div>
           <div style={{ height: 6, borderRadius: 100, background: colors.divider }}>

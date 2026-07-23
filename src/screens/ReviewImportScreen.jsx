@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
+import Amount from '../components/Amount';
 
 export default function ReviewImportScreen() {
   const { state, cancelReview, confirmReview, setReviewCategory } = useApp();
@@ -65,9 +66,9 @@ export default function ReviewImportScreen() {
                   {uncat ? 'Needs review — tap to categorise' : `${t.date} · ${cat.label}`}
                 </div>
               </div>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
+              <Amount style={{ fontSize: 14.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
                 {income ? '+' : '−'}{fmt(t.amount)}
-              </div>
+              </Amount>
             </button>
           );
         })}

@@ -7,7 +7,7 @@ import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransaction
 import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
 import { setGeminiKey } from '../services/aiExtract';
 import { writeAutoBackup, readAutoBackup } from '../services/autoBackup';
-import { applyTheme } from '../services/theme';
+import { applyTheme, applyDisplay } from '../services/theme';
 import { duplicateTxnIds } from './selectors';
 
 const AppStateContext = createContext(null);
@@ -50,7 +50,9 @@ const initialState = {
   themeMode: 'system', // 'system' | 'light' | 'dark'
   themeAccent: 'green',
   themeSurface: 'standard', // 'standard' | 'glass'
-  motionPref: 'on', // 'on' | 'reduced'
+  motionPref: 'on', // 'on' (full) | 'reduced' | 'off'
+  // Hide-balances: when true every amount rendered through <Amount> frosts over.
+  privacy: false,
   taxRegime: 'new',
   tax80cInvested: 0,
   salaryDay: 0, // 0 = not set (use calendar month); 1-31 = pay day; 32 = last day of month
@@ -139,6 +141,7 @@ export function AppProvider({ children }) {
           themeAccentStr,
           themeSurfaceStr,
           motionPrefStr,
+          privacyStr,
         ] = await Promise.all([
           repo.listCategories(),
           repo.listTransactions(),
@@ -163,6 +166,7 @@ export function AppProvider({ children }) {
           repo.getSetting('themeAccent', 'green'),
           repo.getSetting('themeSurface', 'standard'),
           repo.getSetting('motionPref', 'on'),
+          repo.getSetting('privacy', '0'),
         ]);
         const onboarded = onboardedFlag === '1';
         const appLock = appLockFlag === '1';
@@ -192,12 +196,13 @@ export function AppProvider({ children }) {
           themeAccent: themeAccentStr || 'green',
           themeSurface: themeSurfaceStr || 'standard',
           motionPref: motionPrefStr || 'on',
+          privacy: privacyStr === '1',
           loading: false,
         });
         setGeminiKey(geminiKeyStr || '');
         // Re-apply from the authoritative (DB) values in case the cache differed.
         applyTheme({ mode: themeModeStr || 'system', accent: themeAccentStr || 'green', surface: themeSurfaceStr || 'standard' });
-        if (typeof document !== 'undefined') document.documentElement.setAttribute('data-motion', motionPrefStr || 'on');
+        applyDisplay({ motion: motionPrefStr || 'on', privacy: privacyStr === '1' });
 
         // Database came up empty (wiped by a reinstall, most likely). Before
         // sending the user through onboarding and losing everything, see
@@ -409,10 +414,19 @@ export function AppProvider({ children }) {
     (pref) => {
       set({ motionPref: pref });
       repo.setSetting('motionPref', pref);
-      if (typeof document !== 'undefined') document.documentElement.setAttribute('data-motion', pref);
+      applyDisplay({ motion: pref });
     },
     [set],
   );
+
+  // Hide-balances: flip the privacy blur on every amount. Persisted so it holds
+  // across launches, and applied via the same display layer as motion.
+  const togglePrivacy = useCallback(() => {
+    const next = !backStateRef.current.privacy;
+    set({ privacy: next });
+    repo.setSetting('privacy', next ? '1' : '0');
+    applyDisplay({ privacy: next });
+  }, [set]);
 
   // Gemini API key entered by the user (Settings). Stored in the encrypted DB,
   // never in the public web bundle. Pushed into the AI service immediately.
@@ -1074,6 +1088,7 @@ export function AppProvider({ children }) {
       setThemeAccent,
       setThemeSurface,
       setMotionPref,
+      togglePrivacy,
       setSalaryDay,
       setGeminiApiKey,
       toggleCategoryEnabled,
@@ -1142,6 +1157,7 @@ export function AppProvider({ children }) {
       setThemeAccent,
       setThemeSurface,
       setMotionPref,
+      togglePrivacy,
       setSalaryDay,
       setGeminiApiKey,
       toggleCategoryEnabled,

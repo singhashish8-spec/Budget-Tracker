@@ -216,7 +216,21 @@ button:active { transform: scale(0.97); }
   button { transition: none; }
   button:active { transform: none; }
 }
-/* Explicit user choice. */
+/* Explicit user choice — three levels (Settings → Appearance → Animations).
+   Reduced calms the big movement (no screen slide) but keeps the small tactile
+   press, so taps still feel responsive. Off stills everything. */
 :root[data-motion='reduced'] .screen-enter { animation: none; }
-:root[data-motion='reduced'] button { transition: none; }
-:root[data-motion='reduced'] button:active { transform: none; }
+:root[data-motion='off'] .screen-enter { animation: none; }
+:root[data-motion='off'] button { transition: none; }
+:root[data-motion='off'] button:active { transform: none; }
+
+/* ── Hide balances (privacy blur) ────────────────────────────────────────────
+   The eye toggle in the top bar stamps [data-private] on the root; every amount
+   rendered through the shared <Amount> component carries .bt-amt and frosts over
+   at once. Inert unless [data-private] is set, so it costs nothing when off. */
+.bt-amt { transition: filter 0.18s ease; }
+:root[data-private] .bt-amt {
+  filter: blur(8px);
+  -webkit-user-select: none;
+  user-select: none;
+}
