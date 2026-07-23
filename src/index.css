@@ -242,6 +242,11 @@ button:active { transform: scale(0.97); }
 :root[data-motion='reduced'] .skl,
 :root[data-motion='off'] .skl { animation: none; }
 
+/* The collapsing Home header slides by default; hold it still when the user
+   asked for no motion (or the OS did). It still appears — just without the glide. */
+@media (prefers-reduced-motion: reduce) { .home-condensed { transition: none !important; } }
+:root[data-motion='off'] .home-condensed { transition: none !important; }
+
 /* ── Hide balances (privacy blur) ────────────────────────────────────────────
    The eye toggle in the top bar stamps [data-private] on the root; every amount
    rendered through the shared <Amount> component carries .bt-amt and frosts over
