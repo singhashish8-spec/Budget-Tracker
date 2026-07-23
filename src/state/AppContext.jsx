@@ -582,6 +582,16 @@ export function AppProvider({ children }) {
     [state.sheetFor, set],
   );
 
+  // Categorise a specific transaction by id (used by the inline row expander on
+  // the Transactions screen — no sheet needed).
+  const categorizeTxn = useCallback(
+    async (txnId, catId) => {
+      await repo.setTransactionCategory(txnId, catId);
+      set({ txns: await repo.listTransactions() });
+    },
+    [set],
+  );
+
   // A single hand-entered transaction (the "+" button). Cash leaves no SMS
   // trail, so this is the only way it can ever be recorded.
   const addManualTransaction = useCallback(
@@ -1135,6 +1145,7 @@ export function AppProvider({ children }) {
       openCategorySheet,
       closeCategorySheet,
       setTxnCategory,
+      categorizeTxn,
       editTransaction,
       editBudget,
       removeBudget,
@@ -1204,6 +1215,7 @@ export function AppProvider({ children }) {
       openCategorySheet,
       closeCategorySheet,
       setTxnCategory,
+      categorizeTxn,
       editTransaction,
       editBudget,
       removeBudget,

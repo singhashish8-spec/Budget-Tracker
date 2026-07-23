@@ -433,6 +433,20 @@ export async function getRawSmsForTxn(txnId) {
   return res.values?.[0]?.raw_sms ?? null;
 }
 
+// txn_id → [raw_sms, …] (oldest first) for every stored message. Backs the
+// Transactions "show full message" view. Reads from the app's own sms_log copy,
+// which persists even after the phone's SMS are deleted, until a Reset.
+export async function listSmsTextByTxn() {
+  const db = await getDb();
+  const res = await db.query(`SELECT txn_id, raw_sms FROM sms_log WHERE txn_id IS NOT NULL ORDER BY created_at ASC`);
+  const map = {};
+  for (const r of res.values ?? []) {
+    if (r.txn_id == null) continue;
+    (map[r.txn_id] = map[r.txn_id] || []).push(r.raw_sms);
+  }
+  return map;
+}
+
 // Every message behind a transaction, oldest first. More than one means texts
 // were merged as duplicates — the UI shows them so a wrong merge can be undone.
 export async function listSmsForTxn(txnId) {

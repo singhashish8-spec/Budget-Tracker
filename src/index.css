@@ -247,6 +247,18 @@ button:active { transform: scale(0.97); }
 @media (prefers-reduced-motion: reduce) { .home-condensed { transition: none !important; } }
 :root[data-motion='off'] .home-condensed { transition: none !important; }
 
+/* ── Expand / collapse (Collapse component) ──────────────────────────────────
+   grid-template-rows 0fr↔1fr animates to natural height with no JS measuring.
+   Stilled when the user or OS asks for reduced motion. */
+.bt-collapse { transition: grid-template-rows 0.26s cubic-bezier(0.2, 0.75, 0.3, 1); }
+@media (prefers-reduced-motion: reduce) { .bt-collapse { transition: none; } }
+:root[data-motion='off'] .bt-collapse,
+:root[data-motion='reduced'] .bt-collapse { transition: none; }
+/* A chevron that points down and rotates up when open (set data-open on it). */
+.bt-chev { transition: transform 0.22s ease; }
+:root[data-motion='off'] .bt-chev { transition: none; }
+.bt-chev[data-open='1'] { transform: rotate(180deg); }
+
 /* ── Hide balances (privacy blur) ────────────────────────────────────────────
    The eye toggle in the top bar stamps [data-private] on the root; every amount
    rendered through the shared <Amount> component carries .bt-amt and frosts over
