@@ -23,6 +23,7 @@ import ProcessingOverlay from './components/ProcessingOverlay';
 import Toast from './components/Toast';
 import LockScreen from './components/LockScreen';
 import HamburgerDrawer from './components/HamburgerDrawer';
+import SkeletonHome from './components/SkeletonHome';
 
 const TAB_SCREENS = ['home', 'transactions', 'budgets', 'insights'];
 // Screens reached by drilling in animate differently from the top-level tabs:
@@ -35,11 +36,7 @@ function Shell() {
   setActiveCurrency(state.currency);
 
   if (state.loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.bgApp }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', border: `3px solid ${colors.cardBorder}`, borderTopColor: colors.primary, animation: 'spin 0.9s linear infinite' }} />
-      </div>
-    );
+    return <SkeletonHome />;
   }
 
   if (state.loadError) {

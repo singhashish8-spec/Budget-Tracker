@@ -3,6 +3,7 @@ import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
 import { listSmsForTxn } from '../db/repo';
+import Amount from './Amount';
 
 const METHOD_LABELS = { cash: 'paid in cash', upi: 'paid by UPI', card: 'paid by card', bank: 'bank transfer' };
 
@@ -99,9 +100,9 @@ export default function CategorySheet() {
         {/* Header: merchant + amount */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{txn.merchant}</div>
-          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, color: income ? colors.primary : colors.ink, flexShrink: 0 }}>
+          <Amount style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, color: income ? colors.primary : colors.ink, flexShrink: 0 }}>
             {income ? '+' : '−'}{fmt(txn.amount)}
-          </div>
+          </Amount>
         </div>
 
         {/* Meta: bank + date/time */}

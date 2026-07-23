@@ -4,7 +4,7 @@ import { CURRENCIES } from '../utils/currency';
 import { salaryDayLabel } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { backupToDrive, restoreFromFile } from '../services/backup';
-import { MODES, ACCENTS, SURFACES } from '../services/theme';
+import { MODES, ACCENTS, SURFACES, MOTIONS } from '../services/theme';
 
 export default function SettingsScreen() {
   const { state, go, goBack, showToast, setCurrency, setSalaryDay, setGeminiApiKey, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
@@ -91,9 +91,9 @@ export default function SettingsScreen() {
         </div>
 
         <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, margin: '18px 0 4px' }}>Animations</div>
-        <div style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 8 }}>Smooth screen transitions and tap feedback. Choose Reduced if you prefer things still.</div>
+        <div style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 8 }}>Screen transitions and tap feedback. Reduced keeps taps responsive but calms the movement; Off stills everything.</div>
         <div style={{ display: 'flex', gap: 6, background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: 3 }}>
-          {[{ key: 'on', label: 'On' }, { key: 'reduced', label: 'Reduced' }].map((m) => {
+          {MOTIONS.map((m) => {
             const on = (state.motionPref || 'on') === m.key;
             return (
               <button

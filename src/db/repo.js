@@ -61,11 +61,21 @@ export async function addTransaction(txn) {
 
 // Bulk-delete transactions by id (used by the duplicate cleanup). Orphaned
 // sms_log rows are left in place — their bodies still serve de-dup.
-export async function deleteTransactions(ids) {
+// Delete many transactions at once. Batches into `IN (...)` statements so a
+// 500-row cleanup is a couple of database round-trips instead of 500 — the old
+// one-await-per-row version was slow enough on a phone to look frozen. `onProgress`
+// (optional) is called with the running deleted-count so the UI can show a bar.
+export async function deleteTransactions(ids, onProgress) {
   if (!ids || !ids.length) return 0;
   const db = await getDb();
-  for (const id of ids) {
-    await db.run(`DELETE FROM transactions WHERE id = ?`, [id]);
+  const CHUNK = 200; // well under SQLite's ~999 bound-variable limit
+  let done = 0;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    const placeholders = slice.map(() => '?').join(',');
+    await db.run(`DELETE FROM transactions WHERE id IN (${placeholders})`, slice);
+    done += slice.length;
+    onProgress?.(done, ids.length);
   }
   await persist();
   return ids.length;
@@ -111,8 +121,13 @@ export async function deleteTransaction(id) {
   await persist();
 }
 
-export async function addTransactions(txns) {
-  for (const t of txns) await addTransaction(t);
+export async function addTransactions(txns, onProgress) {
+  let done = 0;
+  for (const t of txns) {
+    await addTransaction(t);
+    done += 1;
+    onProgress?.(done, txns.length);
+  }
 }
 
 export async function setTransactionCategory(id, categoryId) {

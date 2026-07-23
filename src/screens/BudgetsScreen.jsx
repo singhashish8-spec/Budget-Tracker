@@ -4,6 +4,7 @@ import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
 import { budgetRows, suggestedLimit } from '../state/selectors';
 import { salaryDayLabel } from '../utils/date';
+import Amount from '../components/Amount';
 
 const PERIOD_LABELS = { month: 'This month', cycle: 'This pay cycle', custom: 'Until deadline' };
 
@@ -87,8 +88,8 @@ export default function BudgetsScreen() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
           <div style={{ fontSize: 13, color: colors.accentGreen3 }}>Overall</div>
           <div style={{ fontSize: 14 }}>
-            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 19, fontWeight: 700 }}>{fmt(overallSpent)}</span>
-            <span style={{ color: colors.accentGreen3 }}> of {fmt(overallLimit)}</span>
+            <Amount style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 19, fontWeight: 700 }}>{fmt(overallSpent)}</Amount>
+            <span style={{ color: colors.accentGreen3 }}> of <Amount>{fmt(overallLimit)}</Amount></span>
           </div>
         </div>
         <div style={{ height: 6, borderRadius: 100, background: 'rgba(247,244,238,0.15)' }}>
@@ -96,7 +97,7 @@ export default function BudgetsScreen() {
         </div>
         {rows.length > 0 && soonestDaysLeft > 0 && (
           <div style={{ marginTop: 12, fontSize: 13, color: colors.accentGreen2 }}>
-            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 }}>{fmt(overallPerDay)}</span>
+            <Amount style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 }}>{fmt(overallPerDay)}</Amount>
             <span style={{ color: colors.accentGreen3 }}> a day left across all budgets</span>
           </div>
         )}
@@ -119,8 +120,8 @@ export default function BudgetsScreen() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 6 }}>
                   <span style={{ fontWeight: 600 }}>{b.label}</span>
                   <span>
-                    <span style={{ fontWeight: 600 }}>{b.spentF}</span>
-                    <span style={{ color: colors.textSecondary }}> / {b.limitF}</span>
+                    <Amount style={{ fontWeight: 600 }}>{b.spentF}</Amount>
+                    <span style={{ color: colors.textSecondary }}> / <Amount>{b.limitF}</Amount></span>
                   </span>
                 </div>
                 <div style={{ height: 5, borderRadius: 100, background: colors.divider, marginBottom: 6 }}>
@@ -195,7 +196,7 @@ function EditBudgetSheet({ row, onSave, onRemove, onClose, salaryDay }) {
         <div style={{ width: 40, height: 4, borderRadius: 100, background: colors.track, margin: '0 auto 14px' }} />
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>{row.label} budget</div>
         <div style={{ fontSize: 13.5, color: colors.textSecondary }}>
-          {row.spentF} spent · {row.paceText}
+          <Amount>{row.spentF}</Amount> spent · {row.paceText}
         </div>
         <PeriodPicker period={period} setPeriod={setPeriod} endsAt={endsAt} setEndsAt={setEndsAt} salaryDay={salaryDay} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 14, padding: '12px 16px', margin: '12px 0' }}>
@@ -300,7 +301,7 @@ function NewBudgetSheet({ availableCats, onSave, onClose, txns, salaryDay }) {
             onClick={() => setAmt(String(suggestion))}
             style={{ marginTop: 8, fontSize: 12.5, color: colors.primary, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
           >
-            You usually spend about {fmt(suggestion)} a month here — use that
+            You usually spend about <Amount>{fmt(suggestion)}</Amount> a month here — use that
           </button>
         )}
       </div>

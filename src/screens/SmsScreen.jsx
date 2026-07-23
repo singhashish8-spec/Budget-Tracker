@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
+import Amount from '../components/Amount';
 
 export default function SmsScreen() {
   const { state, goBack, scanSms, openCategorySheet, addUnmatchedAsTransaction, ignoreUnmatched } = useApp();
@@ -106,9 +107,9 @@ export default function SmsScreen() {
                   <div style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant}</div>
                   <div style={{ fontSize: 12, color: uncat ? colors.danger : colors.textSecondary, fontWeight: uncat ? 600 : 400 }}>{uncat ? 'Needs review' : `${cat.label} · auto-detected`}</div>
                 </div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
+                <Amount style={{ fontSize: 13.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
                   {income ? '+' : '−'}{fmt(t.amount)}
-                </div>
+                </Amount>
               </button>
             </div>
           );

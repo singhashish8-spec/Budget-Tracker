@@ -5,6 +5,7 @@ import { useApp } from '../state/AppContext';
 import { alertCount, topCategories, homeTotals, inWindow, goalsSummary } from '../state/selectors';
 import QuickAddBar from '../components/QuickAddBar';
 import DuplicateBanner from '../components/DuplicateBanner';
+import Amount from '../components/Amount';
 
 export default function HomeScreen() {
   const { state, go, goReview, openCategorySheet, openDetail } = useApp();
@@ -64,7 +65,7 @@ export default function HomeScreen() {
 
       <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '20px 18px', color: colors.onPrimary }}>
         <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>{spentLabel}</div>
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 36, fontWeight: 700, margin: '6px 0 14px' }}>{fmt(spend)}</div>
+        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 36, fontWeight: 700, margin: '6px 0 14px' }}><Amount>{fmt(spend)}</Amount></div>
         <div style={{ height: 6, borderRadius: 100, background: 'rgba(247,244,238,0.15)', overflow: 'hidden' }}>
           <div style={{ height: '100%', borderRadius: 100, background: colors.accentGreen1, width: `${spendPct}%` }} />
         </div>
@@ -72,7 +73,7 @@ export default function HomeScreen() {
           <div style={{ fontSize: 13, color: colors.accentGreen3 }}>{spendPct}% of income spent</div>
           <div style={{ fontSize: 13 }}>
             <span style={{ color: colors.accentGreen3 }}>Income </span>
-            <span style={{ fontWeight: 600, color: colors.accentGreen2 }}>{fmt(income)}</span>
+            <Amount style={{ fontWeight: 600, color: colors.accentGreen2 }}>{fmt(income)}</Amount>
           </div>
         </div>
       </div>
@@ -95,7 +96,7 @@ export default function HomeScreen() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 5 }}>
                 <span style={{ fontWeight: 500 }}>{c.label}</span>
-                <span style={{ fontWeight: 600 }}>{c.amtF}</span>
+                <Amount style={{ fontWeight: 600 }}>{c.amtF}</Amount>
               </div>
               <div style={{ height: 5, borderRadius: 100, background: colors.divider }}>
                 <div style={{ height: '100%', borderRadius: 100, background: c.color, width: `${c.barPct}%` }} />
@@ -120,7 +121,7 @@ export default function HomeScreen() {
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%', fontSize: 13.5 }}>
               <span style={{ color: colors.textSecondary }}>{goals.count} goal{goals.count === 1 ? '' : 's'}{goals.behind > 0 ? ` · ${goals.behind} behind pace` : ''}</span>
-              <span><span style={{ fontWeight: 700 }}>{goals.totalSavedF}</span><span style={{ color: colors.textSecondary }}> / {goals.totalTargetF}</span></span>
+              <Amount><span style={{ fontWeight: 700 }}>{goals.totalSavedF}</span><span style={{ color: colors.textSecondary }}> / {goals.totalTargetF}</span></Amount>
             </div>
             <div style={{ height: 6, borderRadius: 100, background: colors.divider, width: '100%', overflow: 'hidden' }}>
               <div style={{ height: '100%', borderRadius: 100, background: colors.primary, width: `${goals.pct}%` }} />
@@ -155,7 +156,7 @@ export default function HomeScreen() {
                 <div style={{ fontSize: 14, fontWeight: 500 }}>{r.label}</div>
                 <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Due {ordinal(r.due_day)}</div>
               </div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>{fmt(r.amount)}</div>
+              <Amount style={{ fontSize: 14, fontWeight: 600 }}>{fmt(r.amount)}</Amount>
             </div>
           ))}
         </div>
@@ -201,9 +202,9 @@ export default function HomeScreen() {
                   {uncat ? 'Needs review — tap to categorise' : `${txnWhen(t)} · ${cat.label}`}
                 </div>
               </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: income_ ? colors.primary : colors.ink }}>
+              <Amount style={{ fontSize: 14, fontWeight: 600, color: income_ ? colors.primary : colors.ink }}>
                 {income_ ? '+' : '−'}{fmt(t.amount)}
-              </div>
+              </Amount>
             </button>
           );
         })}

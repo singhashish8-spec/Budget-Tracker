@@ -463,17 +463,20 @@ export function patternDetail(txns, categories, signature, now = new Date()) {
   };
 }
 
-export function filterTransactions(txns, { search = '', filter = 'all' } = {}) {
+export function filterTransactions(txns, { search = '', filter = 'all', categories = [] } = {}) {
   const q = search.trim().toLowerCase();
   let list = txns;
   if (q) {
-    // Match the payee, the note, or the amount — typing "60807" should find a
-    // payment even when its name is something generic like "Credit".
+    // Match the payee, the note, the category name, or the amount — typing
+    // "60807" finds a payment even when its name is generic like "Credit", and
+    // "food" finds everything filed under Food & Dining.
     const qDigits = q.replace(/[^\d]/g, '');
+    const catLabel = Object.fromEntries((categories || []).map((c) => [c.id, (c.label || '').toLowerCase()]));
     list = list.filter(
       (t) =>
         (t.merchant || '').toLowerCase().includes(q) ||
         (t.note || '').toLowerCase().includes(q) ||
+        (t.cat && (catLabel[t.cat] || '').includes(q)) ||
         (qDigits && String(t.amount).includes(qDigits)),
     );
   }

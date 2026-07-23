@@ -216,7 +216,39 @@ button:active { transform: scale(0.97); }
   button { transition: none; }
   button:active { transform: none; }
 }
-/* Explicit user choice. */
+/* Explicit user choice — three levels (Settings → Appearance → Animations).
+   Reduced calms the big movement (no screen slide) but keeps the small tactile
+   press, so taps still feel responsive. Off stills everything. */
 :root[data-motion='reduced'] .screen-enter { animation: none; }
-:root[data-motion='reduced'] button { transition: none; }
-:root[data-motion='reduced'] button:active { transform: none; }
+:root[data-motion='off'] .screen-enter { animation: none; }
+:root[data-motion='off'] button { transition: none; }
+:root[data-motion='off'] button:active { transform: none; }
+
+/* ── Skeleton loading placeholders ───────────────────────────────────────────
+   A soft shimmer stands in for content while the local database opens, instead
+   of a bare spinner. Falls back to a flat tint when motion is reduced/off. */
+@keyframes sklShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+/* Indeterminate progress bar: a segment sweeps left→right while the total time
+   of an operation is unknown (e.g. reading the SMS inbox before the count is
+   known). Switches to a real filled bar once a done/total is available. */
+@keyframes barSweep { 0% { left: -40%; } 100% { left: 100%; } }
+.skl {
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--c-divider) 25%, var(--c-cardBorder) 37%, var(--c-divider) 63%);
+  background-size: 200% 100%;
+  animation: sklShimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .skl { animation: none; } }
+:root[data-motion='reduced'] .skl,
+:root[data-motion='off'] .skl { animation: none; }
+
+/* ── Hide balances (privacy blur) ────────────────────────────────────────────
+   The eye toggle in the top bar stamps [data-private] on the root; every amount
+   rendered through the shared <Amount> component carries .bt-amt and frosts over
+   at once. Inert unless [data-private] is set, so it costs nothing when off. */
+.bt-amt { transition: filter 0.18s ease; }
+:root[data-private] .bt-amt {
+  filter: blur(8px);
+  -webkit-user-select: none;
+  user-select: none;
+}

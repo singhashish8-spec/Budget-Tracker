@@ -3,12 +3,13 @@ import { fmt } from '../utils/currency';
 import { txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { alertCount, filterTransactions } from '../state/selectors';
+import Amount from '../components/Amount';
 
 export default function TransactionsScreen() {
   const { state, set, openCategorySheet } = useApp();
   const { txns, categories, search, filter } = state;
   const alerts = alertCount(txns);
-  const view = filterTransactions(txns, { search, filter });
+  const view = filterTransactions(txns, { search, filter, categories });
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -16,7 +17,7 @@ export default function TransactionsScreen() {
       <input
         value={search}
         onChange={(e) => set({ search: e.target.value })}
-        placeholder="Search merchant or note"
+        placeholder="Search name, category or amount"
         style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '12px 18px', fontSize: 14.5, color: colors.ink }}
       />
       <div style={{ display: 'flex', gap: 8 }}>
@@ -100,9 +101,9 @@ export default function TransactionsScreen() {
                   </div>
                 )}
               </div>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
+              <Amount style={{ fontSize: 14.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
                 {income ? '+' : '−'}{fmt(t.amount)}
-              </div>
+              </Amount>
             </button>
           );
         })}

@@ -3,6 +3,7 @@ import { colors } from '../theme/tokens';
 import { currentMonthKey, ordinal } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { billRow } from '../state/selectors';
+import Amount from '../components/Amount';
 
 const KINDS = [
   { key: 'bill', label: 'Bill' },
@@ -87,7 +88,7 @@ export default function RemindersScreen() {
                 {b.typeText && <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 2 }}>{b.typeText}</div>}
               </button>
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                <div style={{ fontSize: 14.5, fontWeight: 600 }}>{b.amountF}</div>
+                <Amount style={{ fontSize: 14.5, fontWeight: 600 }}>{b.amountF}</Amount>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
                     onClick={() => toggleReminderPaid(b.id, monthKey)}

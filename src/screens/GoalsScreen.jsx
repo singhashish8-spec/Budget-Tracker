@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { colors } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 import { goalsSummary } from '../state/selectors';
+import Amount from '../components/Amount';
 
 // "YYYY-MM" (from <input type="month">) → timestamp at the last day of that month.
 function monthValueToTs(v) {
@@ -34,7 +35,7 @@ export default function GoalsScreen() {
         <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.onPrimary }}>
           <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>Saved across all goals</div>
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 30, fontWeight: 700, margin: '5px 0 12px' }}>
-            {summary.totalSavedF} <span style={{ fontSize: 15, color: colors.accentGreen3 }}>/ {summary.totalTargetF}</span>
+            <Amount>{summary.totalSavedF}</Amount> <span style={{ fontSize: 15, color: colors.accentGreen3 }}>/ <Amount>{summary.totalTargetF}</Amount></span>
           </div>
           <div style={{ height: 6, borderRadius: 100, background: 'rgba(247,244,238,0.15)', overflow: 'hidden' }}>
             <div style={{ height: '100%', borderRadius: 100, background: colors.accentGreen1, width: `${summary.pct}%` }} />
@@ -82,8 +83,8 @@ function GoalCard({ r, onContribute, onEdit, onDelete }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 15 }}>
         <span style={{ fontWeight: 600 }}>{r.label}</span>
         <span>
-          <span style={{ fontWeight: 700 }}>{r.savedF}</span>
-          <span style={{ color: colors.textSecondary }}> / {r.targetF}</span>
+          <Amount style={{ fontWeight: 700 }}>{r.savedF}</Amount>
+          <span style={{ color: colors.textSecondary }}> / <Amount>{r.targetF}</Amount></span>
         </span>
       </div>
       <div style={{ height: 7, borderRadius: 100, background: colors.divider, overflow: 'hidden' }}>
