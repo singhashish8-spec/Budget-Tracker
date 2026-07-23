@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleWindow, txnWhen } from '../utils/date';
@@ -32,42 +33,47 @@ export default function HomeScreen() {
   const monthLabel = currentMonthLabel();
   const goals = goalsSummary(state.goals);
 
-  // Collapsing header: once the hero "Spent" card scrolls up out of view, a
-  // compact bar slides down carrying the same figure — so the headline number is
-  // always one glance away. An IntersectionObserver on the hero drives it, so it
-  // works regardless of how many banners sit above the hero on any given day.
+  // Collapsing header: once the hero "Spent" card scrolls up past the top, a
+  // compact bar carrying the same figure slides down, and retracts on the way
+  // back up. Driven by a plain scroll check (hero's bottom edge vs the top of
+  // the scroll area) — deterministic and easy to reason about. The bar itself is
+  // rendered through a portal to <body> so it's a true viewport-fixed element
+  // that no scroll container or transform can clip.
   const scrollRef = useRef(null);
   const heroRef = useRef(null);
   const [condensed, setCondensed] = useState(false);
-  useEffect(() => {
-    const root = scrollRef.current;
-    const target = heroRef.current;
-    if (!root || !target || typeof IntersectionObserver === 'undefined') return undefined;
-    const io = new IntersectionObserver(([e]) => setCondensed(!e.isIntersecting), { root, threshold: 0 });
-    io.observe(target);
-    return () => io.disconnect();
-  }, []);
+  const onScroll = () => {
+    const h = heroRef.current;
+    const c = scrollRef.current;
+    if (!h || !c) return;
+    const next = h.getBoundingClientRect().bottom < c.getBoundingClientRect().top + 56;
+    setCondensed((prev) => (prev === next ? prev : next));
+  };
 
   return (
-    <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* Condensed header — slides in when the hero card leaves the top. Sits
-          below the floating action icons (zIndex 42 < 45) and its content is
-          left-aligned with room kept on the right so the two never collide. */}
-      <div
-        className="home-condensed"
-        style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 42,
-          padding: 'calc(env(safe-area-inset-top, 0px) + 9px) 150px 9px 20px',
-          background: colors.bgApp, borderBottom: `1px solid ${colors.divider}`,
-          transform: condensed ? 'translateY(0)' : 'translateY(-101%)',
-          opacity: condensed ? 1 : 0,
-          transition: 'transform 0.26s cubic-bezier(0.2,0.75,0.3,1), opacity 0.2s ease',
-          pointerEvents: condensed ? 'auto' : 'none',
-        }}
-      >
-        <div style={{ fontSize: 10.5, letterSpacing: 0.8, textTransform: 'uppercase', color: colors.textTertiary, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{spentLabel}</div>
-        <Amount style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>{fmt(spend)}</Amount>
-      </div>
+    <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Condensed header lives at the document root (portal) so it's genuinely
+          fixed to the viewport — never clipped by the scroll container. It sits
+          below the floating action icons (zIndex 42 < 45), left-aligned with room
+          kept on the right so the two never collide. */}
+      {typeof document !== 'undefined' && createPortal(
+        <div
+          className="home-condensed"
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 42,
+            padding: 'calc(env(safe-area-inset-top, 0px) + 9px) 150px 9px 20px',
+            background: colors.bgApp, borderBottom: `1px solid ${colors.divider}`,
+            transform: condensed ? 'translateY(0)' : 'translateY(-101%)',
+            opacity: condensed ? 1 : 0,
+            transition: 'transform 0.26s cubic-bezier(0.2,0.75,0.3,1), opacity 0.2s ease',
+            pointerEvents: condensed ? 'auto' : 'none',
+          }}
+        >
+          <div style={{ fontSize: 10.5, letterSpacing: 0.8, textTransform: 'uppercase', color: colors.textTertiary, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{spentLabel}</div>
+          <Amount style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>{fmt(spend)}</Amount>
+        </div>,
+        document.body,
+      )}
       <div style={{ padding: '0 4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 700 }}>Home</div>
