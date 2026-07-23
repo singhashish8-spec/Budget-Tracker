@@ -4,10 +4,10 @@ import { CURRENCIES } from '../utils/currency';
 import { salaryDayLabel } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { backupToDrive, restoreFromFile } from '../services/backup';
-import { MODES, ACCENTS } from '../services/theme';
+import { MODES, ACCENTS, SURFACES } from '../services/theme';
 
 export default function SettingsScreen() {
-  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setGeminiApiKey, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent } = useApp();
+  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setGeminiApiKey, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface } = useApp();
   const restoreRef = useRef(null);
   const [keyDraft, setKeyDraft] = useState(state.geminiKey || '');
 
@@ -69,6 +69,23 @@ export default function SettingsScreen() {
                 title={a.label}
                 style={{ width: 36, height: 36, borderRadius: '50%', background: a.primary, cursor: 'pointer', border: on ? `3px solid ${colors.ink}` : `2px solid ${colors.cardBorder}`, boxShadow: on ? `0 0 0 2px ${colors.cardSurface} inset` : 'none' }}
               />
+            );
+          })}
+        </div>
+
+        <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, margin: '18px 0 4px' }}>Surface</div>
+        <div style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 8 }}>Frosted glass gives cards a translucent, iOS-style blur. Standard is the classic solid look.</div>
+        <div style={{ display: 'flex', gap: 6, background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: 3 }}>
+          {SURFACES.map((s) => {
+            const on = state.themeSurface === s.key;
+            return (
+              <button
+                key={s.key}
+                onClick={() => setThemeSurface(s.key)}
+                style={{ flex: 1, padding: '9px 6px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: on ? colors.primary : 'transparent', color: on ? colors.onPrimary : colors.textSecondary }}
+              >
+                {s.label}
+              </button>
             );
           })}
         </div>

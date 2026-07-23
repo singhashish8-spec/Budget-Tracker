@@ -94,6 +94,55 @@
   color-scheme: dark;
 }
 
+/* ── Frosted-glass surface (opt-in: Settings → Appearance → Surface) ──────────
+   A separate dial from light/dark + accent. Cards keep reading the same tokens,
+   so swapping --c-cardSurface / --c-cardBorder for translucent values turns
+   every surface see-through at once — no per-screen changes. The blur is
+   attached with an attribute hook that matches any element whose inline style
+   paints the card-surface token, so it also needs no component edits. Standard
+   mode never sets [data-surface], so this whole block is inert by default. */
+:root[data-surface='glass'] {
+  --c-cardSurface: rgba(255, 255, 255, 0.55);
+  --c-cardBorder: rgba(255, 255, 255, 0.66);
+  --c-divider: rgba(30, 40, 50, 0.10);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-surface='glass']:not([data-theme='light']) {
+    --c-cardSurface: rgba(26, 31, 35, 0.52);
+    --c-cardBorder: rgba(255, 255, 255, 0.10);
+    --c-divider: rgba(255, 255, 255, 0.08);
+  }
+}
+:root[data-surface='glass'][data-theme='dark'] {
+  --c-cardSurface: rgba(26, 31, 35, 0.52);
+  --c-cardBorder: rgba(255, 255, 255, 0.10);
+  --c-divider: rgba(255, 255, 255, 0.08);
+}
+:root[data-surface='glass'][data-theme='light'] {
+  --c-cardSurface: rgba(255, 255, 255, 0.55);
+  --c-cardBorder: rgba(255, 255, 255, 0.66);
+  --c-divider: rgba(30, 40, 50, 0.10);
+}
+/* The blur hook. Only active in glass mode; matches elements that paint the
+   card-surface token. Kept at a moderate radius for WebView performance. */
+:root[data-surface='glass'] [style*="--c-cardSurface"] {
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+/* Frost only reads when there's depth behind it. Add a soft, NEUTRAL highlight
+   to the app background in glass mode (no colour) so the blur has something to
+   work with. */
+:root[data-surface='glass'] body {
+  background-image: radial-gradient(120% 75% at 50% -12%, rgba(255, 255, 255, 0.10), transparent 62%);
+  background-attachment: fixed;
+}
+:root[data-surface='glass']:not([data-theme='light']) body {
+  background-image: radial-gradient(120% 75% at 50% -12%, rgba(255, 255, 255, 0.05), transparent 62%);
+}
+:root[data-surface='glass'][data-theme='light'] body {
+  background-image: radial-gradient(120% 75% at 50% -12%, rgba(255, 255, 255, 0.10), transparent 62%);
+}
+
 html, body, #root {
   margin: 0;
   padding: 0;
