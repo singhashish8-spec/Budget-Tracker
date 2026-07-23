@@ -15,22 +15,38 @@ export default function HomeScreen() {
   const alerts = alertCount(txns);
   // Spending resets on payday, not on the 1st — so the headline figure matches
   // the money you actually have to work with this cycle.
-  const cycle = payCycleWindow(state.salaryDay);
+  // Period selector: null = the live pay-cycle (default), or a { y, m } calendar
+  // month picked from the dropdown. Same tested window math either way, so the
+  // figures stay trustworthy for any month you look back at.
+  const [period, setPeriod] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const cycle = period
+    ? { start: new Date(period.y, period.m, 1), end: new Date(period.y, period.m + 1, 1), calendar: true }
+    : payCycleWindow(state.salaryDay);
   const cycleTxns = inWindow(txns, cycle);
   const { spend, income, spendPct } = homeTotals(txns, cycle);
   const top = topCategories(cycleTxns, categories);
-  const recent = txns.slice(0, 4);
+  const recent = (period ? cycleTxns : txns).slice(0, 4);
   const monthKey = currentMonthKey();
-  const daysToPay = daysUntilPayday(state.salaryDay);
-  const spentLabel = cycle.calendar
-    ? 'Spent this month'
-    : `Spent since ${cycle.start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+  const daysToPay = period ? null : daysUntilPayday(state.salaryDay);
+  const spentLabel = period
+    ? `Spent in ${new Date(period.y, period.m, 1).toLocaleDateString('en-IN', { month: 'long' })}`
+    : cycle.calendar
+      ? 'Spent this month'
+      : `Spent since ${cycle.start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
   const upcomingBills = [...state.reminders]
     .filter((r) => r.paid_for !== monthKey)
     .sort((a, b) => a.due_day - b.due_day)
     .slice(0, 2);
 
-  const monthLabel = currentMonthLabel();
+  const now = new Date();
+  const monthOptions = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    return { y: d.getFullYear(), m: d.getMonth(), key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) };
+  });
+  const selectedLabel = period
+    ? new Date(period.y, period.m, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+    : currentMonthLabel();
   const goals = goalsSummary(state.goals);
 
   // Collapsing header: once the hero "Spent" card scrolls up past the top, a
@@ -77,9 +93,38 @@ export default function HomeScreen() {
         document.body,
       )}
       <div style={{ padding: '0 4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
+        <div style={{ position: 'relative' }}>
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 700 }}>Home</div>
-          <div style={{ fontSize: 13, color: colors.textSecondary }}>{monthLabel}</div>
+          {/* Premium period selector — switch the month the whole dashboard shows. */}
+          <button
+            onClick={() => setPickerOpen((o) => !o)}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', color: colors.textSecondary, fontSize: 13, fontWeight: 600, padding: '1px 0' }}
+          >
+            {selectedLabel}
+            <svg width="10" height="6" viewBox="0 0 10 6" style={{ transform: pickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }}>
+              <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          {pickerOpen && (
+            <>
+              <button onClick={() => setPickerOpen(false)} aria-label="Close" style={{ position: 'fixed', inset: 0, zIndex: 29, background: 'transparent', cursor: 'default' }} />
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 14, boxShadow: '0 12px 30px rgba(0,0,0,0.20)', padding: 6, minWidth: 190, maxHeight: 300, overflowY: 'auto' }}>
+                {monthOptions.map((o, i) => {
+                  const isSel = i === 0 ? period === null : !!period && period.y === o.y && period.m === o.m;
+                  return (
+                    <button
+                      key={o.key}
+                      onClick={() => { setPeriod(i === 0 ? null : { y: o.y, m: o.m }); setPickerOpen(false); }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', textAlign: 'left', cursor: 'pointer', padding: '9px 12px', borderRadius: 9, background: isSel ? colors.primaryTint : 'transparent', color: isSel ? colors.primary : colors.ink, fontSize: 13.5, fontWeight: isSel ? 700 : 500 }}
+                    >
+                      <span>{i === 0 ? `${o.label} · now` : o.label}</span>
+                      {isSel && <span>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
         {daysToPay != null && (
           <div style={{ background: colors.successTint, color: colors.successText, borderRadius: 100, padding: '6px 12px', fontSize: 12, fontWeight: 600, marginTop: 4 }}>
