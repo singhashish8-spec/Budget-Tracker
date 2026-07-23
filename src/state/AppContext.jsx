@@ -49,6 +49,7 @@ const initialState = {
   currency: 'INR',
   themeMode: 'system', // 'system' | 'light' | 'dark'
   themeAccent: 'green',
+  themeSurface: 'standard', // 'standard' | 'glass'
   taxRegime: 'new',
   tax80cInvested: 0,
   salaryDay: 0, // 0 = not set (use calendar month); 1-31 = pay day; 32 = last day of month
@@ -135,6 +136,7 @@ export function AppProvider({ children }) {
           geminiKeyStr,
           themeModeStr,
           themeAccentStr,
+          themeSurfaceStr,
         ] = await Promise.all([
           repo.listCategories(),
           repo.listTransactions(),
@@ -157,6 +159,7 @@ export function AppProvider({ children }) {
           repo.getSetting('geminiKey', ''),
           repo.getSetting('themeMode', 'system'),
           repo.getSetting('themeAccent', 'green'),
+          repo.getSetting('themeSurface', 'standard'),
         ]);
         const onboarded = onboardedFlag === '1';
         const appLock = appLockFlag === '1';
@@ -184,11 +187,12 @@ export function AppProvider({ children }) {
           geminiKey: geminiKeyStr || '',
           themeMode: themeModeStr || 'system',
           themeAccent: themeAccentStr || 'green',
+          themeSurface: themeSurfaceStr || 'standard',
           loading: false,
         });
         setGeminiKey(geminiKeyStr || '');
         // Re-apply from the authoritative (DB) values in case the cache differed.
-        applyTheme({ mode: themeModeStr || 'system', accent: themeAccentStr || 'green' });
+        applyTheme({ mode: themeModeStr || 'system', accent: themeAccentStr || 'green', surface: themeSurfaceStr || 'standard' });
 
         // Database came up empty (wiped by a reinstall, most likely). Before
         // sending the user through onboarding and losing everything, see
@@ -373,7 +377,7 @@ export function AppProvider({ children }) {
     (mode) => {
       set({ themeMode: mode });
       repo.setSetting('themeMode', mode);
-      applyTheme({ mode, accent: backStateRef.current.themeAccent });
+      applyTheme({ mode, accent: backStateRef.current.themeAccent, surface: backStateRef.current.themeSurface });
     },
     [set],
   );
@@ -382,7 +386,16 @@ export function AppProvider({ children }) {
     (accent) => {
       set({ themeAccent: accent });
       repo.setSetting('themeAccent', accent);
-      applyTheme({ mode: backStateRef.current.themeMode, accent });
+      applyTheme({ mode: backStateRef.current.themeMode, accent, surface: backStateRef.current.themeSurface });
+    },
+    [set],
+  );
+
+  const setThemeSurface = useCallback(
+    (surface) => {
+      set({ themeSurface: surface });
+      repo.setSetting('themeSurface', surface);
+      applyTheme({ mode: backStateRef.current.themeMode, accent: backStateRef.current.themeAccent, surface });
     },
     [set],
   );
@@ -1045,6 +1058,7 @@ export function AppProvider({ children }) {
       setCurrency,
       setThemeMode,
       setThemeAccent,
+      setThemeSurface,
       setSalaryDay,
       setGeminiApiKey,
       toggleCategoryEnabled,
@@ -1111,6 +1125,7 @@ export function AppProvider({ children }) {
       setCurrency,
       setThemeMode,
       setThemeAccent,
+      setThemeSurface,
       setSalaryDay,
       setGeminiApiKey,
       toggleCategoryEnabled,

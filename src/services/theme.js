@@ -22,15 +22,28 @@ export const MODES = [
   { key: 'dark', label: 'Dark' },
 ];
 
-const CACHE_KEY = 'bt-theme';
-const DEFAULTS = { mode: 'system', accent: 'green' };
+// Surface style is a separate dial from mode/accent: it changes how surfaces are
+// rendered (solid vs translucent frosted glass) without touching the colours.
+// 'standard' is the original look and the default; 'glass' is opt-in.
+export const SURFACES = [
+  { key: 'standard', label: 'Standard' },
+  { key: 'glass', label: 'Frosted glass' },
+];
 
-export function applyTheme({ mode = 'system', accent = 'green' } = {}) {
+const CACHE_KEY = 'bt-theme';
+const DEFAULTS = { mode: 'system', accent: 'green', surface: 'standard' };
+
+export function applyTheme({ mode = 'system', accent = 'green', surface = 'standard' } = {}) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
 
   if (mode === 'light' || mode === 'dark') root.setAttribute('data-theme', mode);
   else root.removeAttribute('data-theme'); // system → follow prefers-color-scheme
+
+  // Only stamp the attribute for glass; Standard leaves the DOM untouched so
+  // the original styling path is completely unaffected.
+  if (surface === 'glass') root.setAttribute('data-surface', 'glass');
+  else root.removeAttribute('data-surface');
 
   const a = ACCENTS.find((x) => x.key === accent) || ACCENTS[0];
   const s = root.style;
@@ -47,7 +60,7 @@ export function applyTheme({ mode = 'system', accent = 'green' } = {}) {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', a.primary);
 
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ mode, accent })); } catch { /* private mode */ }
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ mode, accent, surface })); } catch { /* private mode */ }
 }
 
 // Read the cached choice for an instant, flash-free apply at startup. The
@@ -55,7 +68,9 @@ export function applyTheme({ mode = 'system', accent = 'green' } = {}) {
 export function loadCachedTheme() {
   try {
     const v = JSON.parse(localStorage.getItem(CACHE_KEY));
-    if (v && typeof v.mode === 'string' && typeof v.accent === 'string') return v;
+    if (v && typeof v.mode === 'string' && typeof v.accent === 'string') {
+      return { surface: 'standard', ...v }; // default surface for pre-existing caches
+    }
   } catch { /* ignore */ }
   return { ...DEFAULTS };
 }
