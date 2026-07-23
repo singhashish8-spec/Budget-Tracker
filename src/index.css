@@ -129,28 +129,34 @@
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   backdrop-filter: blur(20px) saturate(150%);
 }
-/* Frost only reads when there's depth behind it. Give the app background a
-   soft, NEUTRAL gradient (no colour) so translucent cards visibly frost it.
-   Applied to the main shell — the surface that sits directly behind the cards. */
+/* Frost needs depth behind it, so the app shell gets a soft wash of the user's
+   ACCENT colour (color-mix on the accent tokens). Because it's the accent,
+   changing the accent changes the whole glass mood — the user owns the colour.
+   A neutral gradient is declared first as a fallback for engines without
+   color-mix. Applied to the main shell — the surface right behind the cards. */
 :root[data-surface='glass'] .app-shell {
   background-image:
     radial-gradient(75% 42% at 12% 0%, rgba(255, 255, 255, 0.85), transparent 58%),
     radial-gradient(85% 55% at 108% 12%, rgba(90, 96, 104, 0.16), transparent 55%),
     radial-gradient(90% 60% at 60% 108%, rgba(90, 96, 104, 0.12), transparent 60%);
+  background-image:
+    radial-gradient(72% 45% at 10% -2%, color-mix(in srgb, var(--c-primary) 24%, transparent), transparent 58%),
+    radial-gradient(78% 52% at 108% 8%, color-mix(in srgb, var(--c-accentGreen1) 20%, transparent), transparent 56%),
+    radial-gradient(95% 62% at 62% 110%, color-mix(in srgb, var(--c-primary) 14%, transparent), transparent 62%);
   background-attachment: fixed;
 }
 :root[data-surface='glass']:not([data-theme='light']) .app-shell,
 :root[data-surface='glass'][data-theme='dark'] .app-shell {
   background-image:
-    radial-gradient(72% 42% at 14% -2%, rgba(255, 255, 255, 0.09), transparent 56%),
-    radial-gradient(80% 52% at 106% 14%, rgba(255, 255, 255, 0.05), transparent 55%),
-    radial-gradient(90% 58% at 55% 108%, rgba(255, 255, 255, 0.035), transparent 60%);
+    radial-gradient(72% 45% at 10% -2%, color-mix(in srgb, var(--c-primary) 38%, transparent), transparent 58%),
+    radial-gradient(78% 52% at 108% 8%, color-mix(in srgb, var(--c-accentGreen1) 26%, transparent), transparent 56%),
+    radial-gradient(95% 62% at 62% 110%, color-mix(in srgb, var(--c-primary) 22%, transparent), transparent 62%);
 }
 :root[data-surface='glass'][data-theme='light'] .app-shell {
   background-image:
-    radial-gradient(75% 42% at 12% 0%, rgba(255, 255, 255, 0.85), transparent 58%),
-    radial-gradient(85% 55% at 108% 12%, rgba(90, 96, 104, 0.16), transparent 55%),
-    radial-gradient(90% 60% at 60% 108%, rgba(90, 96, 104, 0.12), transparent 60%);
+    radial-gradient(72% 45% at 10% -2%, color-mix(in srgb, var(--c-primary) 24%, transparent), transparent 58%),
+    radial-gradient(78% 52% at 108% 8%, color-mix(in srgb, var(--c-accentGreen1) 20%, transparent), transparent 56%),
+    radial-gradient(95% 62% at 62% 110%, color-mix(in srgb, var(--c-primary) 14%, transparent), transparent 62%);
 }
 
 html, body, #root {
