@@ -43,6 +43,9 @@ const initialState = {
   processing: false,
   procTitle: '',
   procSub: '',
+  // { done, total } drives the progress bar in ProcessingOverlay; null = the
+  // work has no known total yet, so an indeterminate sweeping bar shows.
+  procProgress: null,
   reviewImported: null,
   reviewSource: '',
   toast: '',
@@ -603,8 +606,8 @@ export function AppProvider({ children }) {
   );
 
   const addManualTransactions = useCallback(
-    async (txnList) => {
-      await repo.addTransactions(txnList);
+    async (txnList, onProgress) => {
+      await repo.addTransactions(txnList, onProgress);
       const txns = await repo.listTransactions();
       set({ txns });
     },
@@ -735,10 +738,21 @@ export function AppProvider({ children }) {
   const cleanupDuplicates = useCallback(async () => {
     const ids = duplicateTxnIds(backStateRef.current.txns || []);
     if (!ids.length) { showToast('No duplicates found'); return 0; }
-    await repo.deleteTransactions(ids);
-    set({ txns: await repo.listTransactions() });
-    showToast(`Removed ${ids.length} duplicate${ids.length === 1 ? '' : 's'}`);
-    return ids.length;
+    // Show a real progress overlay: removing hundreds of rows takes long enough
+    // on a phone to look frozen otherwise. Wrapped so a failure surfaces as a
+    // toast instead of vanishing silently (which read as "nothing happened").
+    set({ processing: true, procTitle: 'Removing duplicates', procSub: 'Keeping one of each — your cash entries are untouched', procProgress: { done: 0, total: ids.length } });
+    try {
+      const removed = await repo.deleteTransactions(ids, (done, total) => set({ procProgress: { done, total } }));
+      const txns = await repo.listTransactions();
+      set({ txns, processing: false, procProgress: null });
+      showToast(`Removed ${removed} duplicate${removed === 1 ? '' : 's'}`);
+      return removed;
+    } catch (err) {
+      set({ processing: false, procProgress: null });
+      showToast(err?.message || 'Couldn’t remove duplicates — please try again');
+      return 0;
+    }
   }, [set, showToast]);
 
   const trackPatternAsBill = useCallback(
@@ -802,6 +816,9 @@ export function AppProvider({ children }) {
           if (!silent) showToast('SMS permission is needed to auto-track from messages');
           return;
         }
+        // A manual scan gets a visible progress overlay (reading the inbox and
+        // filing each message takes real time). Silent auto-syncs stay invisible.
+        if (!silent) set({ processing: true, procTitle: deep ? 'Checking every message' : 'Reading your messages', procSub: 'Scanning bank & UPI texts…', procProgress: null });
         const sinceMs = Number(await repo.getSetting('smsLastRead', '0')) || 0;
         const ignores = new Set(await repo.listSmsIgnores());
         const { transactions: found, newest, unmatched } = await readNewTransactions(sinceMs, ignores, { deep });
@@ -823,7 +840,14 @@ export function AppProvider({ children }) {
         // themselves instead of landing in "needs review" every time.
         const ruleMap = Object.fromEntries((await repo.listMerchantRules()).map((r) => [r.signature, r.category_id]));
         let added = 0;
+        let processed = 0;
         for (const t of found) {
+          // Drive the progress bar (throttled so a big inbox doesn't thrash
+          // re-renders). Total is the messages found in this scan.
+          processed += 1;
+          if (!silent && (processed % 10 === 0 || processed === found.length)) {
+            set({ procProgress: { done: processed, total: found.length } });
+          }
           const bodyKey = (t.rawSms || '').trim();
           if (importedBodies.has(bodyKey)) continue;
           const key = txnKey(t.date, t.amount, t.type);
@@ -870,6 +894,7 @@ export function AppProvider({ children }) {
       } catch (err) {
         if (!silent) showToast(err?.message || 'Couldn’t read your messages');
       } finally {
+        if (!silent) set({ processing: false, procProgress: null });
         scanInFlightRef.current = false;
       }
     },
@@ -1061,10 +1086,17 @@ export function AppProvider({ children }) {
 
   const confirmReview = useCallback(async () => {
     const batch = state.reviewImported || [];
-    await addManualTransactions(batch);
-    const stillFlagged = batch.some((t) => !t.cat);
-    set({ reviewImported: null, reviewSource: '', screen: 'transactions', filter: stillFlagged ? 'review' : 'all' });
-    showToast(`${batch.length} transaction${batch.length === 1 ? '' : 's'} added`);
+    // Adding a big imported batch row-by-row takes time — show progress.
+    set({ processing: true, procTitle: 'Adding your transactions', procSub: 'Saving each one…', procProgress: { done: 0, total: batch.length } });
+    try {
+      await addManualTransactions(batch, (done, total) => set({ procProgress: { done, total } }));
+      const stillFlagged = batch.some((t) => !t.cat);
+      set({ reviewImported: null, reviewSource: '', screen: 'transactions', filter: stillFlagged ? 'review' : 'all', processing: false, procProgress: null });
+      showToast(`${batch.length} transaction${batch.length === 1 ? '' : 's'} added`);
+    } catch (err) {
+      set({ processing: false, procProgress: null });
+      showToast(err?.message || 'Couldn’t add those — please try again');
+    }
   }, [state.reviewImported, addManualTransactions, set, showToast]);
 
   const value = useMemo(

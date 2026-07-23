@@ -228,6 +228,10 @@ button:active { transform: scale(0.97); }
    A soft shimmer stands in for content while the local database opens, instead
    of a bare spinner. Falls back to a flat tint when motion is reduced/off. */
 @keyframes sklShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+/* Indeterminate progress bar: a segment sweeps left→right while the total time
+   of an operation is unknown (e.g. reading the SMS inbox before the count is
+   known). Switches to a real filled bar once a done/total is available. */
+@keyframes barSweep { 0% { left: -40%; } 100% { left: 100%; } }
 .skl {
   border-radius: 8px;
   background: linear-gradient(90deg, var(--c-divider) 25%, var(--c-cardBorder) 37%, var(--c-divider) 63%);
