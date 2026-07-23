@@ -25,6 +25,10 @@ import LockScreen from './components/LockScreen';
 import HamburgerDrawer from './components/HamburgerDrawer';
 
 const TAB_SCREENS = ['home', 'transactions', 'budgets', 'insights'];
+// Screens reached by drilling in animate differently from the top-level tabs:
+// deep screens slide in from the right (a sense of "going in"), tabs cross-fade
+// up (siblings, not a hierarchy).
+const DEEP_SCREENS = new Set(['detail', 'settings', 'goals', 'reminders', 'patterns', 'sms', 'upload', 'review']);
 
 function Shell() {
   const { state } = useApp();
@@ -54,19 +58,28 @@ function Shell() {
 
   return (
     <div className="app-shell" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', backgroundColor: colors.bgApp, color: colors.ink }}>
-      {state.screen === 'onboarding' && <Onboarding />}
-      {state.screen === 'home' && <HomeScreen />}
-      {state.screen === 'transactions' && <TransactionsScreen />}
-      {state.screen === 'budgets' && <BudgetsScreen />}
-      {state.screen === 'upload' && <UploadScreen />}
-      {state.screen === 'review' && <ReviewImportScreen />}
-      {state.screen === 'insights' && <InsightsScreen />}
-      {state.screen === 'goals' && <GoalsScreen />}
-      {state.screen === 'detail' && <DetailScreen />}
-      {state.screen === 'reminders' && <RemindersScreen />}
-      {state.screen === 'patterns' && <PatternsScreen />}
-      {state.screen === 'sms' && <SmsScreen />}
-      {state.screen === 'settings' && <SettingsScreen />}
+      {/* Keyed so each navigation remounts the wrapper and replays the enter
+          animation; data-anim picks the direction (deep slide vs tab fade). */}
+      <div
+        key={state.screen}
+        className="screen-enter"
+        data-anim={DEEP_SCREENS.has(state.screen) ? 'deep' : 'tab'}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+      >
+        {state.screen === 'onboarding' && <Onboarding />}
+        {state.screen === 'home' && <HomeScreen />}
+        {state.screen === 'transactions' && <TransactionsScreen />}
+        {state.screen === 'budgets' && <BudgetsScreen />}
+        {state.screen === 'upload' && <UploadScreen />}
+        {state.screen === 'review' && <ReviewImportScreen />}
+        {state.screen === 'insights' && <InsightsScreen />}
+        {state.screen === 'goals' && <GoalsScreen />}
+        {state.screen === 'detail' && <DetailScreen />}
+        {state.screen === 'reminders' && <RemindersScreen />}
+        {state.screen === 'patterns' && <PatternsScreen />}
+        {state.screen === 'sms' && <SmsScreen />}
+        {state.screen === 'settings' && <SettingsScreen />}
+      </div>
 
       <TopBar />
       {TAB_SCREENS.includes(state.screen) && <BottomNav />}

@@ -50,6 +50,7 @@ const initialState = {
   themeMode: 'system', // 'system' | 'light' | 'dark'
   themeAccent: 'green',
   themeSurface: 'standard', // 'standard' | 'glass'
+  motionPref: 'on', // 'on' | 'reduced'
   taxRegime: 'new',
   tax80cInvested: 0,
   salaryDay: 0, // 0 = not set (use calendar month); 1-31 = pay day; 32 = last day of month
@@ -137,6 +138,7 @@ export function AppProvider({ children }) {
           themeModeStr,
           themeAccentStr,
           themeSurfaceStr,
+          motionPrefStr,
         ] = await Promise.all([
           repo.listCategories(),
           repo.listTransactions(),
@@ -160,6 +162,7 @@ export function AppProvider({ children }) {
           repo.getSetting('themeMode', 'system'),
           repo.getSetting('themeAccent', 'green'),
           repo.getSetting('themeSurface', 'standard'),
+          repo.getSetting('motionPref', 'on'),
         ]);
         const onboarded = onboardedFlag === '1';
         const appLock = appLockFlag === '1';
@@ -188,11 +191,13 @@ export function AppProvider({ children }) {
           themeMode: themeModeStr || 'system',
           themeAccent: themeAccentStr || 'green',
           themeSurface: themeSurfaceStr || 'standard',
+          motionPref: motionPrefStr || 'on',
           loading: false,
         });
         setGeminiKey(geminiKeyStr || '');
         // Re-apply from the authoritative (DB) values in case the cache differed.
         applyTheme({ mode: themeModeStr || 'system', accent: themeAccentStr || 'green', surface: themeSurfaceStr || 'standard' });
+        if (typeof document !== 'undefined') document.documentElement.setAttribute('data-motion', motionPrefStr || 'on');
 
         // Database came up empty (wiped by a reinstall, most likely). Before
         // sending the user through onboarding and losing everything, see
@@ -396,6 +401,15 @@ export function AppProvider({ children }) {
       set({ themeSurface: surface });
       repo.setSetting('themeSurface', surface);
       applyTheme({ mode: backStateRef.current.themeMode, accent: backStateRef.current.themeAccent, surface });
+    },
+    [set],
+  );
+
+  const setMotionPref = useCallback(
+    (pref) => {
+      set({ motionPref: pref });
+      repo.setSetting('motionPref', pref);
+      if (typeof document !== 'undefined') document.documentElement.setAttribute('data-motion', pref);
     },
     [set],
   );
@@ -1059,6 +1073,7 @@ export function AppProvider({ children }) {
       setThemeMode,
       setThemeAccent,
       setThemeSurface,
+      setMotionPref,
       setSalaryDay,
       setGeminiApiKey,
       toggleCategoryEnabled,
@@ -1126,6 +1141,7 @@ export function AppProvider({ children }) {
       setThemeMode,
       setThemeAccent,
       setThemeSurface,
+      setMotionPref,
       setSalaryDay,
       setGeminiApiKey,
       toggleCategoryEnabled,
