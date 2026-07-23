@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
@@ -10,7 +10,7 @@ import DuplicateBanner from '../components/DuplicateBanner';
 import Amount from '../components/Amount';
 
 export default function HomeScreen() {
-  const { state, go, goReview, openCategorySheet, openDetail } = useApp();
+  const { state, go, goReview, openCategorySheet, openDetail, togglePrivacy } = useApp();
   const { txns, categories } = state;
   const alerts = alertCount(txns);
   // Spending resets on payday, not on the 1st — so the headline figure matches
@@ -39,19 +39,21 @@ export default function HomeScreen() {
   // the scroll area) — deterministic and easy to reason about. The bar itself is
   // rendered through a portal to <body> so it's a true viewport-fixed element
   // that no scroll container or transform can clip.
-  const scrollRef = useRef(null);
   const heroRef = useRef(null);
   const [condensed, setCondensed] = useState(false);
-  const onScroll = () => {
-    const h = heroRef.current;
-    const c = scrollRef.current;
-    if (!h || !c) return;
-    const next = h.getBoundingClientRect().bottom < c.getBoundingClientRect().top + 56;
-    setCondensed((prev) => (prev === next ? prev : next));
-  };
+  useEffect(() => {
+    const target = heroRef.current;
+    if (!target || typeof IntersectionObserver === 'undefined') return undefined;
+    // Observe against root:null — the VIEWPORT itself — so it fires no matter
+    // which element actually scrolls. Earlier tries watched the inner container,
+    // but on this layout the page scrolls, not that div, so they never fired.
+    const io = new IntersectionObserver(([e]) => setCondensed(!e.isIntersecting), { root: null, threshold: 0, rootMargin: '-4px 0px 0px 0px' });
+    io.observe(target);
+    return () => io.disconnect();
+  }, []);
 
   return (
-    <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Condensed header lives at the document root (portal) so it's genuinely
           fixed to the viewport — never clipped by the scroll container. It sits
           below the floating action icons (zIndex 42 < 45), left-aligned with room
@@ -105,7 +107,17 @@ export default function HomeScreen() {
       )}
 
       <div ref={heroRef} style={{ background: colors.surfaceDark, borderRadius: 20, padding: '20px 18px', color: colors.onPrimary }}>
-        <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>{spentLabel}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>{spentLabel}</div>
+          <button
+            onClick={togglePrivacy}
+            title={state.privacy ? 'Show balances' : 'Hide balances'}
+            aria-label={state.privacy ? 'Show balances' : 'Hide balances'}
+            style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'rgba(247,244,238,0.10)', color: colors.accentGreen3, flexShrink: 0 }}
+          >
+            <EyeIcon off={state.privacy} />
+          </button>
+        </div>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 36, fontWeight: 700, margin: '6px 0 14px' }}><Amount>{fmt(spend)}</Amount></div>
         <div style={{ height: 6, borderRadius: 100, background: 'rgba(247,244,238,0.15)', overflow: 'hidden' }}>
           <div style={{ height: '100%', borderRadius: 100, background: colors.accentGreen1, width: `${spendPct}%` }} />
@@ -251,5 +263,16 @@ export default function HomeScreen() {
         })}
       </div>
     </div>
+  );
+}
+
+// Open eye when balances are visible; struck-through eye when hidden.
+function EyeIcon({ off }) {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1.8 12S5.5 5 12 5s10.2 7 10.2 7-3.7 7-10.2 7S1.8 12 1.8 12Z" />
+      <circle cx="12" cy="12" r="3" />
+      {off && <path d="M3 3l18 18" />}
+    </svg>
   );
 }
