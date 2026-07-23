@@ -102,45 +102,55 @@
    paints the card-surface token, so it also needs no component edits. Standard
    mode never sets [data-surface], so this whole block is inert by default. */
 :root[data-surface='glass'] {
-  --c-cardSurface: rgba(255, 255, 255, 0.55);
-  --c-cardBorder: rgba(255, 255, 255, 0.66);
-  --c-divider: rgba(30, 40, 50, 0.10);
+  --c-cardSurface: rgba(255, 255, 255, 0.50);
+  --c-cardBorder: rgba(255, 255, 255, 0.72);
+  --c-divider: rgba(30, 40, 50, 0.09);
 }
 @media (prefers-color-scheme: dark) {
   :root[data-surface='glass']:not([data-theme='light']) {
-    --c-cardSurface: rgba(26, 31, 35, 0.52);
-    --c-cardBorder: rgba(255, 255, 255, 0.10);
+    --c-cardSurface: rgba(28, 33, 38, 0.46);
+    --c-cardBorder: rgba(255, 255, 255, 0.12);
     --c-divider: rgba(255, 255, 255, 0.08);
   }
 }
 :root[data-surface='glass'][data-theme='dark'] {
-  --c-cardSurface: rgba(26, 31, 35, 0.52);
-  --c-cardBorder: rgba(255, 255, 255, 0.10);
+  --c-cardSurface: rgba(28, 33, 38, 0.46);
+  --c-cardBorder: rgba(255, 255, 255, 0.12);
   --c-divider: rgba(255, 255, 255, 0.08);
 }
 :root[data-surface='glass'][data-theme='light'] {
-  --c-cardSurface: rgba(255, 255, 255, 0.55);
-  --c-cardBorder: rgba(255, 255, 255, 0.66);
-  --c-divider: rgba(30, 40, 50, 0.10);
+  --c-cardSurface: rgba(255, 255, 255, 0.50);
+  --c-cardBorder: rgba(255, 255, 255, 0.72);
+  --c-divider: rgba(30, 40, 50, 0.09);
 }
 /* The blur hook. Only active in glass mode; matches elements that paint the
-   card-surface token. Kept at a moderate radius for WebView performance. */
+   card-surface token. Moderate radius for WebView performance. */
 :root[data-surface='glass'] [style*="--c-cardSurface"] {
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
 }
-/* Frost only reads when there's depth behind it. Add a soft, NEUTRAL highlight
-   to the app background in glass mode (no colour) so the blur has something to
-   work with. */
-:root[data-surface='glass'] body {
-  background-image: radial-gradient(120% 75% at 50% -12%, rgba(255, 255, 255, 0.10), transparent 62%);
+/* Frost only reads when there's depth behind it. Give the app background a
+   soft, NEUTRAL gradient (no colour) so translucent cards visibly frost it.
+   Applied to the main shell — the surface that sits directly behind the cards. */
+:root[data-surface='glass'] .app-shell {
+  background-image:
+    radial-gradient(75% 42% at 12% 0%, rgba(255, 255, 255, 0.85), transparent 58%),
+    radial-gradient(85% 55% at 108% 12%, rgba(90, 96, 104, 0.16), transparent 55%),
+    radial-gradient(90% 60% at 60% 108%, rgba(90, 96, 104, 0.12), transparent 60%);
   background-attachment: fixed;
 }
-:root[data-surface='glass']:not([data-theme='light']) body {
-  background-image: radial-gradient(120% 75% at 50% -12%, rgba(255, 255, 255, 0.05), transparent 62%);
+:root[data-surface='glass']:not([data-theme='light']) .app-shell,
+:root[data-surface='glass'][data-theme='dark'] .app-shell {
+  background-image:
+    radial-gradient(72% 42% at 14% -2%, rgba(255, 255, 255, 0.09), transparent 56%),
+    radial-gradient(80% 52% at 106% 14%, rgba(255, 255, 255, 0.05), transparent 55%),
+    radial-gradient(90% 58% at 55% 108%, rgba(255, 255, 255, 0.035), transparent 60%);
 }
-:root[data-surface='glass'][data-theme='light'] body {
-  background-image: radial-gradient(120% 75% at 50% -12%, rgba(255, 255, 255, 0.10), transparent 62%);
+:root[data-surface='glass'][data-theme='light'] .app-shell {
+  background-image:
+    radial-gradient(75% 42% at 12% 0%, rgba(255, 255, 255, 0.85), transparent 58%),
+    radial-gradient(85% 55% at 108% 12%, rgba(90, 96, 104, 0.16), transparent 55%),
+    radial-gradient(90% 60% at 60% 108%, rgba(90, 96, 104, 0.12), transparent 60%);
 }
 
 html, body, #root {
