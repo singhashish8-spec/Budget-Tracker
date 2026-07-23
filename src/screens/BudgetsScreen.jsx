@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
-import { budgetRows, suggestedLimit } from '../state/selectors';
+import { budgetRows, suggestedLimit, categoryDetail } from '../state/selectors';
 import { salaryDayLabel } from '../utils/date';
 import Amount from '../components/Amount';
+import Collapse from '../components/Collapse';
 
 const PERIOD_LABELS = { month: 'This month', cycle: 'This pay cycle', custom: 'Until deadline' };
 
@@ -62,8 +63,9 @@ function PeriodPicker({ period, setPeriod, endsAt, setEndsAt, salaryDay }) {
 }
 
 export default function BudgetsScreen() {
-  const { state, set, addBudget, editBudget, removeBudget } = useApp();
+  const { state, set, addBudget, editBudget, removeBudget, openDetail } = useApp();
   const [editingCat, setEditingCat] = useState(null);
+  const [expandedBudget, setExpandedBudget] = useState(null);
   const { txns, categories, budgets } = state;
   const rows = budgetRows(txns, categories, budgets, { salaryDay: state.salaryDay });
   const overallLimit = budgets.reduce((a, b) => a + b.limit, 0);
@@ -107,40 +109,59 @@ export default function BudgetsScreen() {
         {rows.map((b) => {
           const barColor = b.status === 'over' ? colors.danger : b.status === 'near' ? colors.warning : colors.primary;
           const statusColor = b.status === 'over' ? colors.danger : b.status === 'near' ? colors.warning : colors.successText;
+          const isOpen = expandedBudget === b.cat;
+          const d = categoryDetail(txns, categories, b.cat, { salaryDay: state.salaryDay });
           return (
-            <button
-              key={b.cat}
-              onClick={() => setEditingCat(b.cat)}
-              style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer' }}
-            >
-              <div style={{ width: 38, height: 38, borderRadius: 12, background: tint(b.color), color: b.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                {b.mono}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 6 }}>
-                  <span style={{ fontWeight: 600 }}>{b.label}</span>
-                  <span>
-                    <Amount style={{ fontWeight: 600 }}>{b.spentF}</Amount>
-                    <span style={{ color: colors.textSecondary }}> / <Amount>{b.limitF}</Amount></span>
-                  </span>
+            <div key={b.cat} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px' }}>
+              <button
+                onClick={() => setExpandedBudget(isOpen ? null : b.cat)}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <div style={{ width: 38, height: 38, borderRadius: 12, background: tint(b.color), color: b.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                  {b.mono}
                 </div>
-                <div style={{ height: 5, borderRadius: 100, background: colors.divider, marginBottom: 6 }}>
-                  <div style={{ height: '100%', borderRadius: 100, background: barColor, width: `${b.barPct}%` }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 6 }}>
+                    <span style={{ fontWeight: 600 }}>{b.label}</span>
+                    <span>
+                      <Amount style={{ fontWeight: 600 }}>{b.spentF}</Amount>
+                      <span style={{ color: colors.textSecondary }}> / <Amount>{b.limitF}</Amount></span>
+                    </span>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 100, background: colors.divider, marginBottom: 6 }}>
+                    <div style={{ height: '100%', borderRadius: 100, background: barColor, width: `${b.barPct}%` }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: statusColor }}>{b.statusText}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: b.status === 'over' ? colors.danger : b.aheadOfPace ? colors.warning : colors.textSecondary, flexShrink: 0 }}>
+                      {b.paceText}
+                    </div>
+                  </div>
+                  {b.aheadOfPace && b.status !== 'over' && (
+                    <div style={{ fontSize: 11.5, color: colors.warning, marginTop: 3 }}>Spending faster than this budget allows</div>
+                  )}
+                  <div style={{ fontSize: 11, color: colors.textTertiary, marginTop: 3 }}>{PERIOD_LABELS[b.period] || 'This month'}</div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: statusColor }}>{b.statusText}</div>
-                  {/* What's actually spendable per day. Overspending shrinks
-                      this automatically, which is the whole point of it. */}
-                  <div style={{ fontSize: 12, fontWeight: 600, color: b.status === 'over' ? colors.danger : b.aheadOfPace ? colors.warning : colors.textSecondary, flexShrink: 0 }}>
-                    {b.paceText}
+                <svg className="bt-chev" data-open={isOpen ? '1' : '0'} width="11" height="7" viewBox="0 0 11 7" style={{ flexShrink: 0, alignSelf: 'flex-start', marginTop: 4, color: colors.textTertiary }}>
+                  <path d="M1 1l4.5 4L10 1" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <Collapse open={isOpen}>
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${colors.divider}`, display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {d.topMerchants.length === 0 && <div style={{ fontSize: 12.5, color: colors.textTertiary }}>No spending recorded here yet</div>}
+                  {d.topMerchants.slice(0, 3).map((m, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
+                      <span style={{ color: colors.textSecondary, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.merchant} <span style={{ color: colors.textTertiary }}>· {m.count}×</span></span>
+                      <Amount style={{ fontWeight: 600, flexShrink: 0 }}>{m.totalF}</Amount>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                    <button onClick={() => openDetail({ kind: 'category', id: b.cat })} style={{ flex: 1, background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, color: colors.ink, borderRadius: 100, padding: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>See breakdown</button>
+                    <button onClick={() => setEditingCat(b.cat)} style={{ flex: 1, background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Edit budget</button>
                   </div>
                 </div>
-                {b.aheadOfPace && b.status !== 'over' && (
-                  <div style={{ fontSize: 11.5, color: colors.warning, marginTop: 3 }}>Spending faster than this budget allows</div>
-                )}
-                <div style={{ fontSize: 11, color: colors.textTertiary, marginTop: 3 }}>{PERIOD_LABELS[b.period] || 'This month'}</div>
-              </div>
-            </button>
+              </Collapse>
+            </div>
           );
         })}
         {rows.length === 0 && <div style={{ fontSize: 13.5, color: colors.textTertiary, textAlign: 'center', padding: '12px 0' }}>No budgets set yet</div>}
