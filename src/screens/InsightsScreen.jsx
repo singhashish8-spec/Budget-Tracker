@@ -4,6 +4,7 @@ import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
 import { exportCsv, exportHtmlReport } from '../services/exportReport';
 import Amount from '../components/Amount';
+import Collapse from '../components/Collapse';
 
 const TAX_80C_LIMIT = 150000;
 
@@ -71,6 +72,7 @@ function NetWorthCard({ assets, liab, items, onAdd, onDelete }) {
   const [kind, setKind] = useState('asset');
   const [label, setLabel] = useState('');
   const [amt, setAmt] = useState('');
+  const [openGroups, setOpenGroups] = useState({ asset: true, liability: true });
 
   const submit = () => {
     const amount = parseInt(String(amt).replace(/[^0-9]/g, ''), 10);
@@ -95,13 +97,37 @@ function NetWorthCard({ assets, liab, items, onAdd, onDelete }) {
           <Amount style={{ fontSize: 16, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif" }}>{fmt(liab)}</Amount>
         </div>
       </div>
-      {items.map((i) => (
-        <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 13.5 }}>
-          <span style={{ flex: 1, color: colors.textSecondary }}>{i.label}</span>
-          <Amount style={{ fontWeight: 600 }}>{i.kind === 'liability' ? '−' : ''}{fmt(i.amount)}</Amount>
-          <button onClick={() => onDelete(i.id)} style={{ color: colors.textTertiary, cursor: 'pointer', fontSize: 12 }}>✕</button>
-        </div>
-      ))}
+      {['asset', 'liability'].map((group) => {
+        const groupItems = items.filter((i) => i.kind === group);
+        if (!groupItems.length) return null;
+        const isOpen = openGroups[group];
+        return (
+          <div key={group}>
+            <button
+              onClick={() => setOpenGroups((g) => ({ ...g, [group]: !g[group] }))}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', cursor: 'pointer', padding: '8px 0 6px' }}
+            >
+              <span style={{ flex: 1, fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: 'uppercase', color: colors.textSecondary }}>
+                {group === 'asset' ? 'Assets' : 'Liabilities'} ({groupItems.length})
+              </span>
+              <svg className="bt-chev" data-open={isOpen ? '1' : '0'} width="11" height="7" viewBox="0 0 11 7" style={{ color: colors.textTertiary }}>
+                <path d="M1 1l4.5 4L10 1" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <Collapse open={isOpen}>
+              <div>
+                {groupItems.map((i) => (
+                  <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 13.5 }}>
+                    <span style={{ flex: 1, color: colors.textSecondary }}>{i.label}</span>
+                    <Amount style={{ fontWeight: 600 }}>{i.kind === 'liability' ? '−' : ''}{fmt(i.amount)}</Amount>
+                    <button onClick={() => onDelete(i.id)} style={{ color: colors.textTertiary, cursor: 'pointer', fontSize: 12 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            </Collapse>
+          </div>
+        );
+      })}
       {!open ? (
         <button onClick={() => setOpen(true)} style={{ fontSize: 13, fontWeight: 600, color: colors.primary, cursor: 'pointer', marginTop: 8 }}>+ Add asset or liability</button>
       ) : (

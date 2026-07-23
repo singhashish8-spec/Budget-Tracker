@@ -3,6 +3,7 @@ import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
 import Amount from '../components/Amount';
+import Sheet from '../components/Sheet';
 
 export default function ReviewImportScreen() {
   const { state, cancelReview, confirmReview, setReviewCategory } = useApp();
@@ -111,30 +112,32 @@ export default function ReviewImportScreen() {
 
 function InlineCategorySheet({ categories, current, onPick, onClose }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.4)' }} />
-      <div style={{ position: 'relative', background: colors.bgApp, borderRadius: '24px 24px 0 0', padding: '20px 16px 32px', maxHeight: '72%', overflowY: 'auto', animation: 'sheetup 0.22s ease-out' }}>
-        <div style={{ width: 40, height: 4, borderRadius: 100, background: colors.track, margin: '0 auto 14px' }} />
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 2 }}>Pick a category</div>
-        {current && <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 14 }}>{current.merchant}</div>}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {categories
-            .filter((c) => c.id !== 'income')
-            .map((c) => (
-              <button
-                key={c.id}
-                onClick={() => onPick(c.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 9, background: colors.cardSurface, border: `1px solid ${current?.cat === c.id ? colors.primary : colors.cardBorder}`, borderRadius: 14, padding: '10px 11px', cursor: 'pointer', textAlign: 'left' }}
-              >
-                <div style={{ width: 28, height: 28, borderRadius: 9, background: tint(c.color), color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
-                  {c.mono}
-                </div>
-                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.label}</div>
-              </button>
-            ))}
-        </div>
+    <Sheet
+      onClose={onClose}
+      header={
+        <>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>Pick a category</div>
+          {current && <div style={{ fontSize: 13.5, color: colors.textSecondary, marginTop: 2 }}>{current.merchant}</div>}
+        </>
+      }
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {categories
+          .filter((c) => c.id !== 'income')
+          .map((c) => (
+            <button
+              key={c.id}
+              onClick={() => onPick(c.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 9, background: colors.cardSurface, border: `1px solid ${current?.cat === c.id ? colors.primary : colors.cardBorder}`, borderRadius: 14, padding: '10px 11px', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <div style={{ width: 28, height: 28, borderRadius: 9, background: tint(c.color), color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
+                {c.mono}
+              </div>
+              <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.label}</div>
+            </button>
+          ))}
       </div>
-    </div>
+    </Sheet>
   );
 }
 

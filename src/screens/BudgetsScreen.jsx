@@ -6,6 +6,7 @@ import { budgetRows, suggestedLimit, categoryDetail } from '../state/selectors';
 import { salaryDayLabel } from '../utils/date';
 import Amount from '../components/Amount';
 import Collapse from '../components/Collapse';
+import Sheet from '../components/Sheet';
 
 const PERIOD_LABELS = { month: 'This month', cycle: 'This pay cycle', custom: 'Until deadline' };
 
@@ -211,25 +212,17 @@ function EditBudgetSheet({ row, onSave, onRemove, onClose, salaryDay }) {
   const n = parseInt(String(amt).replace(/[^0-9]/g, ''), 10);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.4)' }} />
-      <div style={{ position: 'relative', background: colors.bgApp, borderRadius: '24px 24px 0 0', padding: '20px 16px 32px', animation: 'sheetup 0.22s ease-out' }}>
-        <div style={{ width: 40, height: 4, borderRadius: 100, background: colors.track, margin: '0 auto 14px' }} />
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>{row.label} budget</div>
-        <div style={{ fontSize: 13.5, color: colors.textSecondary }}>
-          <Amount>{row.spentF}</Amount> spent · {row.paceText}
-        </div>
-        <PeriodPicker period={period} setPeriod={setPeriod} endsAt={endsAt} setEndsAt={setEndsAt} salaryDay={salaryDay} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 14, padding: '12px 16px', margin: '12px 0' }}>
-          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700 }}>₹</span>
-          <input
-            value={amt}
-            onChange={(e) => setAmt(e.target.value.replace(/[^\d]/g, ''))}
-            inputMode="numeric"
-            autoFocus
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700, color: colors.ink, minWidth: 0 }}
-          />
-        </div>
+    <Sheet
+      onClose={onClose}
+      header={
+        <>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>{row.label} budget</div>
+          <div style={{ fontSize: 13.5, color: colors.textSecondary, marginTop: 2 }}>
+            <Amount>{row.spentF}</Amount> spent · {row.paceText}
+          </div>
+        </>
+      }
+      footer={
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onClose} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
             Cancel
@@ -249,14 +242,26 @@ function EditBudgetSheet({ row, onSave, onRemove, onClose, salaryDay }) {
             Save changes
           </button>
         </div>
-        <button
-          onClick={onRemove}
-          style={{ width: '100%', marginTop: 10, background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, color: colors.dangerDark, borderRadius: 100, padding: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
-        >
-          Remove this budget
-        </button>
+      }
+    >
+      <PeriodPicker period={period} setPeriod={setPeriod} endsAt={endsAt} setEndsAt={setEndsAt} salaryDay={salaryDay} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 14, padding: '12px 16px', margin: '12px 0' }}>
+        <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700 }}>₹</span>
+        <input
+          value={amt}
+          onChange={(e) => setAmt(e.target.value.replace(/[^\d]/g, ''))}
+          inputMode="numeric"
+          autoFocus
+          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700, color: colors.ink, minWidth: 0 }}
+        />
       </div>
-    </div>
+      <button
+        onClick={onRemove}
+        style={{ width: '100%', background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, color: colors.dangerDark, borderRadius: 100, padding: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
+      >
+        Remove this budget
+      </button>
+    </Sheet>
   );
 }
 
@@ -282,50 +287,55 @@ function NewBudgetSheet({ availableCats, onSave, onClose, txns, salaryDay }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.4)' }} />
-      <div style={{ position: 'relative', background: colors.bgApp, borderRadius: '24px 24px 0 0', padding: '20px 16px 32px', maxHeight: '72%', overflowY: 'auto', animation: 'sheetup 0.22s ease-out' }}>
-        <div style={{ width: 40, height: 4, borderRadius: 100, background: colors.track, margin: '0 auto 14px' }} />
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 2 }}>Set a new budget</div>
-        <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 14 }}>Pick a category and a monthly limit</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {availableCats.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setCat(c.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 9, background: colors.cardSurface, border: `1.5px solid ${cat === c.id ? colors.primary : colors.cardBorder}`, borderRadius: 14, padding: '10px 11px', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <div style={{ width: 28, height: 28, borderRadius: 9, background: tint(c.color), color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
-                {c.mono}
-              </div>
-              <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.label}</div>
+    <Sheet
+      onClose={onClose}
+      header={
+        <>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 2 }}>Set a new budget</div>
+          <div style={{ fontSize: 13.5, color: colors.textSecondary }}>Pick a category and a monthly limit</div>
+        </>
+      }
+      footer={
+        <>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={amt}
+              onChange={(e) => setAmt(e.target.value.replace(/[^\d]/g, ''))}
+              inputMode="numeric"
+              placeholder="Limit e.g. 3000"
+              style={{ flex: 1, minWidth: 0, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '11px 16px', fontSize: 14, color: colors.ink }}
+            />
+            <button onClick={save} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '11px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              Save
             </button>
-          ))}
-          {availableCats.length === 0 && <div style={{ fontSize: 13, color: colors.textTertiary, gridColumn: '1 / -1' }}>Every category already has a budget</div>}
-        </div>
-        <PeriodPicker period={period} setPeriod={setPeriod} endsAt={endsAt} setEndsAt={setEndsAt} salaryDay={salaryDay} />
-
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <input
-            value={amt}
-            onChange={(e) => setAmt(e.target.value.replace(/[^\d]/g, ''))}
-            inputMode="numeric"
-            placeholder="Limit e.g. 3000"
-            style={{ flex: 1, minWidth: 0, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '11px 16px', fontSize: 14, color: colors.ink }}
-          />
-          <button onClick={save} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '11px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-            Save
-          </button>
-        </div>
-        {suggestion > 0 && (
+          </div>
+          {suggestion > 0 && (
+            <button
+              onClick={() => setAmt(String(suggestion))}
+              style={{ marginTop: 8, fontSize: 12.5, color: colors.primary, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+            >
+              You usually spend about <Amount>{fmt(suggestion)}</Amount> a month here — use that
+            </button>
+          )}
+        </>
+      }
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {availableCats.map((c) => (
           <button
-            onClick={() => setAmt(String(suggestion))}
-            style={{ marginTop: 8, fontSize: 12.5, color: colors.primary, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+            key={c.id}
+            onClick={() => setCat(c.id)}
+            style={{ display: 'flex', alignItems: 'center', gap: 9, background: colors.cardSurface, border: `1.5px solid ${cat === c.id ? colors.primary : colors.cardBorder}`, borderRadius: 14, padding: '10px 11px', cursor: 'pointer', textAlign: 'left' }}
           >
-            You usually spend about <Amount>{fmt(suggestion)}</Amount> a month here — use that
+            <div style={{ width: 28, height: 28, borderRadius: 9, background: tint(c.color), color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
+              {c.mono}
+            </div>
+            <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.label}</div>
           </button>
-        )}
+        ))}
+        {availableCats.length === 0 && <div style={{ fontSize: 13, color: colors.textTertiary, gridColumn: '1 / -1' }}>Every category already has a budget</div>}
       </div>
-    </div>
+      <PeriodPicker period={period} setPeriod={setPeriod} endsAt={endsAt} setEndsAt={setEndsAt} salaryDay={salaryDay} />
+    </Sheet>
   );
 }
