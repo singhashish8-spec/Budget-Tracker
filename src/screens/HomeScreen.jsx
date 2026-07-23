@@ -4,10 +4,11 @@ import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleWindow, txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
-import { alertCount, topCategories, homeTotals, inWindow, goalsSummary } from '../state/selectors';
+import { alertCount, topCategories, homeTotals, inWindow, goalsSummary, categoryDetail } from '../state/selectors';
 import QuickAddBar from '../components/QuickAddBar';
 import DuplicateBanner from '../components/DuplicateBanner';
 import Amount from '../components/Amount';
+import Collapse from '../components/Collapse';
 
 export default function HomeScreen() {
   const { state, go, goReview, openCategorySheet, openDetail, togglePrivacy } = useApp();
@@ -20,6 +21,7 @@ export default function HomeScreen() {
   // figures stay trustworthy for any month you look back at.
   const [period, setPeriod] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [expandedCat, setExpandedCat] = useState(null);
   const cycle = period
     ? { start: new Date(period.y, period.m, 1), end: new Date(period.y, period.m + 1, 1), calendar: true }
     : payCycleWindow(state.salaryDay);
@@ -182,27 +184,54 @@ export default function HomeScreen() {
           <button onClick={() => go('budgets')} style={{ fontSize: 13, fontWeight: 600, color: colors.primary, cursor: 'pointer' }}>Budgets</button>
         </div>
         {top.length === 0 && <div style={{ fontSize: 13.5, color: colors.textTertiary }}>No categorised spending yet</div>}
-        {top.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => openDetail({ kind: 'category', id: c.id })}
-            style={{ display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer', textAlign: 'left', width: '100%' }}
-          >
-            <div style={{ width: 32, height: 32, borderRadius: 10, background: tint(c.color), color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
-              {c.mono}
+        {top.map((c) => {
+          const isOpen = expandedCat === c.id;
+          const d = categoryDetail(txns, categories, c.id, { salaryDay: state.salaryDay });
+          return (
+            <div key={c.id}>
+              <button
+                onClick={() => setExpandedCat(isOpen ? null : c.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 11, cursor: 'pointer', textAlign: 'left', width: '100%' }}
+              >
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: tint(c.color), color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+                  {c.mono}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 5 }}>
+                    <span style={{ fontWeight: 500 }}>{c.label}</span>
+                    <Amount style={{ fontWeight: 600 }}>{c.amtF}</Amount>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 100, background: colors.divider }}>
+                    <div style={{ height: '100%', borderRadius: 100, background: c.color, width: `${c.barPct}%` }} />
+                  </div>
+                </div>
+                <svg className="bt-chev" data-open={isOpen ? '1' : '0'} width="11" height="7" viewBox="0 0 11 7" style={{ flexShrink: 0, color: colors.textTertiary }}>
+                  <path d="M1 1l4.5 4L10 1" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <Collapse open={isOpen}>
+                <div style={{ padding: '8px 0 4px 43px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  <div style={{ fontSize: 12.5, color: colors.textSecondary }}>
+                    {d.lastTotal === 0 && d.thisTotal === 0
+                      ? 'No history yet'
+                      : d.delta === 0
+                        ? 'Same as last cycle'
+                        : <><Amount>{d.deltaF}</Amount> {d.deltaUp ? 'more' : 'less'} than last cycle</>}
+                  </div>
+                  {d.topMerchants.slice(0, 3).map((m, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
+                      <span style={{ color: colors.textSecondary, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.merchant} <span style={{ color: colors.textTertiary }}>· {m.count}×</span></span>
+                      <Amount style={{ fontWeight: 600, flexShrink: 0 }}>{m.totalF}</Amount>
+                    </div>
+                  ))}
+                  <button onClick={() => openDetail({ kind: 'category', id: c.id })} style={{ alignSelf: 'flex-start', fontSize: 13, fontWeight: 600, color: colors.primary, cursor: 'pointer', paddingTop: 2 }}>
+                    See full breakdown ›
+                  </button>
+                </div>
+              </Collapse>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 5 }}>
-                <span style={{ fontWeight: 500 }}>{c.label}</span>
-                <Amount style={{ fontWeight: 600 }}>{c.amtF}</Amount>
-              </div>
-              <div style={{ height: 5, borderRadius: 100, background: colors.divider }}>
-                <div style={{ height: '100%', borderRadius: 100, background: c.color, width: `${c.barPct}%` }} />
-              </div>
-            </div>
-            <span style={{ color: colors.textTertiary, fontWeight: 600, fontSize: 15 }}>›</span>
-          </button>
-        ))}
+          );
+        })}
       </div>
 
       <button
