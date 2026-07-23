@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
-import { detectPatterns } from '../state/selectors';
+import { detectPatterns, patternDetail } from '../state/selectors';
 import { unlock as biometricUnlock } from '../services/appLock';
+import { txnWhen } from '../utils/date';
 import Amount from '../components/Amount';
+import Collapse from '../components/Collapse';
 
 export default function PatternsScreen() {
   const { state, go, goBack, openDetail, setPatternPref, trackPatternAsBill, showToast, addCustomPattern, deleteCustomPattern } = useApp();
   const patterns = detectPatterns(state.txns, state.categories, state.patternPrefs);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [expandedSig, setExpandedSig] = useState(null);
   const [cpLabel, setCpLabel] = useState('');
   const [cpAmt, setCpAmt] = useState('');
   const [cpCadence, setCpCadence] = useState('monthly');
@@ -54,9 +57,9 @@ export default function PatternsScreen() {
               <div style={{ width: 34, height: 34, borderRadius: 10, background: tint(p.color), color: p.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
                 {p.mono}
               </div>
-              <button onClick={() => openDetail({ kind: 'pattern', id: p.signature })} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', cursor: 'pointer' }}>
+              <button onClick={() => setExpandedSig(expandedSig === p.signature ? null : p.signature)} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', cursor: 'pointer' }}>
                 <div style={{ fontSize: 14.5, fontWeight: 600 }}>{p.merchant}</div>
-                <div style={{ fontSize: 12, color: colors.textTertiary }}>Seen {p.count} times · avg <Amount>{p.avgF}</Amount> · tap for details ›</div>
+                <div style={{ fontSize: 12, color: colors.textTertiary }}>Seen {p.count} times · avg <Amount>{p.avgF}</Amount> · tap to expand</div>
               </button>
               <button
                 onClick={() => requestDelete(p)}
@@ -72,6 +75,24 @@ export default function PatternsScreen() {
             <div style={{ fontSize: 13.5, lineHeight: 1.5, color: colors.textSecondary, marginBottom: 10 }}>
               Tagged {p.label} {p.count} times, totalling <Amount>{p.totalF}</Amount> so far.
             </div>
+            <Collapse open={expandedSig === p.signature}>
+              {expandedSig === p.signature && (() => {
+                const dp = patternDetail(state.txns, state.categories, p.signature);
+                return (
+                  <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {dp.txns.slice(0, 5).map((t) => (
+                      <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
+                        <span style={{ color: colors.textSecondary, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{txnWhen(t)}</span>
+                        <Amount style={{ fontWeight: 600, flexShrink: 0 }}>−{fmt(t.amount)}</Amount>
+                      </div>
+                    ))}
+                    <button onClick={() => openDetail({ kind: 'pattern', id: p.signature })} style={{ alignSelf: 'flex-start', fontSize: 13, fontWeight: 600, color: colors.primary, cursor: 'pointer', paddingTop: 2 }}>
+                      Open full view ›
+                    </button>
+                  </div>
+                );
+              })()}
+            </Collapse>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {p.confirmed ? (
                 <button
