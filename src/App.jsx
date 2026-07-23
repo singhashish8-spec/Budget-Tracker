@@ -53,7 +53,7 @@ function Shell() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', background: colors.bgApp, color: colors.ink }}>
+    <div className="app-shell" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', backgroundColor: colors.bgApp, color: colors.ink }}>
       {state.screen === 'onboarding' && <Onboarding />}
       {state.screen === 'home' && <HomeScreen />}
       {state.screen === 'transactions' && <TransactionsScreen />}
