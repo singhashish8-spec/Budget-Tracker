@@ -4,6 +4,7 @@ import { currentMonthKey, ordinal } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { billRow } from '../state/selectors';
 import Amount from '../components/Amount';
+import Sheet from '../components/Sheet';
 
 const KINDS = [
   { key: 'bill', label: 'Bill' },
@@ -232,11 +233,21 @@ function EditReminderSheet({ reminder, onSave, onClose }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.4)' }} />
-      <div style={{ position: 'relative', background: colors.bgApp, borderRadius: '24px 24px 0 0', padding: '20px 16px 32px', animation: 'sheetup 0.22s ease-out', display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '88vh', overflowY: 'auto' }}>
-        <div style={{ width: 40, height: 4, borderRadius: 100, background: colors.track, margin: '0 auto 6px' }} />
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>Edit bill</div>
+    <Sheet
+      onClose={onClose}
+      header={<div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>Edit bill</div>}
+      footer={
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={save} style={{ flex: 2, background: valid ? colors.primary : colors.track, color: colors.onPrimary, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: valid ? 'pointer' : 'default' }}>
+            Save changes
+          </button>
+        </div>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <SegPicker options={KINDS} value={kind} onChange={setKind} />
         <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Name" style={editInput} />
         <div style={{ display: 'flex', gap: 8 }}>
@@ -253,16 +264,8 @@ function EditReminderSheet({ reminder, onSave, onClose }) {
             <input type="month" value={startMonth} onChange={(e) => setStartMonth(e.target.value)} style={{ ...editInput, flex: 1, color: startMonth ? colors.ink : colors.textTertiary }} />
           </div>
         )}
-        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          <button onClick={onClose} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
-            Cancel
-          </button>
-          <button onClick={save} style={{ flex: 2, background: valid ? colors.primary : colors.track, color: colors.onPrimary, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: valid ? 'pointer' : 'default' }}>
-            Save changes
-          </button>
-        </div>
       </div>
-    </div>
+    </Sheet>
   );
 }
 
