@@ -1,10 +1,13 @@
 // Parses Indian bank / UPI transaction SMS into a transaction shape.
 // Returns null when the message doesn't look like a debit/credit alert.
 
-const AMOUNT_RE = /(?:rs|inr)\.?\s*([\d,]+(?:\.\d{1,2})?)/i;
+// Accepts the ₹ symbol as well as the "Rs"/"INR" words, so messages that quote
+// "₹1,234.00" (increasingly common) are recognised too.
+const AMOUNT_RE = /(?:rs|inr|₹)\.?\s*([\d,]+(?:\.\d{1,2})?)/i;
 // Full words plus the short forms Indian banks (e.g. AU) use: "Dr INR ..." for
 // a debit and the "UPI/DR/..." reference token. Same for credit ("Cr", "/CR/").
-const DEBIT_RE = /\b(debited|debit|spent|paid|withdrawn|purchase|sent)\b|\bdr\.?\s+(?:rs|inr)\b|\/dr\//i;
+// "deducted"/"charged" are unambiguous debits some banks and billers use.
+const DEBIT_RE = /\b(debited|debit|deducted|charged|spent|paid|withdrawn|purchase|sent)\b|\bdr\.?\s+(?:rs|inr)\b|\/dr\//i;
 const CREDIT_RE = /\b(credited|credit|received|deposited|refund)\b|\bcr\.?\s+(?:rs|inr)\b|\/cr\//i;
 
 // Buy-now-pay-later / pay-later services. When one of these is detected we
@@ -92,6 +95,8 @@ export function extractMerchant(body) {
     // salary credit falls back to the useless label "Credit".
     /\b(?:NEFT|IMPS|RTGS)\s+(?:CR|DR)-\S+\s+-\s*([A-Za-z][A-Za-z0-9 .&_-]+?)(?=\.|\s+Bal\b|[\r\n]|$)/i,
     /\bto VPA\s+([^\s.,]+)/i,
+    // Bill/EMI phrasings: "paid towards Electricity Bill", "for Rent".
+    /\btowards\s+([A-Za-z][A-Za-z0-9 .&_-]+?)(?=\.|\s+Bal\b|[\r\n]|$)/i,
     /\bat\s+([A-Z0-9][A-Za-z0-9*&._-]+(?:\s+[A-Za-z0-9*&._-]+){0,2})/,
     /\bto\s+([A-Z0-9][A-Za-z0-9*&._@-]+(?:\s+[A-Za-z0-9*&._-]+){0,2})/,
     /\bby\s+([A-Z0-9][A-Za-z0-9*&._-]+(?:\s+[A-Za-z0-9*&._-]+){0,2})/,
