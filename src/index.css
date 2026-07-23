@@ -194,3 +194,29 @@ button {
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes sheetup { from { transform: translateY(40px); opacity: 0.4; } to { transform: translateY(0); opacity: 1; } }
 @keyframes slidein { from { transform: translateX(48px); opacity: 0.4; } to { transform: translateX(0); opacity: 1; } }
+
+/* ── Motion: screen transitions + press feedback ─────────────────────────────
+   Enabled by default. Disabled when the OS prefers reduced motion, or when the
+   user picks "Reduced" (Settings → Appearance → Animations → data-motion). Only
+   transform/opacity are animated, and durations stay short for WebView smooth-
+   ness. */
+@keyframes slideInRight { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
+
+.screen-enter[data-anim='deep'] { animation: slideInRight 0.28s cubic-bezier(0.2, 0.75, 0.3, 1); }
+.screen-enter[data-anim='tab'] { animation: fadeUp 0.22s ease-out; }
+
+/* Tap feedback on every control. */
+button { transition: transform 0.11s ease, opacity 0.11s ease; }
+button:active { transform: scale(0.97); }
+
+/* OS accessibility preference always wins. */
+@media (prefers-reduced-motion: reduce) {
+  .screen-enter { animation: none !important; }
+  button { transition: none; }
+  button:active { transform: none; }
+}
+/* Explicit user choice. */
+:root[data-motion='reduced'] .screen-enter { animation: none; }
+:root[data-motion='reduced'] button { transition: none; }
+:root[data-motion='reduced'] button:active { transform: none; }
