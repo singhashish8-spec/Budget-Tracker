@@ -9,7 +9,7 @@ import Amount from '../components/Amount';
 import Collapse from '../components/Collapse';
 
 export default function TransactionsScreen() {
-  const { state, set, openCategorySheet, categorizeTxn, deleteTransaction } = useApp();
+  const { state, set, openCategorySheet, categorizeTxn, deleteTransaction, splitTransaction } = useApp();
   const { txns, categories, search, filter, disabledCats } = state;
   const alerts = alertCount(txns);
   const view = filterTransactions(txns, { search, filter, categories });
@@ -113,6 +113,7 @@ export default function TransactionsScreen() {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => openCategorySheet(t.id)} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.ink, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Edit details</button>
+              <button onClick={() => { splitTransaction(t.id); setExpandedId(null); }} style={{ flex: 1, background: colors.primaryTint, border: `1px solid ${colors.primary}`, color: colors.primary, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Split 50/50</button>
               <button onClick={() => { deleteTransaction(t.id); setExpandedId(null); }} style={{ flex: 1, background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, color: colors.dangerDark, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
             </div>
           </div>

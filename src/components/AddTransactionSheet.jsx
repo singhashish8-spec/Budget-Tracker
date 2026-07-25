@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { colors, tint } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 import Sheet from './Sheet';
+import { globalBudgetWarning } from '../state/selectors';
+import { payCycleWindow } from '../utils/date';
 
 // Hand-entered transactions. Cash never generates an SMS, so without this
 // there was no way to record it at all — money simply left the picture. Also
@@ -28,6 +30,7 @@ export default function AddTransactionSheet() {
   const [when, setWhen] = useState(todayInputValue());
   const [cat, setCat] = useState(null);
   const [note, setNote] = useState('');
+  const [warranty, setWarranty] = useState('');
   const [saving, setSaving] = useState(false);
 
   if (!state.addSheetOpen) return null;
@@ -36,6 +39,9 @@ export default function AddTransactionSheet() {
   const amountNum = Math.round(parseFloat(amount.replace(/,/g, '')) || 0);
   const valid = amountNum > 0;
   const income = type === 'income';
+
+  const cycle = payCycleWindow(state.salaryDay);
+  const warning = globalBudgetWarning(state.txns, state.budgets, cycle);
 
   const save = async () => {
     if (!valid || saving) return;
@@ -52,8 +58,9 @@ export default function AddTransactionSheet() {
         cat,
         note: note.trim() || null,
         occurredAt,
+        warranty_months: !income && warranty.trim() ? parseInt(warranty, 10) : null,
       });
-      setAmount(''); setName(''); setNote(''); setCat(null);
+      setAmount(''); setName(''); setNote(''); setCat(null); setWarranty('');
       setWhen(todayInputValue()); setType('expense'); setMethod('cash');
       close();
     } finally {
@@ -107,6 +114,17 @@ export default function AddTransactionSheet() {
 
   return (
     <Sheet onClose={close} header={header} footer={footer}>
+      {!income && warning && (
+        <div style={{ background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 14, padding: '12px 14px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🚨</span>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: colors.dangerDark }}>Cooling Off Warning</div>
+          </div>
+          <div style={{ fontSize: 12.5, color: colors.dangerDark, lineHeight: 1.4 }}>
+            You have used <strong>{warning.pct}%</strong> of your total budget for this cycle. Are you sure this is a necessary purchase?
+          </div>
+        </div>
+      )}
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -162,8 +180,22 @@ export default function AddTransactionSheet() {
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Add a note (optional)"
-        style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '12px 16px', fontSize: 14.5, color: colors.ink }}
+        style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '12px 16px', fontSize: 14.5, color: colors.ink, marginBottom: 14 }}
       />
+      {!income && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.textSecondary, marginBottom: 8 }}>
+            Warranty <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>— optional</span>
+          </div>
+          <input
+            value={warranty}
+            onChange={(e) => setWarranty(e.target.value.replace(/[^\d]/g, ''))}
+            inputMode="numeric"
+            placeholder="Duration in months (e.g. 12)"
+            style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '12px 16px', fontSize: 14.5, color: colors.ink, marginBottom: 14 }}
+          />
+        </>
+      )}
     </Sheet>
   );
 }
