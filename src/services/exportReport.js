@@ -11,7 +11,7 @@ import { fmt } from '../utils/currency';
 // review; this is the fix.
 function csvCell(value) {
   let v = String(value ?? '');
-  if (/^[=+\-@]/.test(v)) v = `'${v}`;
+  if (/^[\s\uFEFF\xA0]*[=+\-@]/.test(v)) v = `'${v}`;
   return `"${v.replace(/"/g, '""')}"`;
 }
 
