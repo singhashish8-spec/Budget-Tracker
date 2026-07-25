@@ -36,8 +36,8 @@ export async function addTransaction(txn) {
   const db = await getDb();
   const id = txn.id || newId('txn');
   await db.run(
-    `INSERT INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at, warranty_months)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       id,
       txn.merchant,
@@ -53,6 +53,7 @@ export async function addTransaction(txn) {
       txn.smsDate ?? null,
       txn.method ?? null,
       txn.occurredAt ?? txn.smsDate ?? null,
+      txn.warranty_months ? Math.round(Number(txn.warranty_months)) : null,
     ],
   );
   await persist();
@@ -104,6 +105,7 @@ const EDITABLE_TXN_FIELDS = {
   date: (v) => String(v),
   occurred_at: (v) => (v == null ? null : Number(v)),
   category_id: (v) => (v == null ? null : String(v)),
+  warranty_months: (v) => (v == null ? null : Math.round(Number(v))),
 };
 
 export async function updateTransaction(id, patch) {
@@ -502,9 +504,9 @@ export async function importBackup(data) {
   }
   for (const t of data.transactions ?? []) {
     await db.run(
-      `INSERT OR REPLACE INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [t.id, t.merchant, t.account ?? null, t.date, Math.round(Math.abs(t.amount)), t.category_id ?? t.cat ?? null, t.type === 'income' ? 'income' : 'expense', t.source ?? 'manual', t.created_at ?? Date.now(), t.note ?? null, t.sms_address ?? null, t.sms_date ?? null, t.method ?? null, t.occurred_at ?? null],
+      `INSERT OR REPLACE INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at, warranty_months)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [t.id, t.merchant, t.account ?? null, t.date, Math.round(Math.abs(t.amount)), t.category_id ?? t.cat ?? null, t.type === 'income' ? 'income' : 'expense', t.source ?? 'manual', t.created_at ?? Date.now(), t.note ?? null, t.sms_address ?? null, t.sms_date ?? null, t.method ?? null, t.occurred_at ?? null, t.warranty_months ?? null],
     );
     counts.transactions++;
   }
