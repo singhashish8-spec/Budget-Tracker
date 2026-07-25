@@ -73,6 +73,11 @@ export async function deleteTransactions(ids, onProgress) {
   for (let i = 0; i < ids.length; i += CHUNK) {
     const slice = ids.slice(i, i + CHUNK);
     const placeholders = slice.map(() => '?').join(',');
+    // sms_log.txn_id has a foreign key to transactions(id) — deleting a row a
+    // message still points at throws "FOREIGN KEY constraint failed" (code 787).
+    // Detach the messages first (keep the body as de-dup memory so they can't be
+    // re-imported), then the delete is safe.
+    await db.run(`UPDATE sms_log SET txn_id = NULL WHERE txn_id IN (${placeholders})`, slice);
     await db.run(`DELETE FROM transactions WHERE id IN (${placeholders})`, slice);
     done += slice.length;
     onProgress?.(done, ids.length);
@@ -117,6 +122,9 @@ export async function updateTransaction(id, patch) {
 
 export async function deleteTransaction(id) {
   const db = await getDb();
+  // Detach any stored SMS rows first (keep the body as de-dup memory) so the
+  // foreign key from sms_log.txn_id doesn't block the delete — see code 787.
+  await db.run(`UPDATE sms_log SET txn_id = NULL WHERE txn_id = ?`, [id]);
   await db.run(`DELETE FROM transactions WHERE id = ?`, [id]);
   await persist();
 }
