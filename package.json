@@ -26,7 +26,7 @@
     "jeep-sqlite": "^2.8.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "sql.js": "^1.14.1"
+    "sql.js": "1.11.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

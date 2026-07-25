@@ -108,6 +108,16 @@ async function runMigrations(db) {
 
 async function openDb() {
   await ensureWebStore();
+
+  try {
+    await sqlite.checkConnectionsConsistency({
+      dbNames: [DB_NAME],
+      openModes: ['no-encryption'],
+    });
+  } catch {
+    /* checkConnectionsConsistency not implemented on all platforms/plugins, ignore if fails */
+  }
+
   // Always open the database in plaintext ('no-encryption'). If a database
   // file left over from a previous, ENCRYPTED build is still on disk, this
   // open() will reject (SQLCipher header isn't valid plaintext SQLite). We let
@@ -117,7 +127,11 @@ async function openDb() {
   const db = isConn
     ? await sqlite.retrieveConnection(DB_NAME, false)
     : await sqlite.createConnection(DB_NAME, false, 'no-encryption', 1, false);
-  await db.open();
+
+  const isDBOpen = (await db.isDBOpen()).result;
+  if (!isDBOpen) {
+    await db.open();
+  }
   await runMigrations(db);
   return db;
 }

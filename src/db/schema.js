@@ -163,6 +163,15 @@ export const MIGRATIONS = [
       );`,
     ],
   },
+  {
+    // Additive only.
+    version: 9,
+    statements: [
+      // Warranty duration in months for high-value items, so the app can alert
+      // before the warranty expires.
+      `ALTER TABLE transactions ADD COLUMN warranty_months INTEGER;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

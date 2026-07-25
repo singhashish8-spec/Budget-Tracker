@@ -911,6 +911,38 @@ export function AppProvider({ children }) {
     [set, showToast],
   );
 
+  const splitTransaction = useCallback(
+    async (txnId) => {
+      const txn = state.txns.find((t) => t.id === txnId);
+      if (!txn || txn.amount <= 1) return;
+
+      const half = Math.floor(txn.amount / 2);
+      const remaining = txn.amount - half;
+
+      // Create new transaction for the split amount
+      await repo.addTransaction({
+        merchant: txn.merchant + ' (Split)',
+        account: txn.account,
+        date: txn.date,
+        amount: half,
+        cat: txn.cat || txn.category_id,
+        type: txn.type,
+        source: 'manual', // Manual so it survives duplicate/sync logic easily
+        note: 'Split from original transaction',
+        method: txn.method,
+        occurredAt: txn.occurred_at || txn.sms_date || txn.created_at,
+        warranty_months: txn.warranty_months,
+      });
+
+      // Update the original transaction with the remaining amount
+      await repo.updateTransaction(txnId, { amount: remaining });
+
+      set({ txns: await repo.listTransactions(), sheetFor: null });
+      showToast('Transaction split 50/50');
+    },
+    [state.txns, set, showToast],
+  );
+
   // ── editing ──
   // Change an existing transaction. Anything imported from SMS is marked as
   // hand-corrected so a later re-scan can't quietly undo the user's edit.
@@ -1147,6 +1179,7 @@ export function AppProvider({ children }) {
       setTxnCategory,
       categorizeTxn,
       editTransaction,
+      splitTransaction,
       editBudget,
       removeBudget,
       editGoal,
@@ -1217,6 +1250,7 @@ export function AppProvider({ children }) {
       setTxnCategory,
       categorizeTxn,
       editTransaction,
+      splitTransaction,
       editBudget,
       removeBudget,
       editGoal,

@@ -55,6 +55,7 @@ export default function CategorySheet() {
       type: txn.type,
       method: txn.method || '',
       when: dateInputValue(txn.occurred_at || txn.sms_date || txn.created_at),
+      warranty: txn.warranty_months ? String(txn.warranty_months) : '',
     });
     setEditing(true);
   };
@@ -70,6 +71,7 @@ export default function CategorySheet() {
       type: draft.type,
       method: draft.method || null,
       ...(draft.when !== originalDay ? { occurredAt: picked } : {}),
+      warranty_months: draft.type === 'expense' && draft.warranty.trim() ? parseInt(draft.warranty, 10) : null,
     });
     setEditing(false);
   };
@@ -200,6 +202,15 @@ export default function CategorySheet() {
                 </button>
               ))}
             </div>
+            {draft.type === 'expense' && (
+              <input
+                value={draft.warranty}
+                onChange={(e) => setDraft({ ...draft, warranty: e.target.value.replace(/[^\d]/g, '') })}
+                inputMode="numeric"
+                placeholder="Warranty in months (optional)"
+                style={{ width: '100%', background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '10px 14px', fontSize: 14, color: colors.ink }}
+              />
+            )}
             <button onClick={saveEdit} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 11, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
               Save changes
             </button>

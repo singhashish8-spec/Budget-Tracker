@@ -21,6 +21,33 @@ export function txnTime(t) {
 
 // Limit transactions to a period (e.g. the current pay cycle). Passing no
 // window returns everything, which is what the all-time views still want.
+export function expiringWarranties(txns, now = new Date()) {
+  const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+  const nowMs = now.getTime();
+  const expiring = [];
+
+  for (const t of txns) {
+    if (!t.warranty_months) continue;
+    const occurred = txnTime(t);
+    const expireDate = new Date(occurred);
+    expireDate.setMonth(expireDate.getMonth() + t.warranty_months);
+    const expireMs = expireDate.getTime();
+
+    // Only flag if expiring in the future within 30 days, or expired within the last 7 days
+    const diff = expireMs - nowMs;
+    if (diff <= ONE_MONTH_MS && diff >= -(7 * 24 * 60 * 60 * 1000)) {
+      expiring.push({
+        ...t,
+        expireDate,
+        expireLabel: expireDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }),
+      });
+    }
+  }
+
+  // Sort by nearest expiration first
+  return expiring.sort((a, b) => a.expireDate.getTime() - b.expireDate.getTime());
+}
+
 export function inWindow(txns, window) {
   if (!window) return txns;
   const from = +window.start;
@@ -68,6 +95,26 @@ export function homeTotals(txns, window) {
   const income = list.filter((t) => t.type === 'income').reduce((a, t) => a + t.amount, 0);
   const spendPct = income ? Math.min(100, Math.round((spend / income) * 100)) : 0;
   return { spend, income, spendPct };
+}
+
+export function globalBudgetWarning(txns, budgets, window) {
+  if (!budgets || budgets.length === 0) return null;
+  const list = inWindow(txns, window);
+  const totalSpend = list.filter((t) => t.type === 'expense').reduce((a, t) => a + t.amount, 0);
+  const totalBudgetLimit = budgets.reduce((a, b) => a + (b.monthly_limit || b.limit || 0), 0);
+
+  if (totalBudgetLimit <= 0) return null;
+
+  const pct = (totalSpend / totalBudgetLimit) * 100;
+  if (pct >= 90) {
+    return {
+      pct: Math.round(pct),
+      spent: totalSpend,
+      limit: totalBudgetLimit,
+      exceeded: pct >= 100,
+    };
+  }
+  return null;
 }
 
 // The stretch of time a budget is measured over.
