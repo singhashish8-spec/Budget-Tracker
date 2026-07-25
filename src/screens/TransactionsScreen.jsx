@@ -28,6 +28,7 @@ export default function TransactionsScreen() {
   };
 
   const [expandedId, setExpandedId] = useState(null);
+  const [collapsedDays, setCollapsedDays] = useState({});
   // Lazily load the stored message text (txn_id → [raw_sms]) the first time it's
   // needed — when messages are switched on or any row is expanded.
   const [smsMap, setSmsMap] = useState(null);
@@ -38,6 +39,87 @@ export default function TransactionsScreen() {
   }, [showMessages, expandedId, smsMap]);
 
   const pickCats = categories.filter((c) => c.id !== 'income' && !disabledCats.includes(c.id));
+
+  // Group the (already date-sorted) list into collapsible day sections.
+  const now = new Date();
+  const groups = [];
+  const gmap = {};
+  for (const t of view) {
+    const b = dayBucket(t, now);
+    if (!gmap[b.key]) { gmap[b.key] = { key: b.key, label: b.label, items: [] }; groups.push(gmap[b.key]); }
+    gmap[b.key].items.push(t);
+  }
+
+  const renderRow = (t) => {
+    const cat = categories.find((c) => c.id === t.cat);
+    const uncat = !t.cat;
+    const income = t.type === 'income';
+    const msgs = smsMap?.[t.id];
+    const hasMsg = Array.isArray(msgs) && msgs.length > 0;
+    const isOpen = expandedId === t.id;
+    return (
+      <div key={t.id} style={{ borderBottom: `1px solid ${colors.divider}` }}>
+        <button
+          onClick={() => setExpandedId(isOpen ? null : t.id)}
+          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 0', cursor: 'pointer', textAlign: 'left', width: '100%' }}
+        >
+          <div style={{ width: 38, height: 38, borderRadius: 12, background: uncat ? colors.dangerTint : tint(cat.color), color: uncat ? colors.danger : cat.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+            {uncat ? '?' : cat.mono}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant}</div>
+            <div style={{ fontSize: 12.5, color: colors.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {txnWhen(t)}{!uncat && cat ? ` · ${cat.label}` : ''}
+            </div>
+            {uncat && (
+              <div style={{ fontSize: 12, color: colors.danger, fontWeight: 600 }}>Needs review — tap to categorise</div>
+            )}
+            {t.note && !isOpen && (
+              <div style={{ fontSize: 12, color: colors.textTertiary, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>“{t.note}”</div>
+            )}
+          </div>
+          <Amount style={{ fontSize: 14.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
+            {income ? '+' : '−'}{fmt(t.amount)}
+          </Amount>
+          <svg className="bt-chev" data-open={isOpen ? '1' : '0'} width="11" height="7" viewBox="0 0 11 7" style={{ flexShrink: 0, color: colors.textTertiary }}>
+            <path d="M1 1l4.5 4L10 1" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {showMessages && hasMsg && !isOpen && (
+          <div style={msgBox}>{msgs.join('\n\n— — —\n\n')}</div>
+        )}
+
+        <Collapse open={isOpen}>
+          <div style={{ padding: '2px 0 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {hasMsg && <div style={msgBox}>{msgs.join('\n\n— — —\n\n')}</div>}
+            {t.note && <div style={{ fontSize: 12.5, color: colors.textSecondary, fontStyle: 'italic' }}>“{t.note}”</div>}
+            <div style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: 0.6, textTransform: 'uppercase', color: colors.textSecondary }}>Set category</div>
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+              {pickCats.map((c) => {
+                const on = t.cat === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => { categorizeTxn(t.id, c.id); setExpandedId(null); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, padding: '7px 12px', borderRadius: 100, cursor: 'pointer', background: on ? colors.primaryTint : colors.bgApp, border: `1.5px solid ${on ? colors.primary : colors.cardBorder}`, color: on ? colors.primary : colors.ink, fontSize: 13, fontWeight: 600 }}
+                  >
+                    <span style={{ width: 18, height: 18, borderRadius: 6, background: tint(c.color), color: c.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 8.5 }}>{c.mono}</span>
+                    {c.label}
+                    {on && <span style={{ marginLeft: 1 }}>✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => openCategorySheet(t.id)} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.ink, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Edit details</button>
+              <button onClick={() => { deleteTransaction(t.id); setExpandedId(null); }} style={{ flex: 1, background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, color: colors.dangerDark, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
+            </div>
+          </div>
+        </Collapse>
+      </div>
+    );
+  };
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -73,84 +155,48 @@ export default function TransactionsScreen() {
         </button>
       </div>
 
-      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '4px 16px', display: 'flex', flexDirection: 'column' }}>
-        {view.map((t) => {
-          const cat = categories.find((c) => c.id === t.cat);
-          const uncat = !t.cat;
-          const income = t.type === 'income';
-          const msgs = smsMap?.[t.id];
-          const hasMsg = Array.isArray(msgs) && msgs.length > 0;
-          const isOpen = expandedId === t.id;
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {groups.map((g) => {
+          const collapsed = !!collapsedDays[g.key];
           return (
-            <div key={t.id} style={{ borderBottom: `1px solid ${colors.divider}` }}>
+            <div key={g.key} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: '2px 16px' }}>
               <button
-                onClick={() => setExpandedId(isOpen ? null : t.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 0', cursor: 'pointer', textAlign: 'left', width: '100%' }}
+                onClick={() => setCollapsedDays((s) => ({ ...s, [g.key]: !s[g.key] }))}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', cursor: 'pointer', padding: '9px 0' }}
               >
-                <div style={{ width: 38, height: 38, borderRadius: 12, background: uncat ? colors.dangerTint : tint(cat.color), color: uncat ? colors.danger : cat.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                  {uncat ? '?' : cat.mono}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant}</div>
-                  <div style={{ fontSize: 12.5, color: colors.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {txnWhen(t)}{!uncat && cat ? ` · ${cat.label}` : ''}
-                  </div>
-                  {uncat && (
-                    <div style={{ fontSize: 12, color: colors.danger, fontWeight: 600 }}>Needs review — tap to categorise</div>
-                  )}
-                  {t.note && !isOpen && (
-                    <div style={{ fontSize: 12, color: colors.textTertiary, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>“{t.note}”</div>
-                  )}
-                </div>
-                <Amount style={{ fontSize: 14.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
-                  {income ? '+' : '−'}{fmt(t.amount)}
-                </Amount>
-                <svg className="bt-chev" data-open={isOpen ? '1' : '0'} width="11" height="7" viewBox="0 0 11 7" style={{ flexShrink: 0, color: colors.textTertiary }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: colors.textSecondary }}>{g.label}</span>
+                <span style={{ fontSize: 12, color: colors.textTertiary }}>· {g.items.length}</span>
+                <svg className="bt-chev" data-open={collapsed ? '0' : '1'} width="11" height="7" viewBox="0 0 11 7" style={{ marginLeft: 'auto', color: colors.textTertiary }}>
                   <path d="M1 1l4.5 4L10 1" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-
-              {/* Message shown inline under the row when the toggle is on (and the
-                  row isn't expanded — the expander shows it too). */}
-              {showMessages && hasMsg && !isOpen && (
-                <div style={msgBox}>{msgs.join('\n\n— — —\n\n')}</div>
-              )}
-
-              <Collapse open={isOpen}>
-                <div style={{ padding: '2px 0 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {hasMsg && <div style={msgBox}>{msgs.join('\n\n— — —\n\n')}</div>}
-                  {t.note && <div style={{ fontSize: 12.5, color: colors.textSecondary, fontStyle: 'italic' }}>“{t.note}”</div>}
-                  <div style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: 0.6, textTransform: 'uppercase', color: colors.textSecondary }}>Set category</div>
-                  <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-                    {pickCats.map((c) => {
-                      const on = t.cat === c.id;
-                      return (
-                        <button
-                          key={c.id}
-                          onClick={() => { categorizeTxn(t.id, c.id); setExpandedId(null); }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, padding: '7px 12px', borderRadius: 100, cursor: 'pointer', background: on ? colors.primaryTint : colors.bgApp, border: `1.5px solid ${on ? colors.primary : colors.cardBorder}`, color: on ? colors.primary : colors.ink, fontSize: 13, fontWeight: 600 }}
-                        >
-                          <span style={{ width: 18, height: 18, borderRadius: 6, background: tint(c.color), color: c.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 8.5 }}>{c.mono}</span>
-                          {c.label}
-                          {on && <span style={{ marginLeft: 1 }}>✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => openCategorySheet(t.id)} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.ink, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Edit details</button>
-                    <button onClick={() => { deleteTransaction(t.id); setExpandedId(null); }} style={{ flex: 1, background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, color: colors.dangerDark, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
-                  </div>
-                </div>
+              <Collapse open={!collapsed}>
+                <div>{g.items.map(renderRow)}</div>
               </Collapse>
             </div>
           );
         })}
-        {view.length === 0 && <div style={{ padding: '28px 0', textAlign: 'center', color: colors.textSecondary, fontSize: 14 }}>No transactions match</div>}
+        {view.length === 0 && <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '28px 16px', textAlign: 'center', color: colors.textSecondary, fontSize: 14 }}>No transactions match</div>}
       </div>
-      <div style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', padding: '4px 20px' }}>Tap a transaction to expand it · toggle Messages to show the bank text</div>
+      <div style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', padding: '4px 20px' }}>Tap a day to collapse it · tap a transaction to expand it</div>
     </div>
   );
+}
+
+// Which day a transaction belongs to, for the collapsible date groups. Prefers
+// the real occurred/SMS time; falls back to the display date string when a row
+// has no timestamp at all.
+function dayBucket(t, now) {
+  const ms = t.occurred_at || t.sms_date || t.created_at;
+  if (!ms) return { key: t.date || 'earlier', label: t.date || 'Earlier' };
+  const d = new Date(ms);
+  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const daysApart = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  let label;
+  if (daysApart === 0) label = 'Today';
+  else if (daysApart === 1) label = 'Yesterday';
+  else label = d.toLocaleDateString('en-IN', d.getFullYear() === now.getFullYear() ? { day: 'numeric', month: 'long' } : { day: 'numeric', month: 'long', year: 'numeric' });
+  return { key: `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`, label };
 }
 
 const msgBox = {
