@@ -152,7 +152,7 @@ export default function HomeScreen() {
               <div key={w.id} onClick={() => openCategorySheet(w.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', cursor: 'pointer', borderTop: `1px solid ${colors.warningBorder}80` }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: colors.warningDark }}>{w.merchant || 'Purchase'}</div>
-                  <div style={{ fontSize: 12, color: colors.warningDark, opacity: 0.8 }}>₹{fmt(w.amount)} • {w.warranty_months} months</div>
+                  <div style={{ fontSize: 12, color: colors.warningDark, opacity: 0.8 }}>{fmt(w.amount)} • {w.warranty_months} months</div>
                 </div>
                 <div style={{ fontSize: 12.5, fontWeight: isExpired ? 700 : 600, color: isExpired ? colors.danger : colors.warningDark }}>
                   {isExpired ? 'Expired ' : 'Expires '} {w.expireLabel}
