@@ -48,6 +48,58 @@ export function expiringWarranties(txns, now = new Date()) {
   return expiring.sort((a, b) => a.expireDate.getTime() - b.expireDate.getTime());
 }
 
+// Expiry + traffic-light status for one warranty. Extended warranty months add
+// on top of the base cover. 'expiring' = 60 days or less to run (enough notice
+// to buy an extension or squeeze in a last free service).
+export function warrantyStatus(purchaseAt, months, extendedMonths = 0, now = new Date()) {
+  const total = (Number(months) || 0) + (Number(extendedMonths) || 0);
+  const expire = new Date(purchaseAt);
+  expire.setMonth(expire.getMonth() + total);
+  const DAY = 24 * 60 * 60 * 1000;
+  const daysLeft = Math.round((expire.getTime() - now.getTime()) / DAY);
+  const status = daysLeft < 0 ? 'expired' : daysLeft <= 60 ? 'expiring' : 'valid';
+  return {
+    expireDate: expire,
+    daysLeft,
+    status,
+    totalMonths: total,
+    expireLabel: expire.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }),
+  };
+}
+
+// One list of every product the household has a warranty on, from both the
+// first-class warranties table and any transaction quick-tagged with
+// warranty_months. Sorted so what needs attention floats up: still-valid items
+// by soonest expiry, expired ones sink to the bottom.
+export function warrantyList(warranties, txns, now = new Date()) {
+  const items = [];
+  for (const w of warranties || []) {
+    items.push({
+      source: 'warranty', id: w.id, raw: w,
+      product: w.product, brand: w.brand || null, amount: w.amount ?? null,
+      purchaseAt: w.purchase_at, months: w.warranty_months, extendedMonths: w.extended_months || null,
+      store: w.store || null, serial: w.serial || null, photo: w.photo || null, note: w.note || null,
+      ...warrantyStatus(w.purchase_at, w.warranty_months, w.extended_months, now),
+    });
+  }
+  for (const t of txns || []) {
+    if (!t.warranty_months) continue;
+    const pAt = txnTime(t);
+    items.push({
+      source: 'txn', id: t.id, raw: t,
+      product: t.merchant || 'Purchase', brand: null, amount: t.amount ?? null,
+      purchaseAt: pAt, months: t.warranty_months, extendedMonths: null,
+      store: null, serial: null, photo: null, note: t.note || null,
+      ...warrantyStatus(pAt, t.warranty_months, 0, now),
+    });
+  }
+  return items.sort((a, b) => {
+    const rank = (x) => (x.status === 'expired' ? 1 : 0);
+    if (rank(a) !== rank(b)) return rank(a) - rank(b);
+    return a.daysLeft - b.daysLeft;
+  });
+}
+
 export function inWindow(txns, window) {
   if (!window) return txns;
   const from = +window.start;

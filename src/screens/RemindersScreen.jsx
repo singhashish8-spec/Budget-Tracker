@@ -26,7 +26,7 @@ function tsToMonth(ts) {
 }
 
 export default function RemindersScreen() {
-  const { state, goBack, addReminder, toggleReminderPaid, deleteReminder, editReminder } = useApp();
+  const { state, go, goBack, addReminder, toggleReminderPaid, deleteReminder, editReminder } = useApp();
   const [editingId, setEditingId] = useState(null);
   const [label, setLabel] = useState('');
   const [amt, setAmt] = useState('');
@@ -74,6 +74,9 @@ export default function RemindersScreen() {
           <BackIcon />
         </button>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>Bills &amp; EMIs</div>
+        <button onClick={() => go('warranty')} style={{ marginLeft: 'auto', fontSize: 12.5, fontWeight: 600, color: colors.primary, background: colors.primaryTint, border: `1px solid ${colors.primary}`, borderRadius: 100, padding: '7px 13px', cursor: 'pointer' }}>
+          Warranties
+        </button>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

@@ -31,6 +31,7 @@ const initialState = {
   reminders: [],
   goals: [],
   netWorthItems: [],
+  warranties: [],
   patternPrefs: [],
   // merchant signature → category_id: "payments here always go in this category".
   merchantRules: {},
@@ -130,6 +131,7 @@ export function AppProvider({ children }) {
           reminders,
           goals,
           netWorthItems,
+          warranties,
           patternPrefs,
           smsLog,
           merchantRulesList,
@@ -156,6 +158,7 @@ export function AppProvider({ children }) {
           repo.listReminders(),
           repo.listGoals(),
           repo.listNetWorthItems(),
+          repo.listWarranties(),
           repo.listPatternPrefs(),
           repo.listSmsLog(),
           repo.listMerchantRules(),
@@ -185,6 +188,7 @@ export function AppProvider({ children }) {
           reminders,
           goals,
           netWorthItems,
+          warranties,
           patternPrefs,
           smsLog,
           merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])),
@@ -288,18 +292,19 @@ export function AppProvider({ children }) {
 
   // Re-read all table-backed data into state (used after a restore-from-backup).
   const reloadData = useCallback(async () => {
-    const [categories, txns, budgets, reminders, goals, netWorthItems, patternPrefs, smsLog, merchantRulesList] = await Promise.all([
+    const [categories, txns, budgets, reminders, goals, netWorthItems, warranties, patternPrefs, smsLog, merchantRulesList] = await Promise.all([
       repo.listCategories(),
       repo.listTransactions(),
       repo.listBudgets(),
       repo.listReminders(),
       repo.listGoals(),
       repo.listNetWorthItems(),
+      repo.listWarranties(),
       repo.listPatternPrefs(),
       repo.listSmsLog(),
       repo.listMerchantRules(),
     ]);
-    set({ categories, txns, budgets, reminders, goals, netWorthItems, patternPrefs, smsLog, merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])) });
+    set({ categories, txns, budgets, reminders, goals, netWorthItems, warranties, patternPrefs, smsLog, merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])) });
   }, [set]);
 
   // Refs so the once-registered lifecycle listener always sees current values.
@@ -675,6 +680,32 @@ export function AppProvider({ children }) {
     async (id) => {
       await repo.deleteReminder(id);
       set({ reminders: await repo.listReminders() });
+    },
+    [set],
+  );
+
+  // ── warranties ──
+  const addWarranty = useCallback(
+    async (input) => {
+      await repo.addWarranty(input);
+      set({ warranties: await repo.listWarranties() });
+      showToast(`"${input.product}" warranty saved`);
+    },
+    [set, showToast],
+  );
+
+  const editWarranty = useCallback(
+    async (id, patch) => {
+      await repo.updateWarranty(id, patch);
+      set({ warranties: await repo.listWarranties() });
+    },
+    [set],
+  );
+
+  const deleteWarranty = useCallback(
+    async (id) => {
+      await repo.deleteWarranty(id);
+      set({ warranties: await repo.listWarranties() });
     },
     [set],
   );
@@ -1214,6 +1245,9 @@ export function AppProvider({ children }) {
       addReminder,
       toggleReminderPaid,
       deleteReminder,
+      addWarranty,
+      editWarranty,
+      deleteWarranty,
       addGoal,
       addToGoal,
       deleteGoal,
@@ -1286,6 +1320,9 @@ export function AppProvider({ children }) {
       addReminder,
       toggleReminderPaid,
       deleteReminder,
+      addWarranty,
+      editWarranty,
+      deleteWarranty,
       addGoal,
       addToGoal,
       deleteGoal,

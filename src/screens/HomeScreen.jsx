@@ -4,7 +4,7 @@ import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleWindow, txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
-import { alertCount, topCategories, homeTotals, inWindow, goalsSummary, categoryDetail, expiringWarranties } from '../state/selectors';
+import { alertCount, topCategories, homeTotals, inWindow, goalsSummary, categoryDetail, warrantyList } from '../state/selectors';
 import QuickAddBar from '../components/QuickAddBar';
 import DuplicateBanner from '../components/DuplicateBanner';
 import Amount from '../components/Amount';
@@ -42,7 +42,12 @@ export default function HomeScreen() {
     .slice(0, 2);
 
   const now = new Date();
-  const expiringWs = period ? [] : expiringWarranties(txns, now);
+  // Warranties needing attention: expiring within 60 days, or expired in the
+  // last 30 — pulled from both the warranties panel and any purchase quick-
+  // tagged with a warranty. The full list lives on the Warranties screen.
+  const expiringWs = period
+    ? []
+    : warrantyList(state.warranties, txns, now).filter((w) => w.status === 'expiring' || (w.status === 'expired' && w.daysLeft >= -30));
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     return { y: d.getFullYear(), m: d.getMonth(), key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) };
@@ -145,14 +150,15 @@ export default function HomeScreen() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 16 }}>⚠️</span>
             <div style={{ fontSize: 14, fontWeight: 700, color: colors.warningDark }}>Warranties Expiring Soon</div>
+            <button onClick={() => go('warranty')} style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: colors.warningDark, background: 'transparent', cursor: 'pointer' }}>View all →</button>
           </div>
           {expiringWs.slice(0, 3).map((w) => {
-            const isExpired = w.expireDate < now;
+            const isExpired = w.status === 'expired';
             return (
-              <div key={w.id} onClick={() => openCategorySheet(w.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', cursor: 'pointer', borderTop: `1px solid ${colors.warningBorder}80` }}>
+              <div key={`${w.source}-${w.id}`} onClick={() => go('warranty')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', cursor: 'pointer', borderTop: `1px solid ${colors.warningBorder}80` }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: colors.warningDark }}>{w.merchant || 'Purchase'}</div>
-                  <div style={{ fontSize: 12, color: colors.warningDark, opacity: 0.8 }}>{fmt(w.amount)} • {w.warranty_months} months</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: colors.warningDark }}>{w.product}</div>
+                  <div style={{ fontSize: 12, color: colors.warningDark, opacity: 0.8 }}>{w.amount != null ? `${fmt(w.amount)} • ` : ''}{w.totalMonths} months</div>
                 </div>
                 <div style={{ fontSize: 12.5, fontWeight: isExpired ? 700 : 600, color: isExpired ? colors.danger : colors.warningDark }}>
                   {isExpired ? 'Expired ' : 'Expires '} {w.expireLabel}
