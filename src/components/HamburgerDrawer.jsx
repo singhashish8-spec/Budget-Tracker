@@ -7,7 +7,6 @@ const ITEMS = [
   { key: 'reminders', label: 'Bill reminders', mono: 'BR', color: colors.warning, tintBg: colors.warningTint },
   { key: 'warranty', label: 'Warranties', mono: 'WR', color: '#1E8F72', tintBg: '#1E8F721F' },
   { key: 'patterns', label: 'Smart patterns', mono: 'SP', color: colors.warning, tintBg: colors.warningTint },
-  { key: 'upload', label: 'Upload bills', mono: 'UP', color: '#2D6E8F', tintBg: '#2D6E8F1F' },
 ];
 
 export default function HamburgerDrawer() {

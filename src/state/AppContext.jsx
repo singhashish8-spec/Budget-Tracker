@@ -5,7 +5,6 @@ import { resetDatabase } from '../db/sqlite';
 import { checkLockAvailable, unlock as biometricUnlock } from '../services/appLock';
 import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransactions } from '../services/smsReader';
 import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
-import { setGeminiKey } from '../services/aiExtract';
 import { writeAutoBackup, readAutoBackup } from '../services/autoBackup';
 import { applyTheme, applyDisplay } from '../services/theme';
 import { duplicateTxnIds } from './selectors';
@@ -47,8 +46,6 @@ const initialState = {
   // { done, total } drives the progress bar in ProcessingOverlay; null = the
   // work has no known total yet, so an indeterminate sweeping bar shows.
   procProgress: null,
-  reviewImported: null,
-  reviewSource: '',
   toast: '',
   currency: 'INR',
   themeMode: 'system', // 'system' | 'light' | 'dark'
@@ -63,7 +60,6 @@ const initialState = {
   // Any single expense at or above this triggers the cooling-off prompt, even
   // when no budgets are set. 0 disables the large-purchase check. Default ₹5,000.
   impulseThreshold: 5000,
-  geminiKey: '',
   disabledCats: [],
   customPatterns: [],
   appLock: false,
@@ -145,7 +141,6 @@ export function AppProvider({ children }) {
           customPatternsJson,
           salaryDayStr,
           impulseThresholdStr,
-          geminiKeyStr,
           themeModeStr,
           themeAccentStr,
           themeSurfaceStr,
@@ -172,7 +167,6 @@ export function AppProvider({ children }) {
           repo.getSetting('customPatterns', null),
           repo.getSetting('salaryDay', '0'),
           repo.getSetting('impulseThreshold', '5000'),
-          repo.getSetting('geminiKey', ''),
           repo.getSetting('themeMode', 'system'),
           repo.getSetting('themeAccent', 'green'),
           repo.getSetting('themeSurface', 'standard'),
@@ -204,7 +198,6 @@ export function AppProvider({ children }) {
           customPatterns: customPatternsJson ? JSON.parse(customPatternsJson) : [],
           salaryDay: Number(salaryDayStr) || 0,
           impulseThreshold: impulseThresholdStr == null ? 5000 : Number(impulseThresholdStr) || 0,
-          geminiKey: geminiKeyStr || '',
           themeMode: themeModeStr || 'system',
           themeAccent: themeAccentStr || 'green',
           themeSurface: themeSurfaceStr || 'standard',
@@ -212,7 +205,6 @@ export function AppProvider({ children }) {
           privacy: privacyStr === '1',
           loading: false,
         });
-        setGeminiKey(geminiKeyStr || '');
         // Re-apply from the authoritative (DB) values in case the cache differed.
         applyTheme({ mode: themeModeStr || 'system', accent: themeAccentStr || 'green', surface: themeSurfaceStr || 'standard' });
         applyDisplay({ motion: motionPrefStr || 'on', privacy: privacyStr === '1' });
@@ -441,18 +433,6 @@ export function AppProvider({ children }) {
     repo.setSetting('privacy', next ? '1' : '0');
     applyDisplay({ privacy: next });
   }, [set]);
-
-  // Gemini API key entered by the user (Settings). Stored in the encrypted DB,
-  // never in the public web bundle. Pushed into the AI service immediately.
-  const setGeminiApiKey = useCallback(
-    (key) => {
-      const k = (key || '').trim();
-      set({ geminiKey: k });
-      setGeminiKey(k);
-      repo.setSetting('geminiKey', k);
-    },
-    [set],
-  );
 
   // Salary day: 0 = calendar month; 1-31 = pay day; 32 = last day of month.
   // Feeds the budget cycle (#6) and "return by next salary" (#3).
@@ -1164,33 +1144,6 @@ export function AppProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.loading, state.onboarded]);
 
-  // Review-import staging: these edit state.reviewImported in place (not the
-  // DB) until the user confirms the batch — nothing is persisted until then.
-  const setReviewCategory = useCallback(
-    (txnId, catId) => {
-      const next = (state.reviewImported || []).map((t) => (t.id === txnId ? { ...t, cat: catId } : t));
-      set({ reviewImported: next });
-    },
-    [state.reviewImported, set],
-  );
-
-  const cancelReview = useCallback(() => set({ reviewImported: null, reviewSource: '', screen: 'upload' }), [set]);
-
-  const confirmReview = useCallback(async () => {
-    const batch = state.reviewImported || [];
-    // Adding a big imported batch row-by-row takes time — show progress.
-    set({ processing: true, procTitle: 'Adding your transactions', procSub: 'Saving each one…', procProgress: { done: 0, total: batch.length } });
-    try {
-      await addManualTransactions(batch, (done, total) => set({ procProgress: { done, total } }));
-      const stillFlagged = batch.some((t) => !t.cat);
-      set({ reviewImported: null, reviewSource: '', screen: 'transactions', filter: stillFlagged ? 'review' : 'all', processing: false, procProgress: null });
-      showToast(`${batch.length} transaction${batch.length === 1 ? '' : 's'} added`);
-    } catch (err) {
-      set({ processing: false, procProgress: null });
-      showToast(err?.message || 'Couldn’t add those — please try again');
-    }
-  }, [state.reviewImported, addManualTransactions, set, showToast]);
-
   const value = useMemo(
     () => ({
       state,
@@ -1215,7 +1168,6 @@ export function AppProvider({ children }) {
       togglePrivacy,
       setSalaryDay,
       setImpulseThreshold,
-      setGeminiApiKey,
       toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,
@@ -1263,9 +1215,6 @@ export function AppProvider({ children }) {
       addCustomPattern,
       deleteCustomPattern,
       scanSms,
-      setReviewCategory,
-      cancelReview,
-      confirmReview,
     }),
     [
       state,
@@ -1290,7 +1239,6 @@ export function AppProvider({ children }) {
       togglePrivacy,
       setSalaryDay,
       setImpulseThreshold,
-      setGeminiApiKey,
       toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,
@@ -1338,9 +1286,6 @@ export function AppProvider({ children }) {
       addCustomPattern,
       deleteCustomPattern,
       scanSms,
-      setReviewCategory,
-      cancelReview,
-      confirmReview,
     ],
   );
 
