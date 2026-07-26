@@ -12,6 +12,7 @@ import InsightsScreen from './screens/InsightsScreen';
 import GoalsScreen from './screens/GoalsScreen';
 import DetailScreen from './screens/DetailScreen';
 import RemindersScreen from './screens/RemindersScreen';
+import WarrantyScreen from './screens/WarrantyScreen';
 import PatternsScreen from './screens/PatternsScreen';
 import SmsScreen from './screens/SmsScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -29,7 +30,7 @@ const TAB_SCREENS = ['home', 'transactions', 'budgets', 'insights'];
 // Screens reached by drilling in animate differently from the top-level tabs:
 // deep screens slide in from the right (a sense of "going in"), tabs cross-fade
 // up (siblings, not a hierarchy).
-const DEEP_SCREENS = new Set(['detail', 'settings', 'goals', 'reminders', 'patterns', 'sms', 'upload', 'review']);
+const DEEP_SCREENS = new Set(['detail', 'settings', 'goals', 'reminders', 'warranty', 'patterns', 'sms', 'upload', 'review']);
 
 function Shell() {
   const { state } = useApp();
@@ -73,6 +74,7 @@ function Shell() {
         {state.screen === 'goals' && <GoalsScreen />}
         {state.screen === 'detail' && <DetailScreen />}
         {state.screen === 'reminders' && <RemindersScreen />}
+        {state.screen === 'warranty' && <WarrantyScreen />}
         {state.screen === 'patterns' && <PatternsScreen />}
         {state.screen === 'sms' && <SmsScreen />}
         {state.screen === 'settings' && <SettingsScreen />}

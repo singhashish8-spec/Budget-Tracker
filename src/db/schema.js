@@ -172,6 +172,33 @@ export const MIGRATIONS = [
       `ALTER TABLE transactions ADD COLUMN warranty_months INTEGER;`,
     ],
   },
+  {
+    // A first-class warranty record. The transactions.warranty_months column is
+    // a quick tag on a purchase; this table is for the full picture Indian
+    // households actually need — brand, dealer, serial/invoice number, an
+    // optional extended warranty, and a photo of the bill or warranty card —
+    // and it can stand alone (a cash-bought mixer never logged as a txn) or link
+    // to a transaction / EMI. Everything but product + dates is optional.
+    version: 10,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS warranties (
+        id TEXT PRIMARY KEY,
+        product TEXT NOT NULL,
+        brand TEXT,
+        amount INTEGER,
+        purchase_at INTEGER NOT NULL,
+        warranty_months INTEGER NOT NULL,
+        extended_months INTEGER,
+        store TEXT,
+        serial TEXT,
+        photo TEXT,
+        txn_id TEXT,
+        reminder_id TEXT,
+        note TEXT,
+        created_at INTEGER NOT NULL
+      );`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

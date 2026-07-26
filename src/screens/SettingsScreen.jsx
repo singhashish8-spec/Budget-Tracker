@@ -22,7 +22,7 @@ const SECTIONS = [
 ];
 
 export default function SettingsScreen() {
-  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setGeminiApiKey, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
+  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setGeminiApiKey, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
   const [section, setSection] = useState(null);
   const restoreRef = useRef(null);
   const [keyDraft, setKeyDraft] = useState(state.geminiKey || '');
@@ -191,6 +191,23 @@ export default function SettingsScreen() {
               <option value={32}>Last day of month</option>
             </select>
             <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: 8 }}>Currently: {salaryDayLabel(state.salaryDay)}</div>
+          </div>
+
+          <div style={card}>
+            <div style={sectionLabel}>Cooling-off limit</div>
+            <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 10 }}>
+              Any single spend at or above this shows a "think twice" warning while you add it — a gentle brake on impulse buys. Set to 0 to turn it off.
+            </div>
+            <input
+              value={state.impulseThreshold ? String(state.impulseThreshold) : ''}
+              onChange={(e) => setImpulseThreshold(e.target.value.replace(/[^\d]/g, ''))}
+              inputMode="numeric"
+              placeholder="₹ amount (e.g. 5000)"
+              style={{ width: '100%', background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '11px 16px', fontSize: 14, color: colors.ink }}
+            />
+            <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: 8 }}>
+              {state.impulseThreshold > 0 ? `Warns on spends of ₹${state.impulseThreshold.toLocaleString('en-IN')} or more` : 'Large-purchase warning is off'}
+            </div>
           </div>
         </>
       )}

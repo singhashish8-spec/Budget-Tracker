@@ -347,6 +347,82 @@ export async function deleteNetWorthItem(id) {
   await persist();
 }
 
+// ── warranties ──
+
+export async function listWarranties() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM warranties ORDER BY purchase_at DESC`);
+  return res.values ?? [];
+}
+
+const WARRANTY_FIELDS = {
+  product: (v) => String(v),
+  brand: (v) => (v == null || v === '' ? null : String(v)),
+  amount: (v) => (v == null || v === '' ? null : Math.round(Number(v))),
+  purchaseAt: (v) => Math.round(Number(v)),
+  warrantyMonths: (v) => Math.round(Number(v)),
+  extendedMonths: (v) => (v == null || v === '' ? null : Math.round(Number(v))),
+  store: (v) => (v == null || v === '' ? null : String(v)),
+  serial: (v) => (v == null || v === '' ? null : String(v)),
+  photo: (v) => (v == null || v === '' ? null : String(v)),
+  txnId: (v) => (v == null || v === '' ? null : String(v)),
+  reminderId: (v) => (v == null || v === '' ? null : String(v)),
+  note: (v) => (v == null || v === '' ? null : String(v)),
+};
+const WARRANTY_COL = {
+  product: 'product', brand: 'brand', amount: 'amount', purchaseAt: 'purchase_at',
+  warrantyMonths: 'warranty_months', extendedMonths: 'extended_months', store: 'store',
+  serial: 'serial', photo: 'photo', txnId: 'txn_id', reminderId: 'reminder_id', note: 'note',
+};
+
+export async function addWarranty(input) {
+  const db = await getDb();
+  const id = newId('war');
+  await db.run(
+    `INSERT INTO warranties (id, product, brand, amount, purchase_at, warranty_months, extended_months, store, serial, photo, txn_id, reminder_id, note, created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [
+      id,
+      WARRANTY_FIELDS.product(input.product),
+      WARRANTY_FIELDS.brand(input.brand),
+      WARRANTY_FIELDS.amount(input.amount),
+      WARRANTY_FIELDS.purchaseAt(input.purchaseAt),
+      WARRANTY_FIELDS.warrantyMonths(input.warrantyMonths),
+      WARRANTY_FIELDS.extendedMonths(input.extendedMonths),
+      WARRANTY_FIELDS.store(input.store),
+      WARRANTY_FIELDS.serial(input.serial),
+      WARRANTY_FIELDS.photo(input.photo),
+      WARRANTY_FIELDS.txnId(input.txnId),
+      WARRANTY_FIELDS.reminderId(input.reminderId),
+      WARRANTY_FIELDS.note(input.note),
+      Date.now(),
+    ],
+  );
+  await persist();
+  return id;
+}
+
+export async function updateWarranty(id, patch) {
+  const sets = [];
+  const values = [];
+  for (const [key, cast] of Object.entries(WARRANTY_FIELDS)) {
+    if (patch[key] !== undefined) {
+      sets.push(`${WARRANTY_COL[key]} = ?`);
+      values.push(cast(patch[key]));
+    }
+  }
+  if (!sets.length) return;
+  const db = await getDb();
+  await db.run(`UPDATE warranties SET ${sets.join(', ')} WHERE id = ?`, [...values, id]);
+  await persist();
+}
+
+export async function deleteWarranty(id) {
+  const db = await getDb();
+  await db.run(`DELETE FROM warranties WHERE id = ?`, [id]);
+  await persist();
+}
+
 // ── pattern preferences (confirm / dismiss) ──
 
 export async function listPatternPrefs() {
@@ -537,6 +613,14 @@ export async function importBackup(data) {
       [n.id, n.kind, n.label, Math.round(n.amount), n.created_at ?? Date.now()],
     );
     counts.netWorthItems++;
+  }
+  for (const w of data.warranties ?? []) {
+    if (!w.id || !w.product) continue;
+    await db.run(
+      `INSERT OR REPLACE INTO warranties (id, product, brand, amount, purchase_at, warranty_months, extended_months, store, serial, photo, txn_id, reminder_id, note, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [w.id, w.product, w.brand ?? null, w.amount ?? null, w.purchase_at ?? Date.now(), w.warranty_months ?? 0, w.extended_months ?? null, w.store ?? null, w.serial ?? null, w.photo ?? null, w.txn_id ?? null, w.reminder_id ?? null, w.note ?? null, w.created_at ?? Date.now()],
+    );
   }
   for (const m of data.merchantRules ?? []) {
     if (!m.signature || !m.category_id) continue;
