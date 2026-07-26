@@ -12,7 +12,7 @@ export default function ReviewImportScreen() {
   const needCount = imported.filter((t) => !t.cat).length;
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 120px', display: 'flex', flexDirection: 'column', gap: 12, position: 'relative', minHeight: '100vh' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 120px', display: 'flex', flexDirection: 'column', gap: 12, position: 'relative', minHeight: '100vh' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
         <button onClick={cancelReview} style={backBtnStyle}>
           <BackIcon />

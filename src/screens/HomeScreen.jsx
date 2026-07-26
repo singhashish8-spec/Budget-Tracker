@@ -77,7 +77,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Condensed header lives at the document root (portal) so it's genuinely
           fixed to the viewport — never clipped by the scroll container. It sits
           below the floating action icons (zIndex 42 < 45), left-aligned with room
@@ -87,7 +87,7 @@ export default function HomeScreen() {
           className="home-condensed"
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 42,
-            padding: 'calc(env(safe-area-inset-top, 0px) + 9px) 150px 9px 20px',
+            padding: 'calc(env(safe-area-inset-top, 0px) + 9px) 74px 9px 20px',
             background: colors.bgApp, borderBottom: `1px solid ${colors.divider}`,
             transform: condensed ? 'translateY(0)' : 'translateY(-101%)',
             opacity: condensed ? 1 : 0,

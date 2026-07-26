@@ -26,7 +26,7 @@ function tsToMonth(ts) {
 }
 
 export default function RemindersScreen() {
-  const { state, go, goBack, addReminder, toggleReminderPaid, deleteReminder, editReminder } = useApp();
+  const { state, go, goBack, addReminder, toggleReminderPaid, deleteReminder, editReminder, addWarranty, editWarranty, deleteWarranty } = useApp();
   const [editingId, setEditingId] = useState(null);
   const [label, setLabel] = useState('');
   const [amt, setAmt] = useState('');
@@ -35,10 +35,11 @@ export default function RemindersScreen() {
   const [cadence, setCadence] = useState('monthly');
   const [termCount, setTermCount] = useState('');
   const [startMonth, setStartMonth] = useState('');
+  const [warrantyMonths, setWarrantyMonths] = useState('');
   const monthKey = currentMonthKey();
 
   const reset = () => {
-    setLabel(''); setAmt(''); setDueDate(''); setKind('bill'); setCadence('monthly'); setTermCount(''); setStartMonth('');
+    setLabel(''); setAmt(''); setDueDate(''); setKind('bill'); setCadence('monthly'); setTermCount(''); setStartMonth(''); setWarrantyMonths('');
   };
 
   const submit = () => {
@@ -61,14 +62,29 @@ export default function RemindersScreen() {
         payload.startAt = startMonth ? monthToTs(startMonth) : new Date(new Date(dueDate).getFullYear(), new Date(dueDate).getMonth(), 1).getTime();
       }
     }
-    addReminder(payload);
+    // A financed purchase (fridge, phone) usually carries a warranty, so it can
+    // be entered right here — it lands in the Warranties panel linked to this
+    // bill/EMI rather than having to be typed in twice.
+    const wMonths = parseInt(String(warrantyMonths).replace(/[^0-9]/g, ''), 10) || 0;
+    (async () => {
+      const reminderId = await addReminder(payload);
+      if (wMonths > 0 && reminderId) {
+        await addWarranty({
+          product: payload.label,
+          amount: null,
+          purchaseAt: payload.startAt || new Date(dueDate).getTime(),
+          warrantyMonths: wMonths,
+          reminderId,
+        });
+      }
+    })();
     reset();
   };
 
   const rows = [...state.reminders].sort((a, b) => a.due_day - b.due_day).map((r) => ({ raw: r, ...billRow(r) }));
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
         <button onClick={goBack} style={backBtnStyle}>
           <BackIcon />
@@ -123,8 +139,25 @@ export default function RemindersScreen() {
         {editingId && (
           <EditReminderSheet
             reminder={state.reminders.find((x) => x.id === editingId)}
-            onSave={async (patch) => {
+            warranty={state.warranties.find((w) => w.reminder_id === editingId)}
+            onSave={async (patch, wMonths) => {
+              const reminder = state.reminders.find((x) => x.id === editingId);
+              const existing = state.warranties.find((w) => w.reminder_id === editingId);
               await editReminder(editingId, patch);
+              // Warranty follows the bill it belongs to: added, updated, or
+              // cleared out when the months field is emptied.
+              if (wMonths > 0 && existing) {
+                await editWarranty(existing.id, { warrantyMonths: wMonths, product: patch.label });
+              } else if (wMonths > 0) {
+                await addWarranty({
+                  product: patch.label,
+                  purchaseAt: patch.startAt || reminder?.start_at || reminder?.created_at || Date.now(),
+                  warrantyMonths: wMonths,
+                  reminderId: editingId,
+                });
+              } else if (existing) {
+                await deleteWarranty(existing.id);
+              }
               setEditingId(null);
             }}
             onClose={() => setEditingId(null)}
@@ -155,6 +188,13 @@ export default function RemindersScreen() {
           </div>
         )}
         {kind === 'bill' && <div style={{ fontSize: 11.5, color: colors.textTertiary, paddingLeft: 4 }}>Add a duration for a fixed-run bill (like a 6-month membership) to see a progress bar. Leave blank for an open-ended monthly bill.</div>}
+
+        {kind !== 'subscription' && (
+          <>
+            <input value={warrantyMonths} onChange={(e) => setWarrantyMonths(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="Product warranty in months (optional)" style={inputStyle} />
+            <div style={{ fontSize: 11.5, color: colors.textTertiary, paddingLeft: 4 }}>Bought a fridge, phone or TV on this? Add the warranty and it shows up in Warranties, linked to this {kind === 'emi' ? 'EMI' : 'bill'}.</div>
+          </>
+        )}
 
         <label style={{ fontSize: 12.5, color: colors.textSecondary, paddingLeft: 4 }}>Due date {kind === 'subscription' && cadence === 'yearly' ? '(renews yearly)' : '(repeats monthly on this day)'}</label>
         <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ ...inputStyle, color: dueDate ? colors.ink : colors.textTertiary }} />
@@ -250,7 +290,7 @@ function BackIcon() {
 
 // Bills were write-once: a wrong amount or due date meant deleting and
 // re-adding, which threw away the paid-this-month status with it.
-function EditReminderSheet({ reminder, onSave, onClose }) {
+function EditReminderSheet({ reminder, warranty, onSave, onClose }) {
   const [label, setLabel] = useState(reminder?.label ?? '');
   const [amount, setAmount] = useState(String(reminder?.amount ?? ''));
   const [dueDay, setDueDay] = useState(String(reminder?.due_day ?? ''));
@@ -258,6 +298,7 @@ function EditReminderSheet({ reminder, onSave, onClose }) {
   const [cadence, setCadence] = useState(reminder?.cadence || 'monthly');
   const [termCount, setTermCount] = useState(String(reminder?.term_count ?? ''));
   const [startMonth, setStartMonth] = useState(tsToMonth(reminder?.start_at));
+  const [warrantyMonths, setWarrantyMonths] = useState(warranty?.warranty_months ? String(warranty.warranty_months) : '');
   if (!reminder) return null;
 
   const amtN = parseInt(String(amount).replace(/[^0-9]/g, ''), 10);
@@ -282,7 +323,8 @@ function EditReminderSheet({ reminder, onSave, onClose }) {
       patch.termCount = term > 0 ? term : null;
       patch.startAt = term > 0 ? (startMonth ? monthToTs(startMonth) : reminder.start_at || reminder.created_at) : null;
     }
-    onSave(patch);
+    const wMonths = kind === 'subscription' ? 0 : parseInt(String(warrantyMonths).replace(/[^0-9]/g, ''), 10) || 0;
+    onSave(patch, wMonths);
   };
 
   return (
@@ -324,6 +366,15 @@ function EditReminderSheet({ reminder, onSave, onClose }) {
               <input type="month" value={startMonth} onChange={(e) => setStartMonth(e.target.value)} style={{ ...editInput, flex: 1, color: startMonth ? colors.ink : colors.textTertiary }} />
             </div>
             <div style={{ fontSize: 12, color: colors.textTertiary }}>Leave duration blank for an open-ended monthly bill.</div>
+          </>
+        )}
+        {kind !== 'subscription' && (
+          <>
+            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: 'uppercase', color: colors.textSecondary, marginTop: 4 }}>Product warranty</div>
+            <input value={warrantyMonths} onChange={(e) => setWarrantyMonths(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="Warranty in months (optional)" style={editInput} />
+            <div style={{ fontSize: 12, color: colors.textTertiary }}>
+              {warranty ? 'Clear this to remove the warranty from the Warranties panel. Add photos and dealer details there.' : 'Adds this product to the Warranties panel, linked to this bill.'}
+            </div>
           </>
         )}
       </div>

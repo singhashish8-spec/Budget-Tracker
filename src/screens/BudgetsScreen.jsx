@@ -81,7 +81,7 @@ export default function BudgetsScreen() {
   );
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ padding: '0 4px' }}>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 700 }}>Budgets</div>
         <div style={{ fontSize: 13, color: colors.textSecondary }}>{monthLabel}</div>
