@@ -22,12 +22,13 @@ const SECTIONS = [
 ];
 
 export default function SettingsScreen() {
-  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setZeroBased, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
+  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setZeroBased, factoryReset, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
   const [section, setSection] = useState(null);
   const restoreRef = useRef(null);
   // { phase, ... } where phase = idle | web | checking | uptodate | available |
   // downloading | ready | error. Drives the App-updates section.
   const [upd, setUpd] = useState({ phase: 'idle' });
+  const [resetOpen, setResetOpen] = useState(false);
 
   const doBackup = async () => {
     try {
@@ -283,6 +284,23 @@ export default function SettingsScreen() {
         </div>
       )}
 
+      {section === 'backup' && (
+        <div style={{ ...card, borderColor: colors.dangerBorder }}>
+          <div style={{ ...sectionLabel, color: colors.danger }}>Reset app</div>
+          <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 12, lineHeight: 1.5 }}>
+            Erases everything on this phone — transactions, budgets, bills, EMIs, warranties and their documents, goals, net worth and envelopes — and clears the automatic recovery snapshots too, so nothing comes back. Back up first if there's any chance you'll want this data again.
+          </div>
+          <button
+            onClick={() => setResetOpen(true)}
+            style={{ width: '100%', background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, color: colors.danger, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Reset app &amp; erase all data
+          </button>
+        </div>
+      )}
+
+      {resetOpen && <ResetDialog onCancel={() => setResetOpen(false)} onConfirm={factoryReset} onBackup={doBackup} />}
+
       {/* Privacy & security */}
       {section === 'privacy' && (
         <div style={card}>
@@ -412,6 +430,70 @@ function StorageSummary({ docs }) {
         To free space, remove a document from its product in Warranties.
       </div>
     </>
+  );
+}
+
+// Wiping everything has no undo and no recovery snapshot afterwards, so a tap
+// isn't enough — the word has to be typed. The backup button sits inside the
+// dialog because this is the last moment it's useful.
+function ResetDialog({ onConfirm, onCancel, onBackup }) {
+  const [typed, setTyped] = useState('');
+  const [working, setWorking] = useState(false);
+  const armed = typed.trim().toUpperCase() === 'RESET';
+
+  const go = async () => {
+    if (!armed || working) return;
+    setWorking(true);
+    try {
+      await onConfirm();
+    } catch {
+      setWorking(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={working ? undefined : onCancel} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.6)' }} />
+      <div style={{ position: 'relative', background: colors.bgApp, borderRadius: 20, padding: 22, width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 16px 44px rgba(0,0,0,0.3)' }}>
+        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, color: colors.danger }}>Erase everything?</div>
+        <div style={{ fontSize: 13.5, color: colors.textSecondary, lineHeight: 1.5 }}>
+          This deletes all your data on this phone and the automatic snapshots that would normally bring it back. There is no undo.
+        </div>
+
+        <button
+          onClick={onBackup}
+          disabled={working}
+          style={{ background: colors.cardSurface, border: `1px solid ${colors.primary}`, color: colors.primary, borderRadius: 100, padding: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginTop: 2 }}
+        >
+          Back up first
+        </button>
+
+        <div style={{ fontSize: 12.5, color: colors.textSecondary, marginTop: 6 }}>
+          Type <strong style={{ color: colors.ink }}>RESET</strong> to confirm
+        </div>
+        <input
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          placeholder="RESET"
+          autoCapitalize="characters"
+          disabled={working}
+          style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${armed ? colors.danger : colors.cardBorder}`, borderRadius: 12, padding: '12px 16px', fontSize: 15, fontWeight: 600, letterSpacing: 1, color: colors.ink, boxSizing: 'border-box' }}
+        />
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+          <button onClick={onCancel} disabled={working} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.ink, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button
+            onClick={go}
+            disabled={!armed || working}
+            style={{ flex: 1, background: armed ? colors.danger : colors.track, color: '#FFFFFF', border: 'none', borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: armed ? 'pointer' : 'default', opacity: working ? 0.7 : 1 }}
+          >
+            {working ? 'Erasing…' : 'Erase everything'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

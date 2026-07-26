@@ -5,7 +5,7 @@ import { resetDatabase } from '../db/sqlite';
 import { checkLockAvailable, unlock as biometricUnlock } from '../services/appLock';
 import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransactions } from '../services/smsReader';
 import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
-import { writeAutoBackup, readAutoBackup } from '../services/autoBackup';
+import { writeAutoBackup, readAutoBackup, clearAutoBackup } from '../services/autoBackup';
 import { applyTheme, applyDisplay } from '../services/theme';
 import { duplicateTxnIds } from './selectors';
 
@@ -296,6 +296,15 @@ export function AppProvider({ children }) {
   // Recovery when the database can't be opened (e.g. a restored-but-
   // undecryptable DB): wipe it and reload the app to start clean.
   const resetApp = useCallback(async () => {
+    await resetDatabase();
+    window.location.reload();
+  }, []);
+
+  // Erase everything and start over. Deliberately stronger than resetApp: the
+  // automatic snapshots have to go too, otherwise the next launch finds one and
+  // offers back the very data the user asked to be rid of.
+  const factoryReset = useCallback(async () => {
+    try { await clearAutoBackup(); } catch { /* best effort — the DB wipe matters more */ }
     await resetDatabase();
     window.location.reload();
   }, []);
@@ -1250,6 +1259,7 @@ export function AppProvider({ children }) {
       closeMenu,
       reloadData,
       resetApp,
+      factoryReset,
       restoreFound,
       dismissRecovery,
       showToast,
@@ -1329,6 +1339,7 @@ export function AppProvider({ children }) {
       closeMenu,
       reloadData,
       resetApp,
+      factoryReset,
       restoreFound,
       dismissRecovery,
       showToast,

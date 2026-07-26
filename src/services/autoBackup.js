@@ -92,3 +92,22 @@ export async function readAutoBackup() {
   found.sort((a, b) => b.when - a.when);
   return found[0];
 }
+
+// Deletes every automatic snapshot we've written.
+//
+// Needed for a genuine "reset everything": wiping only the database leaves
+// these files behind, and the very next launch spots one and offers to restore
+// the data the user just asked to be rid of. Best-effort per location — a
+// missing file is the desired end state, not an error.
+export async function clearAutoBackup() {
+  let removed = 0;
+  for (const t of TARGETS) {
+    try {
+      await Filesystem.deleteFile({ path: FILE, directory: t.directory });
+      removed += 1;
+    } catch {
+      // Not present here, or not writable — either way nothing to clean up.
+    }
+  }
+  return removed;
+}
