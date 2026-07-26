@@ -1,7 +1,13 @@
-// Turn a picked image File into a downscaled JPEG data URL. Warranty photos are
-// stored inline in the SQLite row, so a raw 4 MB phone photo would bloat the DB
-// and every backup. We cap the longest edge and re-encode as JPEG, which keeps
-// an invoice/warranty card perfectly legible at a fraction of the size.
+// Turn a picked file into something we can store in the database.
+//
+// Documents live inline in SQLite rather than as loose files on disk, because
+// the whole point of keeping a bill is that it survives — inline means it rides
+// along in the backup, so a new phone still has the invoice when the fridge
+// dies in month 22. The cost is size, so images are downscaled hard and PDFs
+// are capped.
+
+export const MAX_PDF_BYTES = 3 * 1024 * 1024; // ~3 MB of actual PDF
+
 export function fileToCompressedDataUrl(file, { maxEdge = 1400, quality = 0.7 } = {}) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type?.startsWith('image/')) {
@@ -32,4 +38,44 @@ export function fileToCompressedDataUrl(file, { maxEdge = 1400, quality = 0.7 } 
     };
     reader.readAsDataURL(file);
   });
+}
+
+function readAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Accepts an image or a PDF (bills routinely arrive as a PDF by email) and
+// returns the row we store: { name, mime, data }.
+export async function fileToStoredDocument(file) {
+  if (!file) throw new Error('No file chosen');
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+
+  if (isPdf) {
+    if (file.size > MAX_PDF_BYTES) {
+      throw new Error(`That PDF is ${(file.size / 1024 / 1024).toFixed(1)} MB. Please attach one under 3 MB, or take a photo of the bill instead.`);
+    }
+    return { name: file.name || 'Bill.pdf', mime: 'application/pdf', data: await readAsDataUrl(file) };
+  }
+
+  if (!file.type?.startsWith('image/')) {
+    throw new Error('Attach a photo or a PDF');
+  }
+  return { name: file.name || 'Bill photo', mime: 'image/jpeg', data: await fileToCompressedDataUrl(file) };
+}
+
+// Rough on-disk size of a base64 data URL, for showing what documents cost.
+export function dataUrlBytes(dataUrl) {
+  const b64 = String(dataUrl || '').split(',')[1] || '';
+  return Math.round((b64.length * 3) / 4);
+}
+
+export function formatBytes(n) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }

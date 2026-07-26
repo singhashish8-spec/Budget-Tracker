@@ -5,6 +5,7 @@ import { useApp } from '../state/AppContext';
 import { billRow } from '../state/selectors';
 import Amount from '../components/Amount';
 import Sheet from '../components/Sheet';
+import ReminderDetail from '../components/ReminderDetail';
 
 const KINDS = [
   { key: 'bill', label: 'Bill' },
@@ -27,6 +28,7 @@ function tsToMonth(ts) {
 
 export default function RemindersScreen() {
   const { state, go, goBack, addReminder, toggleReminderPaid, deleteReminder, editReminder, addWarranty, editWarranty, deleteWarranty } = useApp();
+  const [viewingId, setViewingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [label, setLabel] = useState('');
   const [amt, setAmt] = useState('');
@@ -104,7 +106,7 @@ export default function RemindersScreen() {
                 <div style={{ width: 38, height: 38, borderRadius: 12, background: colors.warningTint, color: colors.warning, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                   {b.label.slice(0, 2).toUpperCase()}
                 </div>
-                <button onClick={() => setEditingId(b.id)} style={{ flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer', background: 'transparent' }}>
+                <button onClick={() => setViewingId(b.id)} style={{ flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer', background: 'transparent' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                     <span style={{ fontSize: 14.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.label}</span>
                     {b.badge && (
@@ -136,6 +138,13 @@ export default function RemindersScreen() {
           );
         })}
         {rows.length === 0 && <div style={{ fontSize: 13.5, color: colors.textTertiary, textAlign: 'center', padding: '12px 0' }}>No bills added yet</div>}
+        {viewingId && (
+          <ReminderDetail
+            reminder={state.reminders.find((x) => x.id === viewingId)}
+            onClose={() => setViewingId(null)}
+            onEdit={(r) => { setViewingId(null); setEditingId(r.id); }}
+          />
+        )}
         {editingId && (
           <EditReminderSheet
             reminder={state.reminders.find((x) => x.id === editingId)}

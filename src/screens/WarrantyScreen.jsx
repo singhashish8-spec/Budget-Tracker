@@ -1,11 +1,11 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { colors } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 import { warrantyList } from '../state/selectors';
 import { fmt } from '../utils/currency';
-import { fileToCompressedDataUrl } from '../utils/image';
 import Amount from '../components/Amount';
 import Sheet from '../components/Sheet';
+import WarrantyDetail from '../components/WarrantyDetail';
 
 const STATUS = {
   valid: { color: colors.successText, tint: colors.successTint, label: 'In warranty' },
@@ -35,6 +35,7 @@ function daysLabel(daysLeft) {
 export default function WarrantyScreen() {
   const { state, goBack, addWarranty, editWarranty, deleteWarranty } = useApp();
   const [adding, setAdding] = useState(false);
+  const [viewingId, setViewingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
   const items = useMemo(() => warrantyList(state.warranties, state.txns), [state.warranties, state.txns]);
@@ -44,7 +45,18 @@ export default function WarrantyScreen() {
     expired: items.filter((i) => i.status === 'expired').length,
   }), [items]);
 
+  // First image attached to each product, used as the card thumbnail. PDFs have
+  // no preview, so a product whose only document is a PDF keeps the icon.
+  const thumbs = useMemo(() => {
+    const map = {};
+    for (const d of state.warrantyDocs || []) {
+      if (!map[d.warranty_id] && !(d.mime || '').includes('pdf')) map[d.warranty_id] = d.data;
+    }
+    return map;
+  }, [state.warrantyDocs]);
+
   const editing = editingId ? items.find((i) => i.id === editingId && i.source === 'warranty') : null;
+  const viewing = viewingId ? items.find((i) => i.id === viewingId) : null;
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -69,15 +81,15 @@ export default function WarrantyScreen() {
         {items.map((w) => {
           const s = STATUS[w.status];
           const purchase = new Date(w.purchaseAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-          const editable = w.source === 'warranty';
           return (
             <button
               key={`${w.source}-${w.id}`}
-              onClick={() => editable && setEditingId(w.id)}
-              style={{ textAlign: 'left', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', gap: 12, alignItems: 'center', cursor: editable ? 'pointer' : 'default' }}
+              onClick={() => setViewingId(w.id)}
+              style={{ textAlign: 'left', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', flexDirection: 'column', gap: 10, cursor: 'pointer', width: '100%' }}
             >
-              {w.photo ? (
-                <img src={w.photo} alt="" style={{ width: 46, height: 46, borderRadius: 12, objectFit: 'cover', flexShrink: 0, border: `1px solid ${colors.cardBorder}` }} />
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%' }}>
+              {(thumbs[w.id] || w.photo) ? (
+                <img src={thumbs[w.id] || w.photo} alt="" style={{ width: 46, height: 46, borderRadius: 12, objectFit: 'cover', flexShrink: 0, border: `1px solid ${colors.cardBorder}` }} />
               ) : (
                 <div style={{ width: 46, height: 46, borderRadius: 12, background: s.tint, color: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, flexShrink: 0 }}>🧾</div>
               )}
@@ -98,6 +110,8 @@ export default function WarrantyScreen() {
                 </div>
               </div>
               {w.amount != null && <Amount style={{ fontSize: 13.5, fontWeight: 600, flexShrink: 0 }}>{fmt(w.amount)}</Amount>}
+              </div>
+              <CoverBar item={w} color={s.color} />
             </button>
           );
         })}
@@ -108,19 +122,45 @@ export default function WarrantyScreen() {
         )}
       </div>
 
+      {viewing && (
+        <WarrantyDetail
+          item={viewing}
+          onClose={() => setViewingId(null)}
+          onEdit={(it) => { setViewingId(null); setEditingId(it.id); }}
+        />
+      )}
+
       {(adding || editing) && (
         <WarrantySheet
           existing={editing}
           reminders={state.reminders}
           onClose={() => { setAdding(false); setEditingId(null); }}
           onSave={async (payload) => {
-            if (editing) await editWarranty(editing.id, payload);
-            else await addWarranty(payload);
+            if (editing) {
+              await editWarranty(editing.id, payload);
+            } else {
+              const newId = await addWarranty(payload);
+              if (newId) setViewingId(newId);
+            }
             setAdding(false); setEditingId(null);
           }}
           onDelete={editing ? async () => { await deleteWarranty(editing.id); setEditingId(null); } : null}
         />
       )}
+    </div>
+  );
+}
+
+// How much of the cover is used up. A warranty month isn't an event the way an
+// EMI instalment is, so this is a single depleting bar rather than segments.
+function CoverBar({ item, color }) {
+  const totalDays = Math.max(1, item.totalMonths * 30);
+  const usedPct = Math.max(0, Math.min(100, Math.round(((totalDays - item.daysLeft) / totalDays) * 100)));
+  return (
+    <div style={{ width: '100%' }}>
+      <div style={{ height: 6, borderRadius: 3, background: colors.track, overflow: 'hidden' }}>
+        <div style={{ width: `${usedPct}%`, height: '100%', background: color, borderRadius: 3 }} />
+      </div>
     </div>
   );
 }
@@ -146,24 +186,11 @@ function WarrantySheet({ existing, reminders, onSave, onClose, onDelete }) {
   const [serial, setSerial] = useState(w?.serial ?? '');
   const [note, setNote] = useState(w?.note ?? '');
   const [reminderId, setReminderId] = useState(w?.reminder_id ?? '');
-  const [photo, setPhoto] = useState(w?.photo ?? '');
-  const [photoErr, setPhotoErr] = useState('');
-  const fileRef = useRef(null);
 
+  const [showMore, setShowMore] = useState(Boolean(w?.store || w?.serial || w?.note || w?.extended_months || w?.reminder_id));
   const monthsN = parseInt(String(months).replace(/[^0-9]/g, ''), 10) || 0;
   const valid = product.trim() && purchase && monthsN > 0;
 
-  const pickPhoto = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setPhotoErr('');
-    try {
-      setPhoto(await fileToCompressedDataUrl(file));
-    } catch {
-      setPhotoErr("Couldn't read that image — try another.");
-    }
-  };
 
   const save = () => {
     if (!valid) return;
@@ -178,7 +205,6 @@ function WarrantySheet({ existing, reminders, onSave, onClose, onDelete }) {
       serial: serial.trim() || null,
       note: note.trim() || null,
       reminderId: reminderId || null,
-      photo: photo || null,
     });
   };
 
@@ -216,17 +242,28 @@ function WarrantySheet({ existing, reminders, onSave, onClose, onDelete }) {
           <div style={{ flex: 1 }}>
             <label style={lbl}>Warranty (months)</label>
             <input value={months} onChange={(e) => setMonths(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="e.g. 24" style={{ ...inp, width: '100%' }} />
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              {[6, 12, 24, 36].map((n) => (
+                <button key={n} onClick={() => setMonths(String(n))} style={{ flex: 1, padding: '6px 0', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: months === String(n) ? colors.primary : colors.cardSurface, color: months === String(n) ? colors.onPrimary : colors.textSecondary, border: `1px solid ${months === String(n) ? colors.primary : colors.cardBorder}` }}>{n}m</button>
+              ))}
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
+          {showMore && <div style={{ flex: 1 }}>
             <label style={lbl}>Extended (optional)</label>
             <input value={extended} onChange={(e) => setExtended(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="extra months" style={{ ...inp, width: '100%' }} />
-          </div>
+          </div>}
         </div>
 
-        <input value={store} onChange={(e) => setStore(e.target.value)} placeholder="Store / dealer (optional)" style={inp} />
-        <input value={serial} onChange={(e) => setSerial(e.target.value)} placeholder="Serial / invoice no. (optional)" style={inp} />
+        {!showMore && (
+          <button onClick={() => setShowMore(true)} style={{ ...inp, textAlign: 'left', cursor: 'pointer', color: colors.textSecondary, background: 'transparent' }}>
+            Add more details (dealer, serial no., link to an EMI) ⌄
+          </button>
+        )}
 
-        {reminders.length > 0 && (
+        {showMore && <input value={store} onChange={(e) => setStore(e.target.value)} placeholder="Store / dealer (optional)" style={inp} />}
+        {showMore && <input value={serial} onChange={(e) => setSerial(e.target.value)} placeholder="Serial / invoice no. (optional)" style={inp} />}
+
+        {showMore && reminders.length > 0 && (
           <>
             <label style={lbl}>Bought on an EMI / linked to a bill?</label>
             <select value={reminderId} onChange={(e) => setReminderId(e.target.value)} style={{ ...inp, color: reminderId ? colors.ink : colors.textTertiary }}>
@@ -236,22 +273,7 @@ function WarrantySheet({ existing, reminders, onSave, onClose, onDelete }) {
           </>
         )}
 
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" style={inp} />
-
-        <label style={lbl}>Bill / warranty card photo</label>
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={pickPhoto} style={{ display: 'none' }} />
-        {photo ? (
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <img src={photo} alt="bill" style={{ width: 70, height: 70, borderRadius: 12, objectFit: 'cover', border: `1px solid ${colors.cardBorder}` }} />
-            <button onClick={() => fileRef.current?.click()} style={ghostBtn}>Replace</button>
-            <button onClick={() => setPhoto('')} style={{ ...ghostBtn, color: colors.danger }}>Remove</button>
-          </div>
-        ) : (
-          <button onClick={() => fileRef.current?.click()} style={{ ...inp, textAlign: 'center', cursor: 'pointer', color: colors.textSecondary }}>
-            📷 Add a photo of the bill
-          </button>
-        )}
-        {photoErr && <div style={{ fontSize: 12, color: colors.danger }}>{photoErr}</div>}
+        {showMore && <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" style={inp} />}
       </div>
     </Sheet>
   );
@@ -268,7 +290,6 @@ const inp = {
   boxSizing: 'border-box',
 };
 const lbl = { fontSize: 12, fontWeight: 600, letterSpacing: 0.6, textTransform: 'uppercase', color: colors.textSecondary };
-const ghostBtn = { background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.textSecondary, borderRadius: 100, padding: '9px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' };
 
 const backBtnStyle = {
   width: 36, height: 36, borderRadius: '50%', background: colors.cardSurface,

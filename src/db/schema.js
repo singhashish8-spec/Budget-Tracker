@@ -199,6 +199,44 @@ export const MIGRATIONS = [
       );`,
     ],
   },
+  {
+    // Warranties grow two children:
+    //   • documents — a warranty is only as good as the paperwork behind it, and
+    //     Indian bills arrive as photos AND as PDFs over email, so a product can
+    //     hold several files (invoice, warranty card, serial plate).
+    //   • claims — what actually happened to the product: a repair raised, a
+    //     service visit, what it cost. Without this the warranty is just a date.
+    // The single `photo` column is folded into the documents table so nothing
+    // already saved is lost; the column stays behind for older bundles reading
+    // the same database.
+    version: 11,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS warranty_documents (
+        id TEXT PRIMARY KEY,
+        warranty_id TEXT NOT NULL,
+        name TEXT,
+        mime TEXT,
+        data TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_wdocs_warranty ON warranty_documents(warranty_id);`,
+      `CREATE TABLE IF NOT EXISTS warranty_claims (
+        id TEXT PRIMARY KEY,
+        warranty_id TEXT NOT NULL,
+        raised_at INTEGER NOT NULL,
+        kind TEXT,
+        issue TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'open',
+        cost INTEGER,
+        note TEXT,
+        created_at INTEGER NOT NULL
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_wclaims_warranty ON warranty_claims(warranty_id);`,
+      `INSERT INTO warranty_documents (id, warranty_id, name, mime, data, created_at)
+         SELECT 'doc_' || id, id, 'Bill photo', 'image/jpeg', photo, created_at
+         FROM warranties WHERE photo IS NOT NULL AND photo <> '';`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

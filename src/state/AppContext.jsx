@@ -31,6 +31,8 @@ const initialState = {
   goals: [],
   netWorthItems: [],
   warranties: [],
+  warrantyDocs: [],
+  warrantyClaims: [],
   patternPrefs: [],
   // merchant signature → category_id: "payments here always go in this category".
   merchantRules: {},
@@ -128,6 +130,8 @@ export function AppProvider({ children }) {
           goals,
           netWorthItems,
           warranties,
+          warrantyDocs,
+          warrantyClaims,
           patternPrefs,
           smsLog,
           merchantRulesList,
@@ -154,6 +158,8 @@ export function AppProvider({ children }) {
           repo.listGoals(),
           repo.listNetWorthItems(),
           repo.listWarranties(),
+          repo.listWarrantyDocuments(),
+          repo.listWarrantyClaims(),
           repo.listPatternPrefs(),
           repo.listSmsLog(),
           repo.listMerchantRules(),
@@ -183,6 +189,8 @@ export function AppProvider({ children }) {
           goals,
           netWorthItems,
           warranties,
+          warrantyDocs,
+          warrantyClaims,
           patternPrefs,
           smsLog,
           merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])),
@@ -284,7 +292,7 @@ export function AppProvider({ children }) {
 
   // Re-read all table-backed data into state (used after a restore-from-backup).
   const reloadData = useCallback(async () => {
-    const [categories, txns, budgets, reminders, goals, netWorthItems, warranties, patternPrefs, smsLog, merchantRulesList] = await Promise.all([
+    const [categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, patternPrefs, smsLog, merchantRulesList] = await Promise.all([
       repo.listCategories(),
       repo.listTransactions(),
       repo.listBudgets(),
@@ -292,11 +300,13 @@ export function AppProvider({ children }) {
       repo.listGoals(),
       repo.listNetWorthItems(),
       repo.listWarranties(),
+      repo.listWarrantyDocuments(),
+      repo.listWarrantyClaims(),
       repo.listPatternPrefs(),
       repo.listSmsLog(),
       repo.listMerchantRules(),
     ]);
-    set({ categories, txns, budgets, reminders, goals, netWorthItems, warranties, patternPrefs, smsLog, merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])) });
+    set({ categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, patternPrefs, smsLog, merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])) });
   }, [set]);
 
   // Refs so the once-registered lifecycle listener always sees current values.
@@ -669,9 +679,12 @@ export function AppProvider({ children }) {
   // ── warranties ──
   const addWarranty = useCallback(
     async (input) => {
-      await repo.addWarranty(input);
+      const id = await repo.addWarranty(input);
       set({ warranties: await repo.listWarranties() });
       showToast(`"${input.product}" warranty saved`);
+      // Returned so the caller can drop straight into the new product's
+      // dashboard, where the bills and documents actually get attached.
+      return id;
     },
     [set, showToast],
   );
@@ -687,7 +700,48 @@ export function AppProvider({ children }) {
   const deleteWarranty = useCallback(
     async (id) => {
       await repo.deleteWarranty(id);
-      set({ warranties: await repo.listWarranties() });
+      set({ warranties: await repo.listWarranties(), warrantyDocs: await repo.listWarrantyDocuments(), warrantyClaims: await repo.listWarrantyClaims() });
+    },
+    [set],
+  );
+
+  const addWarrantyDocument = useCallback(
+    async (warrantyId, { name, mime, data }) => {
+      await repo.addWarrantyDocument({ warrantyId, name, mime, data });
+      set({ warrantyDocs: await repo.listWarrantyDocuments() });
+    },
+    [set],
+  );
+
+  const removeWarrantyDocument = useCallback(
+    async (id) => {
+      await repo.deleteWarrantyDocument(id);
+      set({ warrantyDocs: await repo.listWarrantyDocuments() });
+    },
+    [set],
+  );
+
+  const addWarrantyClaim = useCallback(
+    async (warrantyId, claim) => {
+      await repo.addWarrantyClaim({ warrantyId, ...claim });
+      set({ warrantyClaims: await repo.listWarrantyClaims() });
+      showToast('Saved to this product\u2019s history');
+    },
+    [set, showToast],
+  );
+
+  const editWarrantyClaim = useCallback(
+    async (id, patch) => {
+      await repo.updateWarrantyClaim(id, patch);
+      set({ warrantyClaims: await repo.listWarrantyClaims() });
+    },
+    [set],
+  );
+
+  const removeWarrantyClaim = useCallback(
+    async (id) => {
+      await repo.deleteWarrantyClaim(id);
+      set({ warrantyClaims: await repo.listWarrantyClaims() });
     },
     [set],
   );
@@ -1202,6 +1256,11 @@ export function AppProvider({ children }) {
       addWarranty,
       editWarranty,
       deleteWarranty,
+      addWarrantyDocument,
+      removeWarrantyDocument,
+      addWarrantyClaim,
+      editWarrantyClaim,
+      removeWarrantyClaim,
       addGoal,
       addToGoal,
       deleteGoal,
@@ -1273,6 +1332,11 @@ export function AppProvider({ children }) {
       addWarranty,
       editWarranty,
       deleteWarranty,
+      addWarrantyDocument,
+      removeWarrantyDocument,
+      addWarrantyClaim,
+      editWarrantyClaim,
+      removeWarrantyClaim,
       addGoal,
       addToGoal,
       deleteGoal,
