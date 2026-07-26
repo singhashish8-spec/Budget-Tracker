@@ -117,6 +117,16 @@ export function globalBudgetWarning(txns, budgets, window) {
   return null;
 }
 
+// Cooling-off for a single large purchase. Unlike globalBudgetWarning this
+// needs no budgets — it fires purely on the size of the spend being entered, so
+// the impulse guard works for everyone. Returns null when off or under budget.
+export function largePurchaseWarning(amount, threshold) {
+  const amt = Number(amount) || 0;
+  const limit = Number(threshold) || 0;
+  if (limit <= 0 || amt < limit) return null;
+  return { amount: amt, threshold: limit };
+}
+
 // The stretch of time a budget is measured over.
 export function budgetWindow(budget, salaryDay = 0, now = new Date()) {
   if (budget.period === 'custom' && budget.endsAt) {

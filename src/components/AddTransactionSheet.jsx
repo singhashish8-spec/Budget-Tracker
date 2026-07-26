@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { colors, tint } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 import Sheet from './Sheet';
-import { globalBudgetWarning } from '../state/selectors';
+import { globalBudgetWarning, largePurchaseWarning } from '../state/selectors';
+import { fmt } from '../utils/currency';
 import { payCycleWindow } from '../utils/date';
 
 // Hand-entered transactions. Cash never generates an SMS, so without this
@@ -41,7 +42,10 @@ export default function AddTransactionSheet() {
   const income = type === 'income';
 
   const cycle = payCycleWindow(state.salaryDay);
-  const warning = globalBudgetWarning(state.txns, state.budgets, cycle);
+  const budgetWarn = globalBudgetWarning(state.txns, state.budgets, cycle);
+  // A single big spend triggers cooling-off even with no budgets set — this is
+  // the impulse-buy moment for most people.
+  const bigWarn = largePurchaseWarning(amountNum, state.impulseThreshold);
 
   const save = async () => {
     if (!valid || saving) return;
@@ -114,14 +118,25 @@ export default function AddTransactionSheet() {
 
   return (
     <Sheet onClose={close} header={header} footer={footer}>
-      {!income && warning && (
+      {!income && bigWarn && (
         <div style={{ background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 14, padding: '12px 14px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 16 }}>🚨</span>
             <div style={{ fontSize: 13.5, fontWeight: 700, color: colors.dangerDark }}>Cooling Off Warning</div>
           </div>
           <div style={{ fontSize: 12.5, color: colors.dangerDark, lineHeight: 1.4 }}>
-            You have used <strong>{warning.pct}%</strong> of your total budget for this cycle. Are you sure this is a necessary purchase?
+            This is a big one — <strong>{fmt(bigWarn.amount)}</strong> is over your <strong>{fmt(bigWarn.threshold)}</strong> think-twice limit. Sleep on it if you can; is this a need or a want?
+          </div>
+        </div>
+      )}
+      {!income && !bigWarn && budgetWarn && (
+        <div style={{ background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 14, padding: '12px 14px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🚨</span>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: colors.dangerDark }}>Cooling Off Warning</div>
+          </div>
+          <div style={{ fontSize: 12.5, color: colors.dangerDark, lineHeight: 1.4 }}>
+            You have used <strong>{budgetWarn.pct}%</strong> of your total budget for this cycle. Are you sure this is a necessary purchase?
           </div>
         </div>
       )}

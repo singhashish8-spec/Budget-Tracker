@@ -59,6 +59,9 @@ const initialState = {
   taxRegime: 'new',
   tax80cInvested: 0,
   salaryDay: 0, // 0 = not set (use calendar month); 1-31 = pay day; 32 = last day of month
+  // Any single expense at or above this triggers the cooling-off prompt, even
+  // when no budgets are set. 0 disables the large-purchase check. Default ₹5,000.
+  impulseThreshold: 5000,
   geminiKey: '',
   disabledCats: [],
   customPatterns: [],
@@ -139,6 +142,7 @@ export function AppProvider({ children }) {
           disabledCatsJson,
           customPatternsJson,
           salaryDayStr,
+          impulseThresholdStr,
           geminiKeyStr,
           themeModeStr,
           themeAccentStr,
@@ -164,6 +168,7 @@ export function AppProvider({ children }) {
           repo.getSetting('disabledCats', null),
           repo.getSetting('customPatterns', null),
           repo.getSetting('salaryDay', '0'),
+          repo.getSetting('impulseThreshold', '5000'),
           repo.getSetting('geminiKey', ''),
           repo.getSetting('themeMode', 'system'),
           repo.getSetting('themeAccent', 'green'),
@@ -194,6 +199,7 @@ export function AppProvider({ children }) {
           disabledCats: disabledCatsJson ? JSON.parse(disabledCatsJson) : [],
           customPatterns: customPatternsJson ? JSON.parse(customPatternsJson) : [],
           salaryDay: Number(salaryDayStr) || 0,
+          impulseThreshold: impulseThresholdStr == null ? 5000 : Number(impulseThresholdStr) || 0,
           geminiKey: geminiKeyStr || '',
           themeMode: themeModeStr || 'system',
           themeAccent: themeAccentStr || 'green',
@@ -450,6 +456,17 @@ export function AppProvider({ children }) {
       const d = Math.max(0, Math.min(32, Number(day) || 0));
       set({ salaryDay: d });
       repo.setSetting('salaryDay', String(d));
+    },
+    [set],
+  );
+
+  // Cooling-off threshold: any single spend at or above this pops the warning,
+  // independent of budgets. 0 turns the large-purchase check off entirely.
+  const setImpulseThreshold = useCallback(
+    (amount) => {
+      const n = Math.max(0, Math.round(Number(amount) || 0));
+      set({ impulseThreshold: n });
+      repo.setSetting('impulseThreshold', String(n));
     },
     [set],
   );
@@ -1164,6 +1181,7 @@ export function AppProvider({ children }) {
       setMotionPref,
       togglePrivacy,
       setSalaryDay,
+      setImpulseThreshold,
       setGeminiApiKey,
       toggleCategoryEnabled,
       setTaxRegime,
@@ -1235,6 +1253,7 @@ export function AppProvider({ children }) {
       setMotionPref,
       togglePrivacy,
       setSalaryDay,
+      setImpulseThreshold,
       setGeminiApiKey,
       toggleCategoryEnabled,
       setTaxRegime,
