@@ -10,7 +10,7 @@ import * as repo from '../db/repo';
 // README "Backup".
 
 export async function gatherData() {
-  const [categories, transactions, budgets, reminders, goals, netWorthItems, warranties, warrantyDocuments, warrantyClaims, merchantRules, smsIgnores, settings] = await Promise.all([
+  const [categories, transactions, budgets, reminders, goals, netWorthItems, warranties, warrantyDocuments, warrantyClaims, envelopes, merchantRules, smsIgnores, settings] = await Promise.all([
     repo.listCategories(),
     repo.listTransactions(),
     repo.listBudgets(),
@@ -20,6 +20,7 @@ export async function gatherData() {
     repo.listWarranties(),
     repo.listWarrantyDocuments(),
     repo.listWarrantyClaims(),
+    repo.listEnvelopes(),
     repo.listMerchantRules(),
     repo.listSmsIgnores(),
     repo.listSettingsForBackup(),
@@ -37,6 +38,7 @@ export async function gatherData() {
     warranties,
     warrantyDocuments,
     warrantyClaims,
+    envelopes,
     merchantRules,
     // The scan high-water mark + settings so a restore doesn't re-import. The
     // SMS log itself is deliberately NOT backed up: it can be hundreds of rows

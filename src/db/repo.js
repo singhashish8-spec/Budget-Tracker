@@ -36,8 +36,8 @@ export async function addTransaction(txn) {
   const db = await getDb();
   const id = txn.id || newId('txn');
   await db.run(
-    `INSERT INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at, warranty_months)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at, warranty_months, business, gst_rate)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       id,
       txn.merchant,
@@ -54,6 +54,8 @@ export async function addTransaction(txn) {
       txn.method ?? null,
       txn.occurredAt ?? txn.smsDate ?? null,
       txn.warranty_months ? Math.round(Number(txn.warranty_months)) : null,
+      txn.business ? 1 : 0,
+      txn.gst_rate == null || txn.gst_rate === '' ? null : Math.round(Number(txn.gst_rate)),
     ],
   );
   await persist();
@@ -101,6 +103,8 @@ const EDITABLE_TXN_FIELDS = {
   amount: (v) => Math.round(Math.abs(Number(v) || 0)),
   type: (v) => (v === 'income' ? 'income' : 'expense'),
   method: (v) => (v == null ? null : String(v)),
+  business: (v) => (v ? 1 : 0),
+  gst_rate: (v) => (v == null || v === '' ? null : Math.round(Number(v))),
   note: (v) => (v ? String(v) : null),
   date: (v) => String(v),
   occurred_at: (v) => (v == null ? null : Number(v)),
@@ -330,12 +334,12 @@ export async function listNetWorthItems() {
   return res.values ?? [];
 }
 
-export async function addNetWorthItem({ kind, label, amount }) {
+export async function addNetWorthItem({ kind, label, amount, category = null, quantity = null, unit = null }) {
   const db = await getDb();
   const id = newId('nw');
   await db.run(
-    `INSERT INTO net_worth_items (id, kind, label, amount, created_at) VALUES (?,?,?,?,?)`,
-    [id, kind, label, Math.round(amount), Date.now()],
+    `INSERT INTO net_worth_items (id, kind, label, amount, created_at, category, quantity, unit) VALUES (?,?,?,?,?,?,?,?)`,
+    [id, kind, label, Math.round(amount), Date.now(), category, quantity == null || quantity === '' ? null : Number(quantity), unit],
   );
   await persist();
   return id;
@@ -492,6 +496,32 @@ export async function updateWarrantyClaim(id, patch) {
 export async function deleteWarrantyClaim(id) {
   const db = await getDb();
   await db.run(`DELETE FROM warranty_claims WHERE id = ?`, [id]);
+  await persist();
+}
+
+// ── zero-based envelopes ──
+
+export async function listEnvelopes() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM envelopes`);
+  return res.values ?? [];
+}
+
+// One row per category per month. Assigning again just overwrites the amount.
+export async function setEnvelope(categoryId, periodKey, assigned) {
+  const db = await getDb();
+  const amt = Math.max(0, Math.round(Number(assigned) || 0));
+  await db.run(
+    `INSERT INTO envelopes (id, category_id, period_key, assigned, created_at) VALUES (?,?,?,?,?)
+     ON CONFLICT(category_id, period_key) DO UPDATE SET assigned = excluded.assigned`,
+    [newId('env'), categoryId, periodKey, amt, Date.now()],
+  );
+  await persist();
+}
+
+export async function clearEnvelope(categoryId, periodKey) {
+  const db = await getDb();
+  await db.run(`DELETE FROM envelopes WHERE category_id = ? AND period_key = ?`, [categoryId, periodKey]);
   await persist();
 }
 
@@ -653,8 +683,8 @@ export async function importBackup(data) {
   for (const t of data.transactions ?? []) {
     await db.run(
       `INSERT OR REPLACE INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at, warranty_months)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [t.id, t.merchant, t.account ?? null, t.date, Math.round(Math.abs(t.amount)), t.category_id ?? t.cat ?? null, t.type === 'income' ? 'income' : 'expense', t.source ?? 'manual', t.created_at ?? Date.now(), t.note ?? null, t.sms_address ?? null, t.sms_date ?? null, t.method ?? null, t.occurred_at ?? null, t.warranty_months ?? null],
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [t.id, t.merchant, t.account ?? null, t.date, Math.round(Math.abs(t.amount)), t.category_id ?? t.cat ?? null, t.type === 'income' ? 'income' : 'expense', t.source ?? 'manual', t.created_at ?? Date.now(), t.note ?? null, t.sms_address ?? null, t.sms_date ?? null, t.method ?? null, t.occurred_at ?? null, t.warranty_months ?? null, t.business ?? 0, t.gst_rate ?? null],
     );
     counts.transactions++;
   }
@@ -681,8 +711,8 @@ export async function importBackup(data) {
   }
   for (const n of data.netWorthItems ?? []) {
     await db.run(
-      `INSERT OR REPLACE INTO net_worth_items (id, kind, label, amount, created_at) VALUES (?,?,?,?,?)`,
-      [n.id, n.kind, n.label, Math.round(n.amount), n.created_at ?? Date.now()],
+      `INSERT OR REPLACE INTO net_worth_items (id, kind, label, amount, created_at, category, quantity, unit) VALUES (?,?,?,?,?,?,?,?)`,
+      [n.id, n.kind, n.label, Math.round(n.amount), n.created_at ?? Date.now(), n.category ?? null, n.quantity ?? null, n.unit ?? null],
     );
     counts.netWorthItems++;
   }
@@ -706,6 +736,13 @@ export async function importBackup(data) {
     await db.run(
       `INSERT OR REPLACE INTO warranty_claims (id, warranty_id, raised_at, kind, issue, status, cost, note, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
       [c.id, c.warranty_id, c.raised_at ?? Date.now(), c.kind ?? 'claim', c.issue ?? '', c.status ?? 'open', c.cost ?? null, c.note ?? null, c.created_at ?? Date.now()],
+    );
+  }
+  for (const e of data.envelopes ?? []) {
+    if (!e.category_id || !e.period_key) continue;
+    await db.run(
+      `INSERT OR REPLACE INTO envelopes (id, category_id, period_key, assigned, created_at) VALUES (?,?,?,?,?)`,
+      [e.id ?? newId('env'), e.category_id, e.period_key, Math.round(e.assigned ?? 0), e.created_at ?? Date.now()],
     );
   }
   for (const m of data.merchantRules ?? []) {

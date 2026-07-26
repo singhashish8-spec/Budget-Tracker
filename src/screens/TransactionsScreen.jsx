@@ -139,6 +139,12 @@ export default function TransactionsScreen() {
           All
         </button>
         <button
+          onClick={() => set({ filter: filter === 'business' ? 'all' : 'business' })}
+          style={{ padding: '8px 16px', borderRadius: 100, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', background: filter === 'business' ? colors.primary : colors.cardSurface, color: filter === 'business' ? colors.onPrimary : colors.ink, border: `1px solid ${filter === 'business' ? colors.primary : colors.cardBorder}` }}
+        >
+          Business
+        </button>
+        <button
           onClick={() => set({ filter: 'review' })}
           style={{ padding: '8px 16px', borderRadius: 100, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', background: filter === 'review' ? colors.danger : colors.cardSurface, color: filter === 'review' ? '#FFFFFF' : colors.ink, border: `1px solid ${filter === 'review' ? colors.danger : colors.cardBorder}` }}
         >

@@ -6,6 +6,7 @@ const ITEMS = [
   { key: 'goals', label: 'Savings goals', mono: 'SG', color: colors.primary, tintBg: colors.primaryTint },
   { key: 'reminders', label: 'Bill reminders', mono: 'BR', color: colors.warning, tintBg: colors.warningTint },
   { key: 'warranty', label: 'Warranties', mono: 'WR', color: '#1E8F72', tintBg: '#1E8F721F' },
+  { key: 'envelopes', label: 'Envelopes', mono: 'EV', color: '#5B6B8F', tintBg: '#5B6B8F1F', needsZeroBased: true },
   { key: 'patterns', label: 'Smart patterns', mono: 'SP', color: colors.warning, tintBg: colors.warningTint },
 ];
 
@@ -35,7 +36,7 @@ export default function HamburgerDrawer() {
         <div style={{ padding: '0 6px 10px' }}>
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700 }}>Budget Tracker</div>
         </div>
-        {ITEMS.map((item) => (
+        {ITEMS.filter((i) => !i.needsZeroBased || state.zeroBased).map((item) => (
           <button
             key={item.key}
             onClick={() => go(item.key)}

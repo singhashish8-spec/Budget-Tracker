@@ -237,6 +237,40 @@ export const MIGRATIONS = [
          FROM warranties WHERE photo IS NOT NULL AND photo <> '';`,
     ],
   },
+  {
+    // Additive only.
+    version: 12,
+    statements: [
+      // Side-hustle mode: which spending belongs to the business rather than the
+      // household, so tax time is a filter instead of an archaeology project.
+      // 1 = business, 0/null = personal.
+      `ALTER TABLE transactions ADD COLUMN business INTEGER;`,
+      // GST percentage on a business expense (18 = 18%), for the input-credit
+      // total. Null means "not tracked", which is different from 0%.
+      `ALTER TABLE transactions ADD COLUMN gst_rate INTEGER;`,
+      // What kind of holding a net-worth line is — 'gold' | 'chit' | 'sip' |
+      // 'fd' | 'property' | 'cash' | 'other'. Lets the list group itself the way
+      // an Indian household actually thinks about savings.
+      `ALTER TABLE net_worth_items ADD COLUMN category TEXT;`,
+      // Gold is held in grams, not rupees: storing the weight means the value can
+      // be refreshed by typing today's rate instead of recomputing by hand.
+      `ALTER TABLE net_worth_items ADD COLUMN quantity REAL;`,
+      `ALTER TABLE net_worth_items ADD COLUMN unit TEXT;`,
+      // Zero-based budgeting ("give every rupee a job"). One row per category
+      // per month holding what you ASSIGNED to it. What's been spent is derived
+      // from transactions, and what's left rolls forward into the next month —
+      // which is the whole point, and the thing the plain budgets table (one
+      // fixed limit per category, reset every month) cannot express.
+      `CREATE TABLE IF NOT EXISTS envelopes (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL,
+        period_key TEXT NOT NULL,
+        assigned INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      );`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_envelope_period ON envelopes(category_id, period_key);`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
