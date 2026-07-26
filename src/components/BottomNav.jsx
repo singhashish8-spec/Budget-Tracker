@@ -113,18 +113,6 @@ export default function BottomNav() {
               </div>
             </button>
             <button
-              onClick={() => {
-                setChoosing(false);
-                goTab('upload');
-              }}
-              style={{ ...choiceStyle, marginTop: 8 }}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 600 }}>Scan a receipt</div>
-                <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Photograph a bill and pull the details out</div>
-              </div>
-            </button>
-            <button
               onClick={() => setChoosing(false)}
               style={{ width: '100%', marginTop: 12, padding: 13, borderRadius: 100, fontSize: 14.5, fontWeight: 600, color: colors.textSecondary, cursor: 'pointer' }}
             >

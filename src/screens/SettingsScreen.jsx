@@ -14,7 +14,6 @@ import { updatesSupported, fetchManifest, getCurrentVersion, downloadUpdate, app
 const SECTIONS = [
   { key: 'appearance', label: 'Appearance', sub: 'Theme, accent, glass & motion' },
   { key: 'money', label: 'Money', sub: 'Display currency & pay cycle' },
-  { key: 'scanning', label: 'Receipt scanning', sub: 'Gemini key for bills & statements' },
   { key: 'backup', label: 'Backup & restore', sub: 'Save a copy and bring it back' },
   { key: 'privacy', label: 'Privacy & security', sub: 'SMS tracking & app lock' },
   { key: 'updates', label: 'App updates', sub: 'Check for the newest version' },
@@ -22,10 +21,9 @@ const SECTIONS = [
 ];
 
 export default function SettingsScreen() {
-  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setGeminiApiKey, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
+  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
   const [section, setSection] = useState(null);
   const restoreRef = useRef(null);
-  const [keyDraft, setKeyDraft] = useState(state.geminiKey || '');
   // { phase, ... } where phase = idle | web | checking | uptodate | available |
   // downloading | ready | error. Drives the App-updates section.
   const [upd, setUpd] = useState({ phase: 'idle' });
@@ -210,37 +208,6 @@ export default function SettingsScreen() {
             </div>
           </div>
         </>
-      )}
-
-      {/* Receipt scanning */}
-      {section === 'scanning' && (
-        <div style={card}>
-          <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 10 }}>
-            Paste your Google Gemini API key to enable scanning bills & statements. It's stored only on this phone — get a free key at aistudio.google.com/app/apikey.
-          </div>
-          <input
-            value={keyDraft}
-            onChange={(e) => setKeyDraft(e.target.value)}
-            placeholder="Paste Gemini API key"
-            type="password"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            style={{ width: '100%', background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '11px 16px', fontSize: 14, color: colors.ink }}
-          />
-          <button
-            onClick={() => {
-              setGeminiApiKey(keyDraft);
-              showToast(keyDraft.trim() ? 'Gemini key saved' : 'Gemini key cleared');
-            }}
-            style={{ marginTop: 10, background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '11px', width: '100%', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-          >
-            Save key
-          </button>
-          <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: 8 }}>
-            {state.geminiKey ? '✓ Key saved — scanning is enabled' : 'No key yet — scanning is off'}
-          </div>
-        </div>
       )}
 
       {/* Backup & restore */}

@@ -5,7 +5,6 @@ import { resetDatabase } from '../db/sqlite';
 import { checkLockAvailable, unlock as biometricUnlock } from '../services/appLock';
 import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransactions } from '../services/smsReader';
 import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
-import { setGeminiKey } from '../services/aiExtract';
 import { writeAutoBackup, readAutoBackup } from '../services/autoBackup';
 import { applyTheme, applyDisplay } from '../services/theme';
 import { duplicateTxnIds } from './selectors';
@@ -32,6 +31,8 @@ const initialState = {
   goals: [],
   netWorthItems: [],
   warranties: [],
+  warrantyDocs: [],
+  warrantyClaims: [],
   patternPrefs: [],
   // merchant signature → category_id: "payments here always go in this category".
   merchantRules: {},
@@ -47,8 +48,6 @@ const initialState = {
   // { done, total } drives the progress bar in ProcessingOverlay; null = the
   // work has no known total yet, so an indeterminate sweeping bar shows.
   procProgress: null,
-  reviewImported: null,
-  reviewSource: '',
   toast: '',
   currency: 'INR',
   themeMode: 'system', // 'system' | 'light' | 'dark'
@@ -63,7 +62,6 @@ const initialState = {
   // Any single expense at or above this triggers the cooling-off prompt, even
   // when no budgets are set. 0 disables the large-purchase check. Default ₹5,000.
   impulseThreshold: 5000,
-  geminiKey: '',
   disabledCats: [],
   customPatterns: [],
   appLock: false,
@@ -132,6 +130,8 @@ export function AppProvider({ children }) {
           goals,
           netWorthItems,
           warranties,
+          warrantyDocs,
+          warrantyClaims,
           patternPrefs,
           smsLog,
           merchantRulesList,
@@ -145,7 +145,6 @@ export function AppProvider({ children }) {
           customPatternsJson,
           salaryDayStr,
           impulseThresholdStr,
-          geminiKeyStr,
           themeModeStr,
           themeAccentStr,
           themeSurfaceStr,
@@ -159,6 +158,8 @@ export function AppProvider({ children }) {
           repo.listGoals(),
           repo.listNetWorthItems(),
           repo.listWarranties(),
+          repo.listWarrantyDocuments(),
+          repo.listWarrantyClaims(),
           repo.listPatternPrefs(),
           repo.listSmsLog(),
           repo.listMerchantRules(),
@@ -172,7 +173,6 @@ export function AppProvider({ children }) {
           repo.getSetting('customPatterns', null),
           repo.getSetting('salaryDay', '0'),
           repo.getSetting('impulseThreshold', '5000'),
-          repo.getSetting('geminiKey', ''),
           repo.getSetting('themeMode', 'system'),
           repo.getSetting('themeAccent', 'green'),
           repo.getSetting('themeSurface', 'standard'),
@@ -189,6 +189,8 @@ export function AppProvider({ children }) {
           goals,
           netWorthItems,
           warranties,
+          warrantyDocs,
+          warrantyClaims,
           patternPrefs,
           smsLog,
           merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])),
@@ -204,7 +206,6 @@ export function AppProvider({ children }) {
           customPatterns: customPatternsJson ? JSON.parse(customPatternsJson) : [],
           salaryDay: Number(salaryDayStr) || 0,
           impulseThreshold: impulseThresholdStr == null ? 5000 : Number(impulseThresholdStr) || 0,
-          geminiKey: geminiKeyStr || '',
           themeMode: themeModeStr || 'system',
           themeAccent: themeAccentStr || 'green',
           themeSurface: themeSurfaceStr || 'standard',
@@ -212,7 +213,6 @@ export function AppProvider({ children }) {
           privacy: privacyStr === '1',
           loading: false,
         });
-        setGeminiKey(geminiKeyStr || '');
         // Re-apply from the authoritative (DB) values in case the cache differed.
         applyTheme({ mode: themeModeStr || 'system', accent: themeAccentStr || 'green', surface: themeSurfaceStr || 'standard' });
         applyDisplay({ motion: motionPrefStr || 'on', privacy: privacyStr === '1' });
@@ -292,7 +292,7 @@ export function AppProvider({ children }) {
 
   // Re-read all table-backed data into state (used after a restore-from-backup).
   const reloadData = useCallback(async () => {
-    const [categories, txns, budgets, reminders, goals, netWorthItems, warranties, patternPrefs, smsLog, merchantRulesList] = await Promise.all([
+    const [categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, patternPrefs, smsLog, merchantRulesList] = await Promise.all([
       repo.listCategories(),
       repo.listTransactions(),
       repo.listBudgets(),
@@ -300,11 +300,13 @@ export function AppProvider({ children }) {
       repo.listGoals(),
       repo.listNetWorthItems(),
       repo.listWarranties(),
+      repo.listWarrantyDocuments(),
+      repo.listWarrantyClaims(),
       repo.listPatternPrefs(),
       repo.listSmsLog(),
       repo.listMerchantRules(),
     ]);
-    set({ categories, txns, budgets, reminders, goals, netWorthItems, warranties, patternPrefs, smsLog, merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])) });
+    set({ categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, patternPrefs, smsLog, merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])) });
   }, [set]);
 
   // Refs so the once-registered lifecycle listener always sees current values.
@@ -441,18 +443,6 @@ export function AppProvider({ children }) {
     repo.setSetting('privacy', next ? '1' : '0');
     applyDisplay({ privacy: next });
   }, [set]);
-
-  // Gemini API key entered by the user (Settings). Stored in the encrypted DB,
-  // never in the public web bundle. Pushed into the AI service immediately.
-  const setGeminiApiKey = useCallback(
-    (key) => {
-      const k = (key || '').trim();
-      set({ geminiKey: k });
-      setGeminiKey(k);
-      repo.setSetting('geminiKey', k);
-    },
-    [set],
-  );
 
   // Salary day: 0 = calendar month; 1-31 = pay day; 32 = last day of month.
   // Feeds the budget cycle (#6) and "return by next salary" (#3).
@@ -689,9 +679,12 @@ export function AppProvider({ children }) {
   // ── warranties ──
   const addWarranty = useCallback(
     async (input) => {
-      await repo.addWarranty(input);
+      const id = await repo.addWarranty(input);
       set({ warranties: await repo.listWarranties() });
       showToast(`"${input.product}" warranty saved`);
+      // Returned so the caller can drop straight into the new product's
+      // dashboard, where the bills and documents actually get attached.
+      return id;
     },
     [set, showToast],
   );
@@ -707,7 +700,48 @@ export function AppProvider({ children }) {
   const deleteWarranty = useCallback(
     async (id) => {
       await repo.deleteWarranty(id);
-      set({ warranties: await repo.listWarranties() });
+      set({ warranties: await repo.listWarranties(), warrantyDocs: await repo.listWarrantyDocuments(), warrantyClaims: await repo.listWarrantyClaims() });
+    },
+    [set],
+  );
+
+  const addWarrantyDocument = useCallback(
+    async (warrantyId, { name, mime, data }) => {
+      await repo.addWarrantyDocument({ warrantyId, name, mime, data });
+      set({ warrantyDocs: await repo.listWarrantyDocuments() });
+    },
+    [set],
+  );
+
+  const removeWarrantyDocument = useCallback(
+    async (id) => {
+      await repo.deleteWarrantyDocument(id);
+      set({ warrantyDocs: await repo.listWarrantyDocuments() });
+    },
+    [set],
+  );
+
+  const addWarrantyClaim = useCallback(
+    async (warrantyId, claim) => {
+      await repo.addWarrantyClaim({ warrantyId, ...claim });
+      set({ warrantyClaims: await repo.listWarrantyClaims() });
+      showToast('Saved to this product\u2019s history');
+    },
+    [set, showToast],
+  );
+
+  const editWarrantyClaim = useCallback(
+    async (id, patch) => {
+      await repo.updateWarrantyClaim(id, patch);
+      set({ warrantyClaims: await repo.listWarrantyClaims() });
+    },
+    [set],
+  );
+
+  const removeWarrantyClaim = useCallback(
+    async (id) => {
+      await repo.deleteWarrantyClaim(id);
+      set({ warrantyClaims: await repo.listWarrantyClaims() });
     },
     [set],
   );
@@ -1164,33 +1198,6 @@ export function AppProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.loading, state.onboarded]);
 
-  // Review-import staging: these edit state.reviewImported in place (not the
-  // DB) until the user confirms the batch — nothing is persisted until then.
-  const setReviewCategory = useCallback(
-    (txnId, catId) => {
-      const next = (state.reviewImported || []).map((t) => (t.id === txnId ? { ...t, cat: catId } : t));
-      set({ reviewImported: next });
-    },
-    [state.reviewImported, set],
-  );
-
-  const cancelReview = useCallback(() => set({ reviewImported: null, reviewSource: '', screen: 'upload' }), [set]);
-
-  const confirmReview = useCallback(async () => {
-    const batch = state.reviewImported || [];
-    // Adding a big imported batch row-by-row takes time — show progress.
-    set({ processing: true, procTitle: 'Adding your transactions', procSub: 'Saving each one…', procProgress: { done: 0, total: batch.length } });
-    try {
-      await addManualTransactions(batch, (done, total) => set({ procProgress: { done, total } }));
-      const stillFlagged = batch.some((t) => !t.cat);
-      set({ reviewImported: null, reviewSource: '', screen: 'transactions', filter: stillFlagged ? 'review' : 'all', processing: false, procProgress: null });
-      showToast(`${batch.length} transaction${batch.length === 1 ? '' : 's'} added`);
-    } catch (err) {
-      set({ processing: false, procProgress: null });
-      showToast(err?.message || 'Couldn’t add those — please try again');
-    }
-  }, [state.reviewImported, addManualTransactions, set, showToast]);
-
   const value = useMemo(
     () => ({
       state,
@@ -1215,7 +1222,6 @@ export function AppProvider({ children }) {
       togglePrivacy,
       setSalaryDay,
       setImpulseThreshold,
-      setGeminiApiKey,
       toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,
@@ -1250,6 +1256,11 @@ export function AppProvider({ children }) {
       addWarranty,
       editWarranty,
       deleteWarranty,
+      addWarrantyDocument,
+      removeWarrantyDocument,
+      addWarrantyClaim,
+      editWarrantyClaim,
+      removeWarrantyClaim,
       addGoal,
       addToGoal,
       deleteGoal,
@@ -1263,9 +1274,6 @@ export function AppProvider({ children }) {
       addCustomPattern,
       deleteCustomPattern,
       scanSms,
-      setReviewCategory,
-      cancelReview,
-      confirmReview,
     }),
     [
       state,
@@ -1290,7 +1298,6 @@ export function AppProvider({ children }) {
       togglePrivacy,
       setSalaryDay,
       setImpulseThreshold,
-      setGeminiApiKey,
       toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,
@@ -1325,6 +1332,11 @@ export function AppProvider({ children }) {
       addWarranty,
       editWarranty,
       deleteWarranty,
+      addWarrantyDocument,
+      removeWarrantyDocument,
+      addWarrantyClaim,
+      editWarrantyClaim,
+      removeWarrantyClaim,
       addGoal,
       addToGoal,
       deleteGoal,
@@ -1338,9 +1350,6 @@ export function AppProvider({ children }) {
       addCustomPattern,
       deleteCustomPattern,
       scanSms,
-      setReviewCategory,
-      cancelReview,
-      confirmReview,
     ],
   );
 

@@ -419,7 +419,79 @@ export async function updateWarranty(id, patch) {
 
 export async function deleteWarranty(id) {
   const db = await getDb();
+  // Take the paperwork and history with it — orphaned rows would otherwise sit
+  // in the database forever, carrying the largest payload in the app (files).
+  await db.run(`DELETE FROM warranty_documents WHERE warranty_id = ?`, [id]);
+  await db.run(`DELETE FROM warranty_claims WHERE warranty_id = ?`, [id]);
   await db.run(`DELETE FROM warranties WHERE id = ?`, [id]);
+  await persist();
+}
+
+// ── warranty documents (bills, warranty cards, PDFs) ──
+
+export async function listWarrantyDocuments() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM warranty_documents ORDER BY created_at ASC`);
+  return res.values ?? [];
+}
+
+export async function addWarrantyDocument({ warrantyId, name, mime, data }) {
+  const db = await getDb();
+  const id = newId('wdoc');
+  await db.run(
+    `INSERT INTO warranty_documents (id, warranty_id, name, mime, data, created_at) VALUES (?,?,?,?,?,?)`,
+    [id, warrantyId, name || 'Document', mime || 'image/jpeg', data, Date.now()],
+  );
+  await persist();
+  return id;
+}
+
+export async function deleteWarrantyDocument(id) {
+  const db = await getDb();
+  await db.run(`DELETE FROM warranty_documents WHERE id = ?`, [id]);
+  await persist();
+}
+
+// ── warranty claims & service visits ──
+
+export async function listWarrantyClaims() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM warranty_claims ORDER BY raised_at DESC`);
+  return res.values ?? [];
+}
+
+export async function addWarrantyClaim({ warrantyId, raisedAt, kind, issue, status, cost, note }) {
+  const db = await getDb();
+  const id = newId('wclm');
+  await db.run(
+    `INSERT INTO warranty_claims (id, warranty_id, raised_at, kind, issue, status, cost, note, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+    [id, warrantyId, Math.round(raisedAt || Date.now()), kind || 'claim', String(issue), status || 'open',
+     cost == null || cost === '' ? null : Math.round(Number(cost)), note || null, Date.now()],
+  );
+  await persist();
+  return id;
+}
+
+export async function updateWarrantyClaim(id, patch) {
+  const cols = { issue: 'issue', status: 'status', cost: 'cost', note: 'note', kind: 'kind', raisedAt: 'raised_at' };
+  const sets = [];
+  const values = [];
+  for (const [key, col] of Object.entries(cols)) {
+    if (patch[key] !== undefined) {
+      sets.push(`${col} = ?`);
+      const v = patch[key];
+      values.push(key === 'cost' || key === 'raisedAt' ? (v == null || v === '' ? null : Math.round(Number(v))) : v == null ? null : String(v));
+    }
+  }
+  if (!sets.length) return;
+  const db = await getDb();
+  await db.run(`UPDATE warranty_claims SET ${sets.join(', ')} WHERE id = ?`, [...values, id]);
+  await persist();
+}
+
+export async function deleteWarrantyClaim(id) {
+  const db = await getDb();
+  await db.run(`DELETE FROM warranty_claims WHERE id = ?`, [id]);
   await persist();
 }
 
@@ -620,6 +692,20 @@ export async function importBackup(data) {
       `INSERT OR REPLACE INTO warranties (id, product, brand, amount, purchase_at, warranty_months, extended_months, store, serial, photo, txn_id, reminder_id, note, created_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [w.id, w.product, w.brand ?? null, w.amount ?? null, w.purchase_at ?? Date.now(), w.warranty_months ?? 0, w.extended_months ?? null, w.store ?? null, w.serial ?? null, w.photo ?? null, w.txn_id ?? null, w.reminder_id ?? null, w.note ?? null, w.created_at ?? Date.now()],
+    );
+  }
+  for (const d of data.warrantyDocuments ?? []) {
+    if (!d.id || !d.data) continue;
+    await db.run(
+      `INSERT OR REPLACE INTO warranty_documents (id, warranty_id, name, mime, data, created_at) VALUES (?,?,?,?,?,?)`,
+      [d.id, d.warranty_id, d.name ?? 'Document', d.mime ?? 'image/jpeg', d.data, d.created_at ?? Date.now()],
+    );
+  }
+  for (const c of data.warrantyClaims ?? []) {
+    if (!c.id || !c.warranty_id) continue;
+    await db.run(
+      `INSERT OR REPLACE INTO warranty_claims (id, warranty_id, raised_at, kind, issue, status, cost, note, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+      [c.id, c.warranty_id, c.raised_at ?? Date.now(), c.kind ?? 'claim', c.issue ?? '', c.status ?? 'open', c.cost ?? null, c.note ?? null, c.created_at ?? Date.now()],
     );
   }
   for (const m of data.merchantRules ?? []) {
