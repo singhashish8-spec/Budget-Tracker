@@ -597,6 +597,8 @@ export function filterTransactions(txns, { search = '', filter = 'all', categori
     );
   }
   if (filter === 'review') list = list.filter((t) => !t.cat);
+  if (filter === 'business') list = list.filter((t) => t.business);
+  if (filter === 'personal') list = list.filter((t) => !t.business);
   return list;
 }
 
@@ -640,4 +642,204 @@ export function detectPatterns(txns, categories, patternPrefs) {
       };
     })
     .sort((a, b) => b.count - a.count);
+}
+
+// ── side-hustle / business ──
+
+// Business spending split out from household, with the GST paid on it (the
+// input credit a freelancer claims back). `gst_rate` is a percentage on the
+// gross amount, so the tax component is amount × rate / (100 + rate).
+export function businessSummary(txns, window) {
+  const list = inWindow(txns, window).filter((t) => t.business);
+  const expenses = list.filter((t) => t.type === 'expense');
+  const income = list.filter((t) => t.type === 'income');
+  const spend = expenses.reduce((a, t) => a + t.amount, 0);
+  const earned = income.reduce((a, t) => a + t.amount, 0);
+  const gst = expenses.reduce((a, t) => {
+    const rate = Number(t.gst_rate) || 0;
+    return rate > 0 ? a + Math.round((t.amount * rate) / (100 + rate)) : a;
+  }, 0);
+  return { count: list.length, spend, earned, net: earned - spend, gst };
+}
+
+// ── net worth projection ──
+
+// Straight-line forecast: today's net worth plus the average monthly surplus,
+// carried forward. Deliberately not a market prediction — it answers "if I keep
+// saving what I've been saving, where do I land?" and nothing more.
+export function netWorthProjection(items, txns, { months = 12, lookbackMonths = 6, now = new Date() } = {}) {
+  const assets = (items || []).filter((i) => i.kind === 'asset').reduce((a, i) => a + i.amount, 0);
+  const liabilities = (items || []).filter((i) => i.kind === 'liability').reduce((a, i) => a + i.amount, 0);
+  const current = assets - liabilities;
+
+  const from = new Date(now.getFullYear(), now.getMonth() - lookbackMonths, 1).getTime();
+  const recent = (txns || []).filter((t) => txnTime(t) >= from);
+  const income = recent.filter((t) => t.type === 'income').reduce((a, t) => a + t.amount, 0);
+  const spend = recent.filter((t) => t.type === 'expense').reduce((a, t) => a + t.amount, 0);
+  // Count only months that actually have data, so a new user isn't averaged
+  // against empty months and told they save nothing.
+  const monthsSeen = Math.max(1, Math.min(lookbackMonths, monthsSpanned(recent, now)));
+  const monthlySurplus = Math.round((income - spend) / monthsSeen);
+
+  const points = [];
+  for (let m = 0; m <= months; m += 1) {
+    points.push({ month: m, value: current + monthlySurplus * m });
+  }
+  return {
+    current,
+    assets,
+    liabilities,
+    monthlySurplus,
+    monthsSeen,
+    hasData: recent.length > 0,
+    projected: current + monthlySurplus * months,
+    horizonMonths: months,
+    points,
+  };
+}
+
+function monthsSpanned(txns, now) {
+  if (!txns.length) return 1;
+  const oldest = Math.min(...txns.map(txnTime));
+  const d = new Date(oldest);
+  return (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth()) + 1;
+}
+
+// ── spending forecast (pace) ──
+
+// Where this budget lands if you keep spending at the pace you have so far.
+// Pure extrapolation, not a prediction of behaviour.
+export function spendingForecast(txns, budgets, categories, { salaryDay = 0, now = new Date() } = {}) {
+  const rows = budgetRows(txns, categories, budgets, { salaryDay, now });
+  return rows
+    .map((r) => {
+      const w = budgetWindow({ period: r.period, startsAt: r.startsAt, endsAt: r.endsAt }, salaryDay, now);
+      const total = Math.max(1, w.end - w.start);
+      const elapsed = Math.min(total, Math.max(0, now.getTime() - +w.start));
+      const fraction = elapsed / total;
+      // Too early in the period for a projection to mean anything.
+      if (fraction < 0.15) return null;
+      const projected = Math.round(r.spent / fraction);
+      const over = projected - r.limit;
+      return { ...r, projected, over, fraction, daysLeft: Math.ceil((+w.end - now.getTime()) / 86400000) };
+    })
+    .filter((r) => r && r.over > 0)
+    .sort((a, b) => b.over - a.over);
+}
+
+// ── subscription price changes ──
+
+// A subscription whose real charges no longer match the amount on the reminder.
+// We can't negotiate a bill down, but we can notice when one quietly goes up.
+export function subscriptionPriceChanges(reminders, txns) {
+  const out = [];
+  for (const r of reminders || []) {
+    if ((r.kind || '') !== 'subscription') continue;
+    const needle = (r.label || '').toLowerCase().trim();
+    if (needle.length < 3) continue;
+    const charges = (txns || [])
+      .filter((t) => t.type === 'expense' && (t.merchant || '').toLowerCase().includes(needle))
+      .sort((a, b) => txnTime(b) - txnTime(a));
+    if (!charges.length) continue;
+    const latest = charges[0].amount;
+    // A rounding wobble isn't a price rise — require a real, visible jump.
+    const diff = latest - r.amount;
+    if (diff > 0 && diff / r.amount >= 0.02) {
+      out.push({
+        id: r.id,
+        label: r.label,
+        was: r.amount,
+        now: latest,
+        rise: diff,
+        pct: Math.round((diff / r.amount) * 100),
+        yearlyImpact: diff * (r.cadence === 'yearly' ? 1 : 12),
+        at: txnTime(charges[0]),
+      });
+    }
+  }
+  return out.sort((a, b) => b.yearlyImpact - a.yearlyImpact);
+}
+
+// ── zero-based envelopes ──
+
+export function periodKeyOf(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function prevPeriodKey(key) {
+  const [y, m] = key.split('-').map(Number);
+  const d = new Date(y, m - 2, 1);
+  return periodKeyOf(d);
+}
+
+function monthWindowOf(key) {
+  const [y, m] = key.split('-').map(Number);
+  return { start: new Date(y, m - 1, 1), end: new Date(y, m, 1) };
+}
+
+// What's actually left in an envelope this month: whatever rolled over from
+// last month, plus what you assigned now, minus what you spent. The rollover is
+// the whole point — unspent money stays yours instead of resetting, and an
+// overspend follows you into next month so it has to be dealt with.
+export function envelopeRows(txns, categories, envelopes, periodKey = periodKeyOf(), { depth = 12 } = {}) {
+  const assignedFor = (catId, key) =>
+    (envelopes || []).find((e) => e.category_id === catId && e.period_key === key)?.assigned ?? 0;
+
+  const spentFor = (catId, key) => {
+    const w = monthWindowOf(key);
+    return inWindow(txns, w)
+      .filter((t) => t.type === 'expense' && t.cat === catId)
+      .reduce((a, t) => a + t.amount, 0);
+  };
+
+  // Walk back a bounded number of months so a long history can't make this
+  // quadratic — anything older is treated as settled.
+  const carriedInto = (catId, key) => {
+    const keys = [];
+    let k = prevPeriodKey(key);
+    for (let i = 0; i < depth; i += 1) { keys.unshift(k); k = prevPeriodKey(k); }
+    let balance = 0;
+    for (const pk of keys) {
+      const a = assignedFor(catId, pk);
+      if (a === 0 && balance === 0) continue;
+      balance = balance + a - spentFor(catId, pk);
+    }
+    return balance;
+  };
+
+  const active = (categories || []).filter(
+    (c) => c.id !== 'income' && (assignedFor(c.id, periodKey) > 0 || spentFor(c.id, periodKey) > 0 || carriedInto(c.id, periodKey) !== 0),
+  );
+
+  return active.map((c) => {
+    const carried = carriedInto(c.id, periodKey);
+    const assigned = assignedFor(c.id, periodKey);
+    const spent = spentFor(c.id, periodKey);
+    const available = carried + assigned - spent;
+    return {
+      catId: c.id,
+      label: c.label,
+      color: c.color,
+      mono: c.mono,
+      carried,
+      assigned,
+      spent,
+      available,
+      overspent: available < 0,
+    };
+  }).sort((a, b) => a.available - b.available);
+}
+
+// The "give every rupee a job" number: money that has arrived but hasn't been
+// assigned to anything yet. Income for the month, less everything assigned,
+// plus whatever rolled over unspent.
+export function toBeAssigned(txns, categories, envelopes, periodKey = periodKeyOf()) {
+  const w = monthWindowOf(periodKey);
+  const income = inWindow(txns, w).filter((t) => t.type === 'income').reduce((a, t) => a + t.amount, 0);
+  const assigned = (envelopes || [])
+    .filter((e) => e.period_key === periodKey)
+    .reduce((a, e) => a + (e.assigned || 0), 0);
+  const rows = envelopeRows(txns, categories, envelopes, periodKey);
+  const carried = rows.reduce((a, r) => a + r.carried, 0);
+  return { income, assigned, carried, unassigned: income + carried - assigned };
 }

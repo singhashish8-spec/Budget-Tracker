@@ -5,6 +5,7 @@ import { salaryDayLabel } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { backupToDrive, restoreFromFile } from '../services/backup';
 import { MODES, ACCENTS, SURFACES, MOTIONS } from '../services/theme';
+import { dataUrlBytes, formatBytes } from '../utils/image';
 import { updatesSupported, fetchManifest, getCurrentVersion, downloadUpdate, applyUpdateAndReload } from '../services/liveUpdate';
 
 // Settings is a menu of categories, not a wall of controls: the top level lists
@@ -21,7 +22,7 @@ const SECTIONS = [
 ];
 
 export default function SettingsScreen() {
-  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
+  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setZeroBased, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
   const [section, setSection] = useState(null);
   const restoreRef = useRef(null);
   // { phase, ... } where phase = idle | web | checking | uptodate | available |
@@ -207,7 +208,28 @@ export default function SettingsScreen() {
               {state.impulseThreshold > 0 ? `Warns on spends of ₹${state.impulseThreshold.toLocaleString('en-IN')} or more` : 'Large-purchase warning is off'}
             </div>
           </div>
+
+          <div style={card}>
+            <div style={sectionLabel}>Envelope budgeting</div>
+            <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 10, lineHeight: 1.5 }}>
+              Give every rupee a job. Instead of a limit you hope not to cross, you hand out the money you actually have. What you don't spend rolls into next month, and overspending has to be covered from somewhere.
+            </div>
+            <div style={segWrap}>
+              <button onClick={() => setZeroBased(false)} style={segBtn(!state.zeroBased)}>Off</button>
+              <button onClick={() => setZeroBased(true)} style={segBtn(state.zeroBased)}>On</button>
+            </div>
+            <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: 8 }}>
+              {state.zeroBased ? 'Envelopes is in your menu. Your normal budgets still work alongside it.' : 'Adds an Envelopes screen to the menu. Your normal budgets are left alone either way.'}
+            </div>
+          </div>
         </>
+      )}
+
+      {section === 'backup' && (
+        <div style={card}>
+          <div style={sectionLabel}>Stored documents</div>
+          <StorageSummary docs={state.warrantyDocs} />
+        </div>
       )}
 
       {/* Backup & restore */}
@@ -360,6 +382,38 @@ const primaryBtn = { background: colors.primary, color: colors.onPrimary, border
 const sectionLabel = { fontSize: 12, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.textSecondary, marginBottom: 12 };
 
 const backBtnStyle = { width: 36, height: 36, borderRadius: '50%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 };
+
+// Documents live inside the database so they survive a reinstall, which means
+// they also dominate the size of every backup. Worth being able to see.
+function StorageSummary({ docs }) {
+  const list = docs || [];
+  const total = list.reduce((a, d) => a + dataUrlBytes(d.data), 0);
+  const biggest = [...list]
+    .map((d) => ({ name: d.name || 'Document', bytes: dataUrlBytes(d.data), pdf: (d.mime || '').includes('pdf') }))
+    .sort((a, b) => b.bytes - a.bytes)
+    .slice(0, 5);
+
+  if (!list.length) {
+    return <div style={{ fontSize: 13, color: colors.textTertiary, lineHeight: 1.5 }}>No bills or warranty documents saved yet. Anything you attach is stored here and travels with your backup.</div>;
+  }
+
+  return (
+    <>
+      <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 10 }}>
+        <strong style={{ color: colors.ink }}>{list.length}</strong> file{list.length === 1 ? '' : 's'} using <strong style={{ color: colors.ink }}>{formatBytes(total)}</strong>. These are included in every backup.
+      </div>
+      {biggest.map((d, i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '6px 0', borderBottom: `1px solid ${colors.divider}`, fontSize: 13 }}>
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.pdf ? '📄' : '🖼️'} {d.name}</span>
+          <span style={{ color: colors.textTertiary, flexShrink: 0 }}>{formatBytes(d.bytes)}</span>
+        </div>
+      ))}
+      <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 10, lineHeight: 1.45 }}>
+        To free space, remove a document from its product in Warranties.
+      </div>
+    </>
+  );
+}
 
 function BackIcon() {
   return (

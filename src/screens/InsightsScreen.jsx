@@ -5,8 +5,22 @@ import { useApp } from '../state/AppContext';
 import { exportCsv, exportHtmlReport } from '../services/exportReport';
 import Amount from '../components/Amount';
 import Collapse from '../components/Collapse';
+import { businessSummary, netWorthProjection } from '../state/selectors';
+import { payCycleWindow } from '../utils/date';
 
 const TAX_80C_LIMIT = 150000;
+
+// How savings are actually held here, so the list groups the way people think
+// rather than as one undifferentiated pile of "assets".
+const HOLDINGS = [
+  { key: 'gold', label: 'Gold', icon: '🪙', weighed: true },
+  { key: 'sip', label: 'SIP / MF', icon: '📈' },
+  { key: 'fd', label: 'FD / RD', icon: '🏦' },
+  { key: 'chit', label: 'Chit fund', icon: '🤝' },
+  { key: 'property', label: 'Property', icon: '🏠' },
+  { key: 'cash', label: 'Cash / bank', icon: '💵' },
+  { key: 'other', label: 'Other', icon: '📦' },
+];
 
 export default function InsightsScreen() {
   const { state, go, showToast, addNetWorthItem, deleteNetWorthItem, setTaxRegime, setTax80cInvested } = useApp();
@@ -14,6 +28,8 @@ export default function InsightsScreen() {
 
   const assets = state.netWorthItems.filter((i) => i.kind === 'asset').reduce((a, i) => a + i.amount, 0);
   const liab = state.netWorthItems.filter((i) => i.kind === 'liability').reduce((a, i) => a + i.amount, 0);
+  const projection = netWorthProjection(state.netWorthItems, state.txns);
+  const biz = businessSummary(state.txns, payCycleWindow(state.salaryDay));
 
   const doExportCsv = async () => {
     try {
@@ -35,6 +51,8 @@ export default function InsightsScreen() {
       <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 700, padding: '0 4px' }}>Insights</div>
 
       <NetWorthCard assets={assets} liab={liab} items={state.netWorthItems} onAdd={addNetWorthItem} onDelete={deleteNetWorthItem} />
+      <ProjectionCard p={projection} />
+      {biz.count > 0 && <BusinessCard biz={biz} onOpen={() => go('transactions')} />}
       <HubLink label="Savings goals" sub={state.goals.length ? `${fmt(goalsSaved)} saved` : 'Set one'} onClick={() => go('goals')} />
       <TaxCard regime={state.taxRegime} invested={state.tax80cInvested} onRegime={setTaxRegime} onInvested={setTax80cInvested} />
 
@@ -58,6 +76,86 @@ export default function InsightsScreen() {
   );
 }
 
+// Straight-line forecast from the savings rate we can actually see. Framed as
+// "if you keep this up" rather than a prediction, because that's all it is.
+function ProjectionCard({ p }) {
+  const [horizon, setHorizon] = useState(12);
+  const value = p.current + p.monthlySurplus * horizon;
+  const growing = p.monthlySurplus > 0;
+  if (!p.hasData) return null;
+
+  return (
+    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px' }}>
+      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600, marginBottom: 4 }}>Where you're heading</div>
+      <div style={{ fontSize: 12.5, color: colors.textSecondary, marginBottom: 12 }}>
+        {growing
+          ? `You've been saving about ${fmt(p.monthlySurplus)} a month.`
+          : `You've been spending about ${fmt(Math.abs(p.monthlySurplus))} more than you earn each month.`}
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+        {[12, 36, 60].map((m) => (
+          <button
+            key={m}
+            onClick={() => setHorizon(m)}
+            style={{ flex: 1, padding: '8px 0', borderRadius: 100, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: horizon === m ? colors.primary : colors.bgApp, color: horizon === m ? colors.onPrimary : colors.textSecondary, border: `1px solid ${horizon === m ? colors.primary : colors.cardBorder}` }}
+          >
+            {m / 12} year{m > 12 ? 's' : ''}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 11.5, color: colors.textTertiary }}>Today</div>
+          <Amount style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>{fmt(p.current)}</Amount>
+        </div>
+        <div style={{ flex: 1, height: 2, background: colors.divider, marginBottom: 10 }} />
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 11.5, color: colors.textTertiary }}>In {horizon / 12} year{horizon > 12 ? 's' : ''}</div>
+          <Amount style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, color: growing ? colors.successText : colors.danger }}>{fmt(value)}</Amount>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 12, lineHeight: 1.45 }}>
+        Simple arithmetic on the last {p.monthsSeen} month{p.monthsSeen === 1 ? '' : 's'} — not a market forecast. Change what you save and this changes with it.
+      </div>
+    </div>
+  );
+}
+
+// Side-hustle totals kept apart from the household, with the GST paid on
+// business bills — the input credit a freelancer claims back.
+function BusinessCard({ biz, onOpen }) {
+  return (
+    <button onClick={onOpen} style={{ textAlign: 'left', width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px', cursor: 'pointer' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600 }}>Business this cycle</div>
+        <span style={{ fontSize: 12, color: colors.textTertiary }}>{biz.count} entries ›</span>
+      </div>
+      <div style={{ display: 'flex', gap: 10 }}>
+        <Stat label="Earned" value={fmt(biz.earned)} color={colors.successText} />
+        <Stat label="Spent" value={fmt(biz.spend)} color={colors.ink} />
+        <Stat label="Net" value={fmt(biz.net)} color={biz.net >= 0 ? colors.successText : colors.danger} />
+      </div>
+      {biz.gst > 0 && (
+        <div style={{ marginTop: 12, background: colors.primaryTint, borderRadius: 12, padding: '10px 12px', fontSize: 12.5, color: colors.primary, fontWeight: 600 }}>
+          GST paid on business bills: {fmt(biz.gst)}
+        </div>
+      )}
+    </button>
+  );
+}
+
+function Stat({ label, value, color }) {
+  return (
+    <div style={{ flex: 1, background: colors.bgApp, borderRadius: 12, padding: '10px 8px', textAlign: 'center' }}>
+      <div style={{ fontSize: 10.5, color: colors.textTertiary, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase' }}>{label}</div>
+      <Amount style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 700, color }}>{value}</Amount>
+    </div>
+  );
+}
+
 function HubLink({ label, sub, onClick }) {
   return (
     <button onClick={onClick} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}>
@@ -72,14 +170,28 @@ function NetWorthCard({ assets, liab, items, onAdd, onDelete }) {
   const [kind, setKind] = useState('asset');
   const [label, setLabel] = useState('');
   const [amt, setAmt] = useState('');
+  const [holding, setHolding] = useState('cash');
+  const [grams, setGrams] = useState('');
+  const [rate, setRate] = useState('');
   const [openGroups, setOpenGroups] = useState({ asset: true, liability: true });
 
+  const weighed = kind === 'asset' && HOLDINGS.find((h) => h.key === holding)?.weighed;
+  // Gold is held in grams: enter the weight and today's rate and the value
+  // works itself out, instead of having to recompute it by hand every time.
+  const computed = weighed && grams && rate ? Math.round(Number(grams) * Number(rate)) : null;
+
   const submit = () => {
-    const amount = parseInt(String(amt).replace(/[^0-9]/g, ''), 10);
+    const amount = computed ?? parseInt(String(amt).replace(/[^0-9]/g, ''), 10);
     if (!label.trim() || !amount) return;
-    onAdd({ kind, label: label.trim(), amount });
-    setLabel('');
-    setAmt('');
+    onAdd({
+      kind,
+      label: label.trim(),
+      amount,
+      category: kind === 'asset' ? holding : null,
+      quantity: weighed && grams ? Number(grams) : null,
+      unit: weighed && grams ? 'g' : null,
+    });
+    setLabel(''); setAmt(''); setGrams(''); setRate('');
     setOpen(false);
   };
 
@@ -118,7 +230,11 @@ function NetWorthCard({ assets, liab, items, onAdd, onDelete }) {
               <div>
                 {groupItems.map((i) => (
                   <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 13.5 }}>
-                    <span style={{ flex: 1, color: colors.textSecondary }}>{i.label}</span>
+                    <span style={{ flexShrink: 0 }}>{HOLDINGS.find((h) => h.key === i.category)?.icon || ''}</span>
+                    <span style={{ flex: 1, color: colors.textSecondary, minWidth: 0 }}>
+                      {i.label}
+                      {i.quantity ? <span style={{ color: colors.textTertiary, fontSize: 11.5 }}> · {i.quantity}{i.unit || ''}</span> : null}
+                    </span>
                     <Amount style={{ fontWeight: 600 }}>{i.kind === 'liability' ? '−' : ''}{fmt(i.amount)}</Amount>
                     <button onClick={() => onDelete(i.id)} style={{ color: colors.textTertiary, cursor: 'pointer', fontSize: 12 }}>✕</button>
                   </div>
@@ -136,9 +252,34 @@ function NetWorthCard({ assets, liab, items, onAdd, onDelete }) {
             <button onClick={() => setKind('asset')} style={pillBtn(kind === 'asset')}>Asset</button>
             <button onClick={() => setKind('liability')} style={pillBtn(kind === 'liability')}>Liability</button>
           </div>
-          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Savings account" style={inputStyle} />
+          {kind === 'asset' && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {HOLDINGS.map((h) => (
+                <button
+                  key={h.key}
+                  onClick={() => setHolding(h.key)}
+                  style={{ padding: '7px 11px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: holding === h.key ? colors.primary : colors.bgApp, color: holding === h.key ? colors.onPrimary : colors.textSecondary, border: `1px solid ${holding === h.key ? colors.primary : colors.cardBorder}` }}
+                >
+                  {h.icon} {h.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={kind === 'asset' && holding === 'gold' ? 'e.g. Wedding jewellery' : 'e.g. Savings account'} style={inputStyle} />
+          {weighed && (
+            <>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input value={grams} onChange={(e) => setGrams(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" placeholder="Grams" style={{ ...inputStyle, flex: 1 }} />
+                <input value={rate} onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" placeholder="Rate per gram ₹" style={{ ...inputStyle, flex: 1 }} />
+              </div>
+              <div style={{ fontSize: 11.5, color: colors.textTertiary, paddingLeft: 4 }}>
+                {computed ? `Worth ${fmt(computed)} at that rate` : 'Enter weight and today’s rate — the value works itself out'}
+              </div>
+            </>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <input value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="₹ amount" style={{ ...inputStyle, flex: 1 }} />
+            {!weighed && <input value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="₹ amount" style={{ ...inputStyle, flex: 1 }} />}
+            {weighed && <div style={{ flex: 1 }} />}
             <button onClick={submit} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '11px 18px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save</button>
           </div>
         </div>

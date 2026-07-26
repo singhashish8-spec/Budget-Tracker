@@ -33,6 +33,10 @@ const initialState = {
   warranties: [],
   warrantyDocs: [],
   warrantyClaims: [],
+  envelopes: [],
+  // Zero-based budgeting is an opt-in mode: a different way of thinking about
+  // money from the plain category limits, so it never replaces them silently.
+  zeroBased: false,
   patternPrefs: [],
   // merchant signature → category_id: "payments here always go in this category".
   merchantRules: {},
@@ -132,6 +136,7 @@ export function AppProvider({ children }) {
           warranties,
           warrantyDocs,
           warrantyClaims,
+          envelopes,
           patternPrefs,
           smsLog,
           merchantRulesList,
@@ -145,6 +150,7 @@ export function AppProvider({ children }) {
           customPatternsJson,
           salaryDayStr,
           impulseThresholdStr,
+          zeroBasedStr,
           themeModeStr,
           themeAccentStr,
           themeSurfaceStr,
@@ -160,6 +166,7 @@ export function AppProvider({ children }) {
           repo.listWarranties(),
           repo.listWarrantyDocuments(),
           repo.listWarrantyClaims(),
+          repo.listEnvelopes(),
           repo.listPatternPrefs(),
           repo.listSmsLog(),
           repo.listMerchantRules(),
@@ -173,6 +180,7 @@ export function AppProvider({ children }) {
           repo.getSetting('customPatterns', null),
           repo.getSetting('salaryDay', '0'),
           repo.getSetting('impulseThreshold', '5000'),
+          repo.getSetting('zeroBased', '0'),
           repo.getSetting('themeMode', 'system'),
           repo.getSetting('themeAccent', 'green'),
           repo.getSetting('themeSurface', 'standard'),
@@ -191,6 +199,7 @@ export function AppProvider({ children }) {
           warranties,
           warrantyDocs,
           warrantyClaims,
+          envelopes,
           patternPrefs,
           smsLog,
           merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])),
@@ -206,6 +215,7 @@ export function AppProvider({ children }) {
           customPatterns: customPatternsJson ? JSON.parse(customPatternsJson) : [],
           salaryDay: Number(salaryDayStr) || 0,
           impulseThreshold: impulseThresholdStr == null ? 5000 : Number(impulseThresholdStr) || 0,
+          zeroBased: zeroBasedStr === '1',
           themeMode: themeModeStr || 'system',
           themeAccent: themeAccentStr || 'green',
           themeSurface: themeSurfaceStr || 'standard',
@@ -292,7 +302,7 @@ export function AppProvider({ children }) {
 
   // Re-read all table-backed data into state (used after a restore-from-backup).
   const reloadData = useCallback(async () => {
-    const [categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, patternPrefs, smsLog, merchantRulesList] = await Promise.all([
+    const [categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, envelopes, patternPrefs, smsLog, merchantRulesList] = await Promise.all([
       repo.listCategories(),
       repo.listTransactions(),
       repo.listBudgets(),
@@ -302,11 +312,12 @@ export function AppProvider({ children }) {
       repo.listWarranties(),
       repo.listWarrantyDocuments(),
       repo.listWarrantyClaims(),
+      repo.listEnvelopes(),
       repo.listPatternPrefs(),
       repo.listSmsLog(),
       repo.listMerchantRules(),
     ]);
-    set({ categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, patternPrefs, smsLog, merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])) });
+    set({ categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, envelopes, patternPrefs, smsLog, merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])) });
   }, [set]);
 
   // Refs so the once-registered lifecycle listener always sees current values.
@@ -607,7 +618,7 @@ export function AppProvider({ children }) {
   // A single hand-entered transaction (the "+" button). Cash leaves no SMS
   // trail, so this is the only way it can ever be recorded.
   const addManualTransaction = useCallback(
-    async ({ merchant, amount, type, method, cat, note, occurredAt }) => {
+    async ({ merchant, amount, type, method, cat, note, occurredAt, warranty_months = null, business = false, gst_rate = null }) => {
       const when = occurredAt || Date.now();
       await repo.addTransaction({
         merchant,
@@ -620,6 +631,11 @@ export function AppProvider({ children }) {
         note: note ?? null,
         method: method ?? null,
         occurredAt: when,
+        // Was silently dropped before: the add-spend sheet collects a warranty
+        // duration, but it never made it past this function into the row.
+        warranty_months,
+        business,
+        gst_rate,
       });
       set({ txns: await repo.listTransactions() });
       showToast(type === 'income' ? 'Money in added' : 'Spend added');
@@ -746,6 +762,30 @@ export function AppProvider({ children }) {
     [set],
   );
 
+  const assignToEnvelope = useCallback(
+    async (categoryId, periodKey, amount) => {
+      await repo.setEnvelope(categoryId, periodKey, amount);
+      set({ envelopes: await repo.listEnvelopes() });
+    },
+    [set],
+  );
+
+  const clearEnvelope = useCallback(
+    async (categoryId, periodKey) => {
+      await repo.clearEnvelope(categoryId, periodKey);
+      set({ envelopes: await repo.listEnvelopes() });
+    },
+    [set],
+  );
+
+  const setZeroBased = useCallback(
+    (on) => {
+      set({ zeroBased: !!on });
+      repo.setSetting('zeroBased', on ? '1' : '0');
+    },
+    [set],
+  );
+
   // ── savings goals ──
   const addGoal = useCallback(
     async ({ label, targetAmount, targetDate = null }) => {
@@ -774,8 +814,8 @@ export function AppProvider({ children }) {
 
   // ── net worth ──
   const addNetWorthItem = useCallback(
-    async ({ kind, label, amount }) => {
-      await repo.addNetWorthItem({ kind, label, amount });
+    async ({ kind, label, amount, category = null, quantity = null, unit = null }) => {
+      await repo.addNetWorthItem({ kind, label, amount, category, quantity, unit });
       set({ netWorthItems: await repo.listNetWorthItems() });
     },
     [set],
@@ -1256,6 +1296,9 @@ export function AppProvider({ children }) {
       addWarranty,
       editWarranty,
       deleteWarranty,
+      assignToEnvelope,
+      clearEnvelope,
+      setZeroBased,
       addWarrantyDocument,
       removeWarrantyDocument,
       addWarrantyClaim,
@@ -1332,6 +1375,9 @@ export function AppProvider({ children }) {
       addWarranty,
       editWarranty,
       deleteWarranty,
+      assignToEnvelope,
+      clearEnvelope,
+      setZeroBased,
       addWarrantyDocument,
       removeWarrantyDocument,
       addWarrantyClaim,

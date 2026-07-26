@@ -4,7 +4,7 @@ import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleWindow, txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
-import { alertCount, topCategories, homeTotals, inWindow, goalsSummary, categoryDetail, warrantyList } from '../state/selectors';
+import { alertCount, topCategories, homeTotals, inWindow, goalsSummary, categoryDetail, warrantyList, subscriptionPriceChanges, spendingForecast } from '../state/selectors';
 import QuickAddBar from '../components/QuickAddBar';
 import DuplicateBanner from '../components/DuplicateBanner';
 import Amount from '../components/Amount';
@@ -42,6 +42,12 @@ export default function HomeScreen() {
     .slice(0, 2);
 
   const now = new Date();
+  // A subscription charging more than the amount on its reminder — the honest
+  // version of "bill negotiation": we can't haggle, but we can notice.
+  const priceRises = period ? [] : subscriptionPriceChanges(state.reminders, state.txns);
+  // Budgets heading past their limit at the current pace. Extrapolation, not a
+  // prediction — worth surfacing early enough to actually change course.
+  const forecasts = period ? [] : spendingForecast(state.txns, state.budgets, state.categories, { salaryDay: state.salaryDay, now });
   // Warranties needing attention: expiring within 60 days, or expired in the
   // last 30 — pulled from both the warranties panel and any purchase quick-
   // tagged with a warranty. The full list lives on the Warranties screen.
@@ -144,6 +150,45 @@ export default function HomeScreen() {
       <QuickAddBar />
 
       <DuplicateBanner />
+
+      {priceRises.length > 0 && (
+        <div style={{ background: colors.warningTint, border: `1px solid ${colors.warningBorder}`, borderRadius: 16, padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>📈</span>
+            <div style={{ fontSize: 14, fontWeight: 700, color: colors.warningDark }}>Subscription price went up</div>
+          </div>
+          {priceRises.slice(0, 3).map((p) => (
+            <button key={p.id} onClick={() => go('reminders')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', cursor: 'pointer', borderTop: `1px solid ${colors.warningBorder}80`, background: 'transparent', width: '100%', textAlign: 'left' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: colors.warningDark }}>{p.label}</div>
+                <div style={{ fontSize: 12, color: colors.warningDark, opacity: 0.8 }}>{fmt(p.was)} → {fmt(p.now)} · up {p.pct}%</div>
+              </div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: colors.warningDark }}>+{fmt(p.yearlyImpact)}/yr</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {forecasts.length > 0 && (
+        <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🔮</span>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>Heading over budget</div>
+          </div>
+          {forecasts.slice(0, 3).map((f) => (
+            <button key={f.cat} onClick={() => go('budgets')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', cursor: 'pointer', borderTop: `1px solid ${colors.divider}`, background: 'transparent', width: '100%', textAlign: 'left' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{f.label}</div>
+                <div style={{ fontSize: 12, color: colors.textTertiary }}>
+                  {fmt(f.spent)} of {fmt(f.limit)} · {f.daysLeft} day{f.daysLeft === 1 ? '' : 's'} left
+                </div>
+              </div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: colors.danger }}>~{fmt(f.over)} over</div>
+            </button>
+          ))}
+          <div style={{ fontSize: 11, color: colors.textTertiary }}>Based on your pace so far this period</div>
+        </div>
+      )}
 
       {expiringWs.length > 0 && (
         <div style={{ background: colors.warningTint, border: `1px solid ${colors.warningBorder}`, borderRadius: 16, padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>

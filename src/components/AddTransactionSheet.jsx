@@ -32,6 +32,8 @@ export default function AddTransactionSheet() {
   const [cat, setCat] = useState(null);
   const [note, setNote] = useState('');
   const [warranty, setWarranty] = useState('');
+  const [business, setBusiness] = useState(false);
+  const [gst, setGst] = useState('');
   const [saving, setSaving] = useState(false);
 
   if (!state.addSheetOpen) return null;
@@ -63,8 +65,10 @@ export default function AddTransactionSheet() {
         note: note.trim() || null,
         occurredAt,
         warranty_months: !income && warranty.trim() ? parseInt(warranty, 10) : null,
+        business,
+        gst_rate: business && gst.trim() ? parseInt(gst, 10) : null,
       });
-      setAmount(''); setName(''); setNote(''); setCat(null); setWarranty('');
+      setAmount(''); setName(''); setNote(''); setCat(null); setWarranty(''); setBusiness(false); setGst('');
       setWhen(todayInputValue()); setType('expense'); setMethod('cash');
       close();
     } finally {
@@ -197,6 +201,25 @@ export default function AddTransactionSheet() {
         placeholder="Add a note (optional)"
         style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '12px 16px', fontSize: 14.5, color: colors.ink, marginBottom: 14 }}
       />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: business ? colors.primaryTint : colors.cardSurface, border: `1px solid ${business ? colors.primary : colors.cardBorder}`, borderRadius: 14, padding: '11px 14px', marginBottom: 14, cursor: 'pointer' }} onClick={() => setBusiness((b) => !b)}>
+        <div style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, background: business ? colors.primary : 'transparent', border: `1.5px solid ${business ? colors.primary : colors.cardBorder}`, color: colors.onPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>
+          {business ? '✓' : ''}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>Business / side hustle</div>
+          <div style={{ fontSize: 11.5, color: colors.textTertiary }}>Keeps it out of household totals, and ready for tax time</div>
+        </div>
+      </div>
+      {business && !income && (
+        <input
+          value={gst}
+          onChange={(e) => setGst(e.target.value.replace(/[^\d]/g, ''))}
+          inputMode="numeric"
+          placeholder="GST % on this bill (optional, e.g. 18)"
+          style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '12px 16px', fontSize: 14.5, color: colors.ink, marginBottom: 14 }}
+        />
+      )}
+
       {!income && (
         <>
           <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.textSecondary, marginBottom: 8 }}>
