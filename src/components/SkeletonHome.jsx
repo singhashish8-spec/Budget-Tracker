@@ -32,7 +32,7 @@ function Card({ children }) {
 export default function SkeletonHome() {
   return (
     <div className="app-shell" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: colors.bgApp }}>
-      <div style={{ flex: 1, padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }} aria-hidden="true">
+      <div style={{ flex: 1, padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }} aria-hidden="true">
         <div style={{ padding: '0 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Bar w={110} h={20} />
           <Bar w={80} h={11} />

@@ -47,7 +47,7 @@ export default function WarrantyScreen() {
   const editing = editingId ? items.find((i) => i.id === editingId && i.source === 'warranty') : null;
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
         <button onClick={goBack} style={backBtnStyle}><BackIcon /></button>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>Warranties</div>

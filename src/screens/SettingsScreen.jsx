@@ -83,7 +83,7 @@ export default function SettingsScreen() {
   const active = SECTIONS.find((s) => s.key === section);
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '74px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 40px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
         <button onClick={() => (section ? setSection(null) : goBack())} style={backBtnStyle}>
           <BackIcon />
