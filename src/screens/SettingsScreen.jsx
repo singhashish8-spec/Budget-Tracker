@@ -5,6 +5,9 @@ import { salaryDayLabel } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { backupToDrive, restoreFromFile } from '../services/backup';
 import { MODES, ACCENTS, SURFACES, MOTIONS } from '../services/theme';
+import { HAPTIC_LEVELS } from '../services/haptics';
+import * as haptics from '../services/haptics';
+import { notificationsSupported } from '../services/notify';
 import { dataUrlBytes, formatBytes } from '../utils/image';
 import { updatesSupported, fetchManifest, getCurrentVersion, downloadUpdate, applyUpdateAndReload } from '../services/liveUpdate';
 
@@ -22,7 +25,7 @@ const SECTIONS = [
 ];
 
 export default function SettingsScreen() {
-  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setZeroBased, factoryReset, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
+  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setZeroBased, setHapticPref, askNotificationPermission, factoryReset, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
   const [section, setSection] = useState(null);
   const restoreRef = useRef(null);
   // { phase, ... } where phase = idle | web | checking | uptodate | available |
@@ -139,6 +142,22 @@ export default function SettingsScreen() {
           <div style={segWrap}>
             {SURFACES.map((s) => (
               <button key={s.key} onClick={() => setThemeSurface(s.key)} style={segBtn(state.themeSurface === s.key)}>{s.label}</button>
+            ))}
+          </div>
+
+          <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, margin: '18px 0 4px' }}>Haptics</div>
+          <div style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 8 }}>
+            A short tap when something actually happens — a choice made, a bill marked paid, a warning appearing. Not on every touch, which just feels buzzy. How good this feels depends on your phone's vibration hardware.
+          </div>
+          <div style={segWrap}>
+            {HAPTIC_LEVELS.map((h) => (
+              <button
+                key={h.key}
+                onClick={() => { setHapticPref(h.key); if (h.key !== 'off') setTimeout(() => haptics.tap(), 30); }}
+                style={segBtn((state.hapticLevel || 'full') === h.key)}
+              >
+                {h.label}
+              </button>
             ))}
           </div>
 
@@ -316,6 +335,27 @@ export default function SettingsScreen() {
             <div style={{ color: colors.textTertiary, fontWeight: 600 }}>›</div>
           </button>
           <ToggleRow title="App lock" sub="Fingerprint / face / PIN unlock on open" on={state.appLock} onToggle={toggleAppLock} />
+        </div>
+      )}
+
+      {section === 'privacy' && notificationsSupported() && (
+        <div style={card}>
+          <div style={sectionLabel}>Reminders</div>
+          <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 10, lineHeight: 1.5 }}>
+            Get told before a warranty runs out (60 and 15 days ahead) and on the day a bill is due — with a Mark paid button right on the notification. Everything is scheduled on this phone; nothing is sent anywhere.
+          </div>
+          <button
+            onClick={async () => {
+              const ok = await askNotificationPermission();
+              showToast(ok ? 'Reminders are on' : 'Turn notifications on for Budget Tracker in Android settings');
+            }}
+            style={{ width: '100%', background: state.notifPermission ? colors.successTint : colors.primary, color: state.notifPermission ? colors.successText : colors.onPrimary, border: `1px solid ${state.notifPermission ? colors.successBorder : colors.primary}`, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}
+          >
+            {state.notifPermission ? 'Reminders are on ✓' : 'Turn on reminders'}
+          </button>
+          <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 8, lineHeight: 1.45 }}>
+            Reminders are rebuilt each time you open the app, so a phone restart or battery optimisation can't quietly kill them.
+          </div>
         </div>
       )}
 

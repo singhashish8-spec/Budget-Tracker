@@ -5,6 +5,7 @@ import Sheet from './Sheet';
 import { globalBudgetWarning, largePurchaseWarning } from '../state/selectors';
 import { fmt } from '../utils/currency';
 import { payCycleWindow } from '../utils/date';
+import * as haptics from '../services/haptics';
 
 // Hand-entered transactions. Cash never generates an SMS, so without this
 // there was no way to record it at all — money simply left the picture. Also
@@ -68,6 +69,7 @@ export default function AddTransactionSheet() {
         business,
         gst_rate: business && gst.trim() ? parseInt(gst, 10) : null,
       });
+      haptics.success();
       setAmount(''); setName(''); setNote(''); setCat(null); setWarranty(''); setBusiness(false); setGst('');
       setWhen(todayInputValue()); setType('expense'); setMethod('cash');
       close();
@@ -84,7 +86,7 @@ export default function AddTransactionSheet() {
         {[{ key: 'expense', label: 'I spent' }, { key: 'income', label: 'I received' }].map((o) => (
           <button
             key={o.key}
-            onClick={() => setType(o.key)}
+            onClick={() => { haptics.select(); setType(o.key); }}
             style={{ flex: 1, padding: '11px 8px', borderRadius: 14, fontSize: 14.5, fontWeight: 600, cursor: 'pointer', background: type === o.key ? colors.primary : colors.cardSurface, color: type === o.key ? colors.onPrimary : colors.textSecondary, border: `1px solid ${type === o.key ? 'transparent' : colors.cardBorder}` }}
           >
             {o.label}
@@ -158,7 +160,7 @@ export default function AddTransactionSheet() {
         {METHODS.map((m) => (
           <button
             key={m.key}
-            onClick={() => setMethod(m.key)}
+            onClick={() => { haptics.select(); setMethod(m.key); }}
             style={{ flex: 1, padding: '10px 4px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: method === m.key ? colors.primary : colors.cardSurface, color: method === m.key ? colors.onPrimary : colors.textSecondary, border: `1px solid ${method === m.key ? 'transparent' : colors.cardBorder}` }}
           >
             {m.label}
@@ -184,7 +186,7 @@ export default function AddTransactionSheet() {
           .map((c) => (
             <button
               key={c.id}
-              onClick={() => setCat(cat === c.id ? null : c.id)}
+              onClick={() => { haptics.select(); setCat(cat === c.id ? null : c.id); }}
               style={{ display: 'flex', alignItems: 'center', gap: 9, background: colors.cardSurface, border: `1px solid ${cat === c.id ? colors.primary : colors.cardBorder}`, borderRadius: 14, padding: '10px 11px', cursor: 'pointer', textAlign: 'left' }}
             >
               <div style={{ width: 26, height: 26, borderRadius: 8, background: tint(c.color), color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 10.5, flexShrink: 0 }}>

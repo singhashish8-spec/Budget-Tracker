@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Long-press the launcher icon. Adding a cash spend is the one thing that has to
+  be done by hand every time (SMS catches the rest), so it earns the shortcut.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="add_spend"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_add_short"
+        android:shortcutLongLabel="@string/shortcut_add_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="com.budgettracker.app"
+            android:targetClass="com.budgettracker.app.MainActivity">
+            <extra android:name="shortcut" android:value="add" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="warranties"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_warranty_short"
+        android:shortcutLongLabel="@string/shortcut_warranty_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="com.budgettracker.app"
+            android:targetClass="com.budgettracker.app.MainActivity">
+            <extra android:name="shortcut" android:value="warranty" />
+        </intent>
+    </shortcut>
+</shortcuts>

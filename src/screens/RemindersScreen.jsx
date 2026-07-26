@@ -6,6 +6,7 @@ import { billRow } from '../state/selectors';
 import Amount from '../components/Amount';
 import Sheet from '../components/Sheet';
 import ReminderDetail from '../components/ReminderDetail';
+import * as haptics from '../services/haptics';
 
 const KINDS = [
   { key: 'bill', label: 'Bill' },
@@ -122,7 +123,7 @@ export default function RemindersScreen() {
                   <Amount style={{ fontSize: 14.5, fontWeight: 600 }}>{b.amountF}</Amount>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button
-                      onClick={() => toggleReminderPaid(b.id, monthKey)}
+                      onClick={() => { haptics.success(); toggleReminderPaid(b.id, monthKey); }}
                       style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 100, cursor: 'pointer', background: paid ? colors.successTint : colors.primary, color: paid ? colors.primary : colors.onPrimary, border: `1px solid ${paid ? colors.successBorder : colors.primary}` }}
                     >
                       {paid ? 'Paid' : 'Mark paid'}
@@ -225,7 +226,7 @@ function SegPicker({ options, value, onChange }) {
         return (
           <button
             key={o.key}
-            onClick={() => onChange(o.key)}
+            onClick={() => { haptics.select(); onChange(o.key); }}
             style={{ flex: 1, padding: '8px 6px', borderRadius: 100, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: on ? colors.primary : 'transparent', color: on ? colors.onPrimary : colors.textSecondary, border: 'none' }}
           >
             {o.label}

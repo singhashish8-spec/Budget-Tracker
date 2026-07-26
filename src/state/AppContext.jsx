@@ -7,6 +7,9 @@ import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransaction
 import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
 import { writeAutoBackup, readAutoBackup, clearAutoBackup } from '../services/autoBackup';
 import { applyTheme, applyDisplay } from '../services/theme';
+import { setHapticLevel } from '../services/haptics';
+import * as notify from '../services/notify';
+import { consumePendingShare, consumeShortcut, setSecureScreen } from '../services/appIntegration';
 import { duplicateTxnIds } from './selectors';
 
 const AppStateContext = createContext(null);
@@ -58,6 +61,11 @@ const initialState = {
   themeAccent: 'green',
   themeSurface: 'standard', // 'standard' | 'glass'
   motionPref: 'on', // 'on' (full) | 'reduced' | 'off'
+  hapticLevel: 'full', // 'full' | 'light' | 'off'
+  // Files handed in by another app's share sheet, waiting to be filed against
+  // a product. Held here so the Warranties screen can pick them up.
+  pendingShare: [],
+  notifPermission: false,
   // Hide-balances: when true every amount rendered through <Amount> frosts over.
   privacy: false,
   taxRegime: 'new',
@@ -155,6 +163,7 @@ export function AppProvider({ children }) {
           themeAccentStr,
           themeSurfaceStr,
           motionPrefStr,
+          hapticLevelStr,
           privacyStr,
         ] = await Promise.all([
           repo.listCategories(),
@@ -185,6 +194,7 @@ export function AppProvider({ children }) {
           repo.getSetting('themeAccent', 'green'),
           repo.getSetting('themeSurface', 'standard'),
           repo.getSetting('motionPref', 'on'),
+          repo.getSetting('hapticLevel', 'full'),
           repo.getSetting('privacy', '0'),
         ]);
         const onboarded = onboardedFlag === '1';
@@ -220,12 +230,16 @@ export function AppProvider({ children }) {
           themeAccent: themeAccentStr || 'green',
           themeSurface: themeSurfaceStr || 'standard',
           motionPref: motionPrefStr || 'on',
+          hapticLevel: hapticLevelStr || 'full',
           privacy: privacyStr === '1',
           loading: false,
         });
         // Re-apply from the authoritative (DB) values in case the cache differed.
         applyTheme({ mode: themeModeStr || 'system', accent: themeAccentStr || 'green', surface: themeSurfaceStr || 'standard' });
         applyDisplay({ motion: motionPrefStr || 'on', privacy: privacyStr === '1' });
+        setHapticLevel(hapticLevelStr || 'full');
+        // Screenshots and the recents preview follow hide-balances.
+        setSecureScreen(privacyStr === '1');
 
         // Database came up empty (wiped by a reinstall, most likely). Before
         // sending the user through onboarding and losing everything, see
@@ -358,6 +372,58 @@ export function AppProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Files shared in from another app, and launcher shortcuts. Checked on every
+  // resume as well as at launch, because the activity is singleTask: a share
+  // arriving while the app is already open comes through onNewIntent, not a
+  // fresh start, and would otherwise be missed.
+  useEffect(() => {
+    if (state.loading || !state.onboarded) return undefined;
+
+    const pickUp = async () => {
+      try {
+        const files = await consumePendingShare();
+        if (files.length) {
+          set({ pendingShare: files, screen: 'warranty' });
+          showToastRef.current?.(`${files.length} file${files.length === 1 ? '' : 's'} shared in — pick a product`);
+        }
+        const shortcut = await consumeShortcut();
+        if (shortcut === 'add') set({ addSheetOpen: true });
+        else if (shortcut === 'warranty') set({ screen: 'warranty' });
+      } catch {
+        /* nothing shared, or an older APK without the plugin */
+      }
+    };
+
+    pickUp();
+    const handle = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) pickUp();
+    });
+    return () => {
+      handle.then((h) => h.remove()).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.loading, state.onboarded]);
+
+  // Reminders are rebuilt from scratch whenever the underlying data changes.
+  // Android wipes scheduled alarms on reboot and some manufacturers drop them
+  // under battery optimisation, so rescheduling on every open is what keeps the
+  // set alive — a reminder you can't trust is worse than no reminder.
+  useEffect(() => {
+    if (state.loading || !state.onboarded) return;
+    let cancelled = false;
+    (async () => {
+      const allowed = await notify.hasNotificationPermission();
+      if (cancelled) return;
+      set({ notifPermission: allowed });
+      if (!allowed) return;
+      await notify.registerActions();
+      if (!cancelled) await notify.syncSchedule({ warranties: state.warranties, reminders: state.reminders });
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.loading, state.onboarded, state.warranties, state.reminders]);
+
+  const showToastRef = useRef(null);
   const showToast = useCallback(
     (msg) => {
       clearTimeout(toastTimer.current);
@@ -366,6 +432,9 @@ export function AppProvider({ children }) {
     },
     [set],
   );
+  // The share/shortcut effect runs before showToast is defined, so it reaches
+  // it through this ref rather than being reordered around a hook boundary.
+  showToastRef.current = showToast;
 
   const go = useCallback((screen) => dispatch({ type: 'GO', screen }), []);
   const goBack = useCallback(() => dispatch({ type: 'BACK' }), []);
@@ -461,6 +530,7 @@ export function AppProvider({ children }) {
     const next = !backStateRef.current.privacy;
     set({ privacy: next });
     repo.setSetting('privacy', next ? '1' : '0');
+    setSecureScreen(next);
     applyDisplay({ privacy: next });
   }, [set]);
 
@@ -485,6 +555,23 @@ export function AppProvider({ children }) {
     },
     [set],
   );
+
+  const setHapticPref = useCallback(
+    (levelKey) => {
+      set({ hapticLevel: levelKey });
+      setHapticLevel(levelKey);
+      repo.setSetting('hapticLevel', levelKey);
+    },
+    [set],
+  );
+
+  const clearPendingShare = useCallback(() => set({ pendingShare: [] }), [set]);
+
+  const askNotificationPermission = useCallback(async () => {
+    const ok = await notify.ensureNotificationPermission();
+    set({ notifPermission: ok });
+    return ok;
+  }, [set]);
 
   // Onboarding category selection: toggling a category into disabledCats
   // hides it from the category pickers (categorize sheet, budget chips)
@@ -1272,6 +1359,9 @@ export function AppProvider({ children }) {
       togglePrivacy,
       setSalaryDay,
       setImpulseThreshold,
+      setHapticPref,
+      clearPendingShare,
+      askNotificationPermission,
       toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,
@@ -1352,6 +1442,9 @@ export function AppProvider({ children }) {
       togglePrivacy,
       setSalaryDay,
       setImpulseThreshold,
+      setHapticPref,
+      clearPendingShare,
+      askNotificationPermission,
       toggleCategoryEnabled,
       setTaxRegime,
       setTax80cInvested,
