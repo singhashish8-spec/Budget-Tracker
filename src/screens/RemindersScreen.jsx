@@ -52,6 +52,14 @@ export default function RemindersScreen() {
       payload.startAt = startMonth ? monthToTs(startMonth) : new Date(new Date(dueDate).getFullYear(), new Date(dueDate).getMonth(), 1).getTime();
     } else if (kind === 'subscription') {
       payload.cadence = cadence;
+    } else if (kind === 'bill') {
+      // A duration turns a plain recurring bill into a fixed-run one (e.g. a
+      // 6-month membership) that shows a progress bar and an end date. Optional.
+      const term = parseInt(String(termCount).replace(/[^0-9]/g, ''), 10);
+      if (term > 0) {
+        payload.termCount = term;
+        payload.startAt = startMonth ? monthToTs(startMonth) : new Date(new Date(dueDate).getFullYear(), new Date(dueDate).getMonth(), 1).getTime();
+      }
     }
     addReminder(payload);
     reset();
@@ -72,36 +80,39 @@ export default function RemindersScreen() {
         {rows.map((b) => {
           const paid = b.raw.paid_for === monthKey;
           return (
-            <div key={b.id} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', alignItems: 'center', gap: 12, opacity: paid ? 0.55 : 1 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 12, background: colors.warningTint, color: colors.warning, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                {b.label.slice(0, 2).toUpperCase()}
+            <div key={b.id} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', flexDirection: 'column', gap: 12, opacity: paid ? 0.55 : 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 12, background: colors.warningTint, color: colors.warning, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                  {b.label.slice(0, 2).toUpperCase()}
+                </div>
+                <button onClick={() => setEditingId(b.id)} style={{ flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer', background: 'transparent' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span style={{ fontSize: 14.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.label}</span>
+                    {b.badge && (
+                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5, padding: '2px 6px', borderRadius: 6, background: colors.divider, color: colors.textSecondary, flexShrink: 0 }}>{b.badge}</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12.5, color: paid ? colors.successText : colors.warning, fontWeight: 500 }}>
+                    {paid ? 'Paid this month' : `Due ${ordinal(b.dueDay)}`}
+                  </div>
+                  {b.typeText && <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 2 }}>{b.typeText}</div>}
+                </button>
+                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                  <Amount style={{ fontSize: 14.5, fontWeight: 600 }}>{b.amountF}</Amount>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => toggleReminderPaid(b.id, monthKey)}
+                      style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 100, cursor: 'pointer', background: paid ? colors.successTint : colors.primary, color: paid ? colors.primary : colors.onPrimary, border: `1px solid ${paid ? colors.successBorder : colors.primary}` }}
+                    >
+                      {paid ? 'Paid' : 'Mark paid'}
+                    </button>
+                    <button onClick={() => deleteReminder(b.id)} style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 10px', borderRadius: 100, cursor: 'pointer', background: 'transparent', color: colors.textTertiary }}>
+                      ✕
+                    </button>
+                  </div>
+                </div>
               </div>
-              <button onClick={() => setEditingId(b.id)} style={{ flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer', background: 'transparent' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <span style={{ fontSize: 14.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.label}</span>
-                  {b.badge && (
-                    <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5, padding: '2px 6px', borderRadius: 6, background: colors.divider, color: colors.textSecondary, flexShrink: 0 }}>{b.badge}</span>
-                  )}
-                </div>
-                <div style={{ fontSize: 12.5, color: paid ? colors.successText : colors.warning, fontWeight: 500 }}>
-                  {paid ? 'Paid this month' : `Due ${ordinal(b.dueDay)}`}
-                </div>
-                {b.typeText && <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 2 }}>{b.typeText}</div>}
-              </button>
-              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                <Amount style={{ fontSize: 14.5, fontWeight: 600 }}>{b.amountF}</Amount>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button
-                    onClick={() => toggleReminderPaid(b.id, monthKey)}
-                    style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 100, cursor: 'pointer', background: paid ? colors.successTint : colors.primary, color: paid ? colors.primary : colors.onPrimary, border: `1px solid ${paid ? colors.successBorder : colors.primary}` }}
-                  >
-                    {paid ? 'Paid' : 'Mark paid'}
-                  </button>
-                  <button onClick={() => deleteReminder(b.id)} style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 10px', borderRadius: 100, cursor: 'pointer', background: 'transparent', color: colors.textTertiary }}>
-                    ✕
-                  </button>
-                </div>
-              </div>
+              {b.hasProgress && <EmiProgress paid={b.paid} total={b.total} pct={b.pct} />}
             </div>
           );
         })}
@@ -134,6 +145,13 @@ export default function RemindersScreen() {
           </div>
         )}
         {kind === 'emi' && <div style={{ fontSize: 11.5, color: colors.textTertiary, paddingLeft: 4 }}>Total number of EMIs and the month the first one was due.</div>}
+        {kind === 'bill' && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input value={termCount} onChange={(e) => setTermCount(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="Duration in months (optional)" style={{ ...inputStyle, flex: 1 }} />
+            <input type="month" value={startMonth} onChange={(e) => setStartMonth(e.target.value)} style={{ ...inputStyle, flex: 1, color: startMonth ? colors.ink : colors.textTertiary }} />
+          </div>
+        )}
+        {kind === 'bill' && <div style={{ fontSize: 11.5, color: colors.textTertiary, paddingLeft: 4 }}>Add a duration for a fixed-run bill (like a 6-month membership) to see a progress bar. Leave blank for an open-ended monthly bill.</div>}
 
         <label style={{ fontSize: 12.5, color: colors.textSecondary, paddingLeft: 4 }}>Due date {kind === 'subscription' && cadence === 'yearly' ? '(renews yearly)' : '(repeats monthly on this day)'}</label>
         <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ ...inputStyle, color: dueDate ? colors.ink : colors.textTertiary }} />
@@ -162,6 +180,36 @@ function SegPicker({ options, value, onChange }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// A progress bar that "breaks into the number of instalments" — one segment per
+// month for short terms (paid = green, the one currently due = amber, the rest
+// grey). Long loans (a 60-month home loan) would be an unreadable row of slivers,
+// so above 24 instalments it becomes a single continuous fill instead.
+function EmiProgress({ paid, total, pct }) {
+  const useSegments = total > 0 && total <= 24;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      {useSegments ? (
+        <div style={{ display: 'flex', gap: 3 }}>
+          {Array.from({ length: total }).map((_, i) => {
+            const done = i < paid;
+            const current = i === paid && paid < total;
+            const bg = done ? colors.successText : current ? colors.warning : colors.track;
+            return <div key={i} style={{ flex: 1, height: 8, borderRadius: 3, background: bg, transition: 'background 0.2s' }} />;
+          })}
+        </div>
+      ) : (
+        <div style={{ height: 8, borderRadius: 4, background: colors.track, overflow: 'hidden' }}>
+          <div style={{ width: `${pct}%`, height: '100%', borderRadius: 4, background: colors.successText, transition: 'width 0.3s' }} />
+        </div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: colors.textTertiary, fontWeight: 500 }}>
+        <span>{pct}% complete</span>
+        <span>{paid}/{total}</span>
+      </div>
     </div>
   );
 }
@@ -225,9 +273,11 @@ function EditReminderSheet({ reminder, onSave, onClose }) {
       patch.termCount = null;
       patch.startAt = null;
     } else {
+      // Plain bill: an optional duration makes it a fixed-run bill with progress.
       patch.cadence = null;
-      patch.termCount = null;
-      patch.startAt = null;
+      const term = parseInt(String(termCount).replace(/[^0-9]/g, ''), 10);
+      patch.termCount = term > 0 ? term : null;
+      patch.startAt = term > 0 ? (startMonth ? monthToTs(startMonth) : reminder.start_at || reminder.created_at) : null;
     }
     onSave(patch);
   };
@@ -263,6 +313,15 @@ function EditReminderSheet({ reminder, onSave, onClose }) {
             <input value={termCount} onChange={(e) => setTermCount(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="Total instalments" style={{ ...editInput, flex: 1 }} />
             <input type="month" value={startMonth} onChange={(e) => setStartMonth(e.target.value)} style={{ ...editInput, flex: 1, color: startMonth ? colors.ink : colors.textTertiary }} />
           </div>
+        )}
+        {kind === 'bill' && (
+          <>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input value={termCount} onChange={(e) => setTermCount(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="Duration in months (optional)" style={{ ...editInput, flex: 1 }} />
+              <input type="month" value={startMonth} onChange={(e) => setStartMonth(e.target.value)} style={{ ...editInput, flex: 1, color: startMonth ? colors.ink : colors.textTertiary }} />
+            </div>
+            <div style={{ fontSize: 12, color: colors.textTertiary }}>Leave duration blank for an open-ended monthly bill.</div>
+          </>
         )}
       </div>
     </Sheet>

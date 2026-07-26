@@ -322,7 +322,11 @@ export function billRow(r, now = new Date()) {
   const dueDay = r.due_day || 1;
   const base = { id: r.id, kind, label: r.label, amount: r.amount, amountF: fmt(r.amount), dueDay };
 
-  if (kind === 'emi') {
+  // Both EMIs and fixed-run bills have a duration (term_count) and therefore a
+  // progress bar. Shared math: how many instalments/months have already come
+  // due, how many are left, and when it finishes.
+  const hasTerm = (kind === 'emi' || kind === 'bill') && (r.term_count || 0) > 0;
+  if (hasTerm) {
     const total = r.term_count || 0;
     const start = new Date(r.start_at || r.created_at || now.getTime());
     const monthsBetween = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
@@ -335,16 +339,19 @@ export function billRow(r, now = new Date()) {
     const payoff = new Date(start.getFullYear(), start.getMonth() + Math.max(0, total - 1), dueDay);
     const payoffLabel = payoff.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
     const pct = total ? Math.round((paid / total) * 100) : 0;
+    const isEmi = kind === 'emi';
+    const unitDone = isEmi ? 'paid' : 'done';
     return {
       ...base,
-      typeLabel: 'EMI',
-      badge: 'EMI',
+      typeLabel: isEmi ? 'EMI' : 'Bill',
+      badge: isEmi ? 'EMI' : `${total}MO`,
+      hasProgress: true,
       total,
       paid,
       remaining,
       pct,
       payoffLabel,
-      typeText: total ? `${paid} of ${total} paid · ${remaining} left · payoff ${payoffLabel}` : 'Loan instalment',
+      typeText: `${paid} of ${total} ${unitDone} · ${remaining} left · ${isEmi ? 'payoff' : 'ends'} ${payoffLabel}`,
     };
   }
 
