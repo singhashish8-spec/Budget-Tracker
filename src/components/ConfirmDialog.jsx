@@ -1,4 +1,5 @@
 import { colors } from '../theme/tokens';
+import * as haptics from '../services/haptics';
 
 // A blocking yes/no for things that can't be undone — deleting a warranty, or
 // removing the only copy of a bill. Destructive actions used to happen on a
@@ -27,7 +28,7 @@ export default function ConfirmDialog({ title, message, confirmLabel = 'Delete',
             {cancelLabel}
           </button>
           <button
-            onClick={onConfirm}
+            onClick={() => { haptics.error(); onConfirm(); }}
             style={{
               flex: 1, borderRadius: 100, padding: 12, fontSize: 14.5, fontWeight: 600, cursor: 'pointer',
               background: destructive ? colors.danger : colors.primary, color: '#FFFFFF', border: 'none',

@@ -6,6 +6,7 @@ import { fmt } from '../utils/currency';
 import Amount from '../components/Amount';
 import Sheet from '../components/Sheet';
 import WarrantyDetail from '../components/WarrantyDetail';
+import * as haptics from '../services/haptics';
 
 const STATUS = {
   valid: { color: colors.successText, tint: colors.successTint, label: 'In warranty' },
@@ -33,7 +34,7 @@ function daysLabel(daysLeft) {
 }
 
 export default function WarrantyScreen() {
-  const { state, goBack, addWarranty, editWarranty, deleteWarranty } = useApp();
+  const { state, goBack, addWarranty, editWarranty, deleteWarranty, addWarrantyDocument, clearPendingShare, showToast } = useApp();
   const [adding, setAdding] = useState(false);
   const [viewingId, setViewingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -65,6 +66,20 @@ export default function WarrantyScreen() {
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>Warranties</div>
       </div>
 
+      {state.pendingShare?.length > 0 && (
+        <div style={{ background: colors.primaryTint, border: `1px solid ${colors.primary}`, borderRadius: 16, padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: colors.primary }}>
+            {state.pendingShare.length} file{state.pendingShare.length === 1 ? '' : 's'} shared in
+          </div>
+          <div style={{ fontSize: 12.5, color: colors.textSecondary, lineHeight: 1.45 }}>
+            Pick the product {state.pendingShare.length === 1 ? 'it belongs' : 'they belong'} to, and {state.pendingShare.length === 1 ? "it'll" : "they'll"} be attached as documents.
+          </div>
+          <button onClick={() => { haptics.tap(); clearPendingShare(); }} style={{ alignSelf: 'flex-start', background: 'transparent', border: 'none', color: colors.textTertiary, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: '2px 0' }}>
+            Discard
+          </button>
+        </div>
+      )}
+
       {items.length > 0 && (
         <div style={{ display: 'flex', gap: 8 }}>
           <StatChip n={counts.valid} label="In warranty" c={colors.successText} bg={colors.successTint} />
@@ -73,7 +88,7 @@ export default function WarrantyScreen() {
         </div>
       )}
 
-      <button onClick={() => setAdding(true)} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 13, textAlign: 'center', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+      <button onClick={() => { haptics.tap(); setAdding(true); }} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: 13, textAlign: 'center', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
         + Add a product
       </button>
 
@@ -84,7 +99,19 @@ export default function WarrantyScreen() {
           return (
             <button
               key={`${w.source}-${w.id}`}
-              onClick={() => setViewingId(w.id)}
+              onClick={async () => {
+                const share = state.pendingShare || [];
+                if (share.length && w.source === 'warranty') {
+                  haptics.success();
+                  for (const f of share) await addWarrantyDocument(w.id, f);
+                  clearPendingShare();
+                  showToast(`Attached to ${w.product}`);
+                  setViewingId(w.id);
+                  return;
+                }
+                haptics.select();
+                setViewingId(w.id);
+              }}
               style={{ textAlign: 'left', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', flexDirection: 'column', gap: 10, cursor: 'pointer', width: '100%' }}
             >
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%' }}>

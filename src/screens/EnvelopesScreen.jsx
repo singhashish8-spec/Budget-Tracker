@@ -5,6 +5,7 @@ import { envelopeRows, toBeAssigned, periodKeyOf } from '../state/selectors';
 import { fmt } from '../utils/currency';
 import Amount from '../components/Amount';
 import Sheet from '../components/Sheet';
+import * as haptics from '../services/haptics';
 
 // Zero-based budgeting: "give every rupee a job".
 //
@@ -52,9 +53,9 @@ export default function EnvelopesScreen() {
       {/* Month stepper — envelopes are per month, and last month's leftovers
           are what make this month's numbers make sense. */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '6px 8px' }}>
-        <button onClick={() => shiftMonth(-1)} style={stepBtn}>‹</button>
+        <button onClick={() => { haptics.select(); shiftMonth(-1); }} style={stepBtn}>‹</button>
         <span style={{ fontSize: 14, fontWeight: 600 }}>{monthLabel}</span>
-        <button onClick={() => shiftMonth(1)} style={stepBtn}>›</button>
+        <button onClick={() => { haptics.select(); shiftMonth(1); }} style={stepBtn}>›</button>
       </div>
 
       {/* The headline number: money that has arrived but hasn't been given a job. */}
@@ -151,6 +152,7 @@ export default function EnvelopesScreen() {
           unassigned={pool.unassigned}
           onClose={() => setEditing(null)}
           onSave={async (amount) => {
+            haptics.success();
             if (amount > 0) await assignToEnvelope(editing.catId, periodKey, amount);
             else await clearEnvelope(editing.catId, periodKey);
             setEditing(null);
