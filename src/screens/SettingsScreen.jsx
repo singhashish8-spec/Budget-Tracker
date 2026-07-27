@@ -17,7 +17,7 @@ import { updatesSupported, fetchManifest, getCurrentVersion, downloadUpdate, app
 // is null at the menu; the header back button steps back to the menu first, and
 // only leaves Settings from the menu itself.
 const SECTIONS = [
-  { key: 'appearance', label: 'Appearance', sub: 'Theme, accent, glass & motion' },
+  { key: 'appearance', label: 'Appearance', sub: 'Themes, accent, haptics & motion' },
   { key: 'money', label: 'Money', sub: 'Display currency & pay cycle' },
   { key: 'backup', label: 'Backup & restore', sub: 'Save a copy and bring it back' },
   { key: 'privacy', label: 'Privacy & security', sub: 'SMS tracking & app lock' },
@@ -146,12 +146,34 @@ export default function SettingsScreen() {
             })}
           </div>
 
-          <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, margin: '18px 0 4px' }}>Surface</div>
-          <div style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 8 }}>Frosted glass gives cards a translucent, iOS-style blur. Standard is the classic solid look.</div>
-          <div style={segWrap}>
-            {SURFACES.map((s) => (
-              <button key={s.key} onClick={() => setThemeSurface(s.key)} style={segBtn(state.themeSurface === s.key)}>{s.label}</button>
-            ))}
+          <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, margin: '18px 0 4px' }}>Theme</div>
+          <div style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 10 }}>
+            Changes the whole feel — surfaces, contrast and depth — not just the colour. Works with any accent above.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {SURFACES.map((s) => {
+              const on = (state.themeSurface || 'standard') === s.key;
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => setThemeSurface(s.key)}
+                  aria-pressed={on}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer',
+                    padding: '11px 12px', borderRadius: 14,
+                    background: on ? colors.primaryTint : 'transparent',
+                    border: `1.5px solid ${on ? colors.primary : colors.cardBorder}`,
+                  }}
+                >
+                  <SkinSwatch skin={s.key} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: on ? colors.primary : colors.ink }}>{s.label}</div>
+                    <div style={{ fontSize: 12, color: colors.textTertiary }}>{s.hint}</div>
+                  </div>
+                  {on && <span style={{ color: colors.primary, fontWeight: 700 }}>✓</span>}
+                </button>
+              );
+            })}
           </div>
 
           <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, margin: '18px 0 4px' }}>Haptics</div>
@@ -486,6 +508,35 @@ function ToggleRow({ title, sub, on, onToggle, border }) {
       >
         <div style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#FFFFFF', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.15s' }} />
       </button>
+    </div>
+  );
+}
+
+// A miniature of what each theme does to a surface: page behind, card in front,
+// with that theme's border weight and depth. The values are literals rather
+// than tokens on purpose — the swatch has to show a theme that ISN'T currently
+// applied, so it can't read the live CSS variables.
+const SKIN_PREVIEW = {
+  standard: { page: '#F7F4EE', surface: '#FFFFFF', border: '#E7E2D9', borderWidth: 1, shadow: '0 2px 5px rgba(16,20,24,0.10)' },
+  carbon: { page: '#000000', surface: '#0E0E11', border: '#232329', borderWidth: 1, shadow: 'none' },
+  glass: { page: '#E8EDF2', surface: 'rgba(255,255,255,0.55)', border: 'rgba(255,255,255,0.85)', borderWidth: 1, shadow: '0 2px 8px rgba(16,20,24,0.10)' },
+  neo: { page: '#FFFDF7', surface: '#FFFFFF', border: '#0A0A0A', borderWidth: 2, shadow: '2px 2px 0 rgba(10,10,10,0.9)' },
+  serene: { page: '#F4F5F7', surface: '#FFFFFF', border: '#EDEFF2', borderWidth: 1, shadow: '0 3px 9px rgba(42,47,54,0.13)' },
+};
+
+function SkinSwatch({ skin }) {
+  const p = SKIN_PREVIEW[skin] || SKIN_PREVIEW.standard;
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        width: 44, height: 38, borderRadius: 9, background: p.page, flexShrink: 0,
+        border: `1px solid ${colors.cardBorder}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden',
+      }}
+    >
+      <div style={{ width: 26, height: 18, borderRadius: 5, background: p.surface, border: `${p.borderWidth}px solid ${p.border}`, boxShadow: p.shadow }} />
     </div>
   );
 }

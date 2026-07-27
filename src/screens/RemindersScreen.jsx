@@ -7,6 +7,7 @@ import Amount from '../components/Amount';
 import Sheet from '../components/Sheet';
 import ReminderDetail from '../components/ReminderDetail';
 import * as haptics from '../services/haptics';
+import { Icon } from '../components/ui';
 
 // The next occurrence of a due-day, so "Add to calendar" always creates a
 // forward-looking event rather than one that already passed this month.
@@ -140,9 +141,10 @@ export default function RemindersScreen() {
                     <button
                       onClick={() => addReminderToCalendar(b.raw, nextDueTs(b.dueDay))}
                       title="Add to calendar"
-                      style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 10px', borderRadius: 100, cursor: 'pointer', background: 'transparent', color: colors.textTertiary }}
+                      aria-label={`Add ${b.label} to calendar`}
+                      style={{ display: 'flex', alignItems: 'center', padding: '7px 10px', borderRadius: 100, cursor: 'pointer', background: 'transparent', color: colors.textTertiary }}
                     >
-                      📅
+                      <Icon name="calendar" size={16} />
                     </button>
                     <button onClick={() => deleteReminder(b.id)} style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 10px', borderRadius: 100, cursor: 'pointer', background: 'transparent', color: colors.textTertiary }}>
                       ✕

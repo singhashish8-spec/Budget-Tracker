@@ -34,6 +34,12 @@ const PATHS = {
     </>
   ),
   check: <path d="M4.5 12.5 9.5 17.5 19.5 7" />,
+  calendar: (
+    <>
+      <rect x="3.5" y="5" width="17" height="16" rx="3" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 18, style, title }) {

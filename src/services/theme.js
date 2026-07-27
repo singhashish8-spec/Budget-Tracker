@@ -22,13 +22,31 @@ export const MODES = [
   { key: 'dark', label: 'Dark' },
 ];
 
-// Surface style is a separate dial from mode/accent: it changes how surfaces are
-// rendered (solid vs translucent frosted glass) without touching the colours.
-// 'standard' is the original look and the default; 'glass' is opt-in.
+// Themes ("skins") are a separate dial from mode and accent. Mode is light/dark
+// and accent is a hue — neither changes the app's PERSONALITY, which is why
+// seven accents still only ever looked like one app in seven colours. A skin
+// swaps the neutrals, the border weight and the elevation together, so Carbon
+// and Serene read as genuinely different products rather than re-tints.
+//
+// This rides the existing `data-surface` attribute and keeps the original two
+// keys ('standard', 'glass') so every saved preference keeps its meaning —
+// 'standard' is simply now presented as "Paper".
+//
+// Skins work on every screen, including ones not yet migrated to the UI
+// primitives, because they only move CSS variables that all screens already
+// read through theme/tokens.js.
 export const SURFACES = [
-  { key: 'standard', label: 'Standard' },
-  { key: 'glass', label: 'Frosted glass' },
+  { key: 'standard', label: 'Paper', hint: 'Warm and calm — the original look' },
+  { key: 'carbon', label: 'Carbon', hint: 'True black, built for OLED' },
+  { key: 'glass', label: 'Frosted glass', hint: 'Translucent, accent-tinted depth' },
+  { key: 'neo', label: 'Neo', hint: 'High contrast, heavy borders' },
+  { key: 'serene', label: 'Serene', hint: 'Soft, low contrast, roomy' },
 ];
+
+// Skins that define their own light/dark treatment and shouldn't be re-tinted
+// by the mode dial. Carbon is black by definition; offering it a "light" mode
+// would just produce a broken grey app.
+export const FIXED_DARK_SURFACES = ['carbon'];
 
 // Motion level is a three-way dial. 'on' = full (screen transitions + press
 // feedback), 'reduced' = calm (no screen slide, keep the small tactile press),
@@ -97,9 +115,9 @@ export function applyTheme({ mode = 'system', accent = 'green', surface = 'stand
   if (mode === 'light' || mode === 'dark') root.setAttribute('data-theme', mode);
   else root.removeAttribute('data-theme'); // system → follow prefers-color-scheme
 
-  // Only stamp the attribute for glass; Standard leaves the DOM untouched so
-  // the original styling path is completely unaffected.
-  if (surface === 'glass') root.setAttribute('data-surface', 'glass');
+  // Paper ('standard') leaves the DOM untouched so the original styling path is
+  // completely unaffected; every other skin stamps its key.
+  if (surface && surface !== 'standard') root.setAttribute('data-surface', surface);
   else root.removeAttribute('data-surface');
 
   const a = ACCENTS.find((x) => x.key === accent) || ACCENTS[0];
@@ -112,7 +130,11 @@ export function applyTheme({ mode = 'system', accent = 'green', surface = 'stand
   s.setProperty('--c-accentGreen2', a.a2);
   s.setProperty('--c-accentGreen3', a.a3);
   // Native controls (date pickers, scrollbars) follow this in system mode.
-  s.colorScheme = mode === 'dark' ? 'dark' : mode === 'light' ? 'light' : 'light dark';
+  // A fixed-dark skin overrides the mode dial — Carbon is black whatever the
+  // OS says, so its date pickers must be too.
+  s.colorScheme = FIXED_DARK_SURFACES.includes(surface)
+    ? 'dark'
+    : mode === 'dark' ? 'dark' : mode === 'light' ? 'light' : 'light dark';
 
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', a.primary);

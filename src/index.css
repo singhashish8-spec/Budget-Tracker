@@ -94,6 +94,136 @@
   color-scheme: dark;
 }
 
+/* ── Themes / skins (Settings → Appearance → Theme) ──────────────────────────
+   A skin changes the app's PERSONALITY, not just its hue: neutrals, border
+   weight and elevation move together. Mode (light/dark) and accent (7 hues)
+   stay independent dials on top.
+
+   These blocks sit AFTER the light/dark blocks above on purpose. They have the
+   same specificity (:root + one attribute), so source order is what lets a skin
+   override the mode neutrals — which is how Carbon stays black in light mode.
+
+   Elevation is delivered through --c-cardShadow, applied further down via the
+   same inline-style hook frosted glass uses. That means it reaches every card
+   on every screen, including the ones not yet migrated to the UI primitives. */
+:root {
+  --c-cardShadow: 0 1px 2px rgba(16, 20, 24, 0.04), 0 4px 12px rgba(16, 20, 24, 0.05);
+}
+@media (prefers-color-scheme: dark) {
+  /* Shadows are nearly invisible on dark neutrals and mostly just muddy the
+     edges, so dark mode leans on borders instead. */
+  :root:not([data-theme='light']) { --c-cardShadow: none; }
+}
+:root[data-theme='dark'] { --c-cardShadow: none; }
+
+/* Carbon — true black for OLED. Deliberately ignores the light/dark dial. */
+:root[data-surface='carbon'] {
+  --c-bgApp: #000000;
+  --c-bgDesk: #000000;
+  --c-ink: #F2F2F4;
+  --c-textSecondary: #9A9AA2;
+  --c-textTertiary: #67676E;
+  --c-cardSurface: #0E0E11;
+  --c-cardBorder: #232329;
+  --c-divider: #1A1A1F;
+  --c-track: #2E2E36;
+  --c-successTint: #0C1F16;
+  --c-successBorder: #1E4030;
+  --c-successText: #63C795;
+  --c-danger: #FF6B54;
+  --c-dangerDark: #FF9583;
+  --c-dangerTint: #240F0B;
+  --c-dangerBorder: #45201A;
+  --c-warning: #E0AE4A;
+  --c-warningDark: #F0CB84;
+  --c-warningTint: #211903;
+  --c-warningBorder: #40320F;
+  --c-cardShadow: none;
+  color-scheme: dark;
+}
+
+/* Neo — high contrast and structural. Thick borders and a hard offset shadow
+   instead of a soft blur, so surfaces read as stacked paper, not floating. */
+:root[data-surface='neo'] {
+  --c-bgApp: #FFFDF7;
+  --c-bgDesk: #F0EAD8;
+  --c-ink: #0A0A0A;
+  --c-textSecondary: #55524A;
+  --c-textTertiary: #86827A;
+  --c-cardSurface: #FFFFFF;
+  --c-cardBorder: #0A0A0A;
+  --c-divider: #E2DDD0;
+  --c-track: #C9C3B4;
+  --c-cardShadow: 3px 3px 0 rgba(10, 10, 10, 0.9);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-surface='neo']:not([data-theme='light']) {
+    --c-bgApp: #121214;
+    --c-bgDesk: #08080A;
+    --c-ink: #FAFAFA;
+    --c-textSecondary: #A8A49B;
+    --c-textTertiary: #74716A;
+    --c-cardSurface: #1C1C20;
+    --c-cardBorder: #FAFAFA;
+    --c-divider: #2A2A30;
+    --c-track: #3D3D45;
+    --c-cardShadow: 3px 3px 0 rgba(250, 250, 250, 0.85);
+  }
+}
+:root[data-surface='neo'][data-theme='dark'] {
+  --c-bgApp: #121214;
+  --c-bgDesk: #08080A;
+  --c-ink: #FAFAFA;
+  --c-textSecondary: #A8A49B;
+  --c-textTertiary: #74716A;
+  --c-cardSurface: #1C1C20;
+  --c-cardBorder: #FAFAFA;
+  --c-divider: #2A2A30;
+  --c-track: #3D3D45;
+  --c-cardShadow: 3px 3px 0 rgba(250, 250, 250, 0.85);
+}
+
+/* Serene — low contrast and roomy. Borders almost disappear; a wide, soft
+   shadow does the separating instead. */
+:root[data-surface='serene'] {
+  --c-bgApp: #F4F5F7;
+  --c-bgDesk: #E9EBEF;
+  --c-ink: #2A2F36;
+  --c-textSecondary: #7A828C;
+  --c-textTertiary: #A6ADB6;
+  --c-cardSurface: #FFFFFF;
+  --c-cardBorder: #EDEFF2;
+  --c-divider: #F1F3F5;
+  --c-track: #DFE3E8;
+  --c-cardShadow: 0 2px 6px rgba(42, 47, 54, 0.05), 0 12px 28px rgba(42, 47, 54, 0.07);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-surface='serene']:not([data-theme='light']) {
+    --c-bgApp: #1A1D21;
+    --c-bgDesk: #131619;
+    --c-ink: #E6E8EB;
+    --c-textSecondary: #99A0A8;
+    --c-textTertiary: #6B7178;
+    --c-cardSurface: #23272C;
+    --c-cardBorder: #2B3036;
+    --c-divider: #262A2F;
+    --c-track: #3A4047;
+    --c-cardShadow: none;
+  }
+}
+:root[data-surface='serene'][data-theme='dark'] {
+  --c-bgApp: #1A1D21;
+  --c-bgDesk: #131619;
+  --c-ink: #E6E8EB;
+  --c-textSecondary: #99A0A8;
+  --c-textTertiary: #6B7178;
+  --c-cardSurface: #23272C;
+  --c-cardBorder: #2B3036;
+  --c-divider: #262A2F;
+  --c-track: #3A4047;
+  --c-cardShadow: none;
+}
+
 /* ── Frosted-glass surface (opt-in: Settings → Appearance → Surface) ──────────
    A separate dial from light/dark + accent. Cards keep reading the same tokens,
    so swapping --c-cardSurface / --c-cardBorder for translucent values turns
@@ -272,6 +402,21 @@ button:active { transform: scale(0.97); }
 .bt-chev { transition: transform 0.22s ease; }
 :root[data-motion='off'] .bt-chev { transition: none; }
 .bt-chev[data-open='1'] { transform: rotate(180deg); }
+
+/* ── Elevation ───────────────────────────────────────────────────────────────
+   The app was entirely flat: a 1px border and nothing else, which read as a
+   wireframe that got coloured in. This gives every surface depth using the same
+   trick frosted glass uses — matching on the inline style that paints the
+   card-surface token — so it reaches all fourteen screens, including the ones
+   still writing their cards by hand rather than through <Card>.
+
+   Skipped in glass mode, which paints its own depth behind translucent
+   surfaces and would only get muddier with a shadow underneath. Anything that
+   sets its own inline boxShadow (the FAB, the menu button) keeps it, because an
+   inline style always beats a stylesheet rule. */
+:root:not([data-surface='glass']) [style*="--c-cardSurface"] {
+  box-shadow: var(--c-cardShadow);
+}
 
 /* ── Progress bar fill (ProgressBar component) ───────────────────────────────
    Bars used to be a bare inline width, so every one of them snapped straight to

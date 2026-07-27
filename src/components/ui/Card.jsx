@@ -1,4 +1,4 @@
-import { colors, radii, shadow } from '../../theme/tokens';
+import { colors, radii } from '../../theme/tokens';
 
 // The app's surface. This markup was hand-typed in fourteen screen files before
 // it lived here, which is why the UI was expensive to change: every visual
@@ -10,16 +10,15 @@ import { colors, radii, shadow } from '../../theme/tokens';
 // `:root[data-surface='glass'] [style*="--c-cardSurface"]` (index.css), which
 // matches on the inline style string. Move this to a CSS class and glass mode
 // silently stops blurring.
-// `elevated` is opt-in and OFF by default, deliberately. The app is uniformly
-// flat (1px border, no shadow) and only two screens use this primitive so far —
-// defaulting elevation on would make Home and Transactions float while Budgets,
-// Goals, Insights and the rest stayed flat, which reads as unfinished rather
-// than designed. Flip the default once every screen renders through <Card>.
+// Elevation is deliberately NOT set here. It comes from the `--c-cardShadow`
+// rule in index.css, which matches on the inline card-surface style below — so
+// depth is identical whether a screen renders through <Card> or still writes
+// its card by hand, and each theme/skin decides how much of it there is.
+// Setting boxShadow inline here would override that and desync the two.
 export default function Card({
   as: Tag = 'div',
   tight = false,
   padded = true,
-  elevated = false,
   style,
   children,
   ...rest
@@ -31,7 +30,6 @@ export default function Card({
         border: `1px solid ${colors.cardBorder}`,
         borderRadius: tight ? radii.cardTight : radii.card,
         padding: padded ? (tight ? '14px 14px' : '18px 16px') : 0,
-        boxShadow: elevated ? shadow.card : 'none',
         display: 'flex',
         flexDirection: 'column',
         ...style,
