@@ -69,7 +69,9 @@ export default function AddTransactionSheet() {
         business,
         gst_rate: business && gst.trim() ? parseInt(gst, 10) : null,
       });
-      haptics.success();
+      // No haptic here: addManualTransaction confirms with a toast, and the
+      // toast now carries the success haptic. Firing one here too double-buzzed
+      // the app's single most common commit.
       setAmount(''); setName(''); setNote(''); setCat(null); setWarranty(''); setBusiness(false); setGst('');
       setWhen(todayInputValue()); setType('expense'); setMethod('cash');
       close();

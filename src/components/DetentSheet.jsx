@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { colors } from '../theme/tokens';
+import * as haptics from '../services/haptics';
 
 // An iOS-style bottom sheet with two resting heights ("detents"):
 //   • half  — opens here, enough to read the summary one-handed
@@ -97,13 +98,18 @@ export default function DetentSheet({ onClose, header, children, footer, motion 
     const flickUp = velocity < -FLICK_VELOCITY;
     setDragY(0);
 
+    // Landing on a detent is a physical event — the sheet stops moving against
+    // your finger — so it's exactly the kind of state change that should tick.
+    // Without it the snap reads as the sheet "slipping" rather than clicking
+    // into place. Nothing fires when the drag falls short and springs back:
+    // that isn't a change.
     if (d.from === 'full') {
-      if (flickDown || dy > COMMIT_PX) setDetent('half');
+      if (flickDown || dy > COMMIT_PX) { haptics.select(); setDetent('half'); }
       return;
     }
     // from half
-    if (flickUp || dy < -COMMIT_PX) { setDetent('full'); return; }
-    if (flickDown || dy > COMMIT_PX) close();
+    if (flickUp || dy < -COMMIT_PX) { haptics.select(); setDetent('full'); return; }
+    if (flickDown || dy > COMMIT_PX) { haptics.select(); close(); }
   };
 
   const height = heightFor(detent);
@@ -146,7 +152,7 @@ export default function DetentSheet({ onClose, header, children, footer, motion 
         {/* Grabber — always drags the sheet, whatever the body is doing. */}
         <div
           onTouchStart={onHandleTouchStart}
-          onClick={() => setDetent(detent === 'half' ? 'full' : 'half')}
+          onClick={() => { haptics.select(); setDetent(detent === 'half' ? 'full' : 'half'); }}
           style={{ padding: '10px 0 4px', flexShrink: 0, cursor: 'grab', touchAction: 'none' }}
         >
           <div style={{ width: 40, height: 4, borderRadius: 100, background: colors.track, margin: '0 auto' }} />

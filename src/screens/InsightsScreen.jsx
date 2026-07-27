@@ -35,21 +35,21 @@ export default function InsightsScreen() {
     try {
       await exportCsv(state.txns, state.categories);
     } catch {
-      showToast('Couldn’t export — try again');
+      showToast('Couldn’t export — try again', 'error');
     }
   };
   const doExportReport = async () => {
     try {
       await exportHtmlReport(state.txns, state.categories);
     } catch {
-      showToast('Couldn’t export — try again');
+      showToast('Couldn’t export — try again', 'error');
     }
   };
   const doExportPdf = async () => {
     try {
       await exportPdfReport(state.txns, state.categories);
     } catch (err) {
-      showToast(err?.message || 'Couldn’t export — try again');
+      showToast(err?.message || 'Couldn’t export — try again', 'error');
     }
   };
 

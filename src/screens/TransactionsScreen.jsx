@@ -1,18 +1,47 @@
-import { useEffect, useState } from 'react';
-import { colors, tint } from '../theme/tokens';
+import { useEffect, useMemo, useState } from 'react';
+import { colors, fonts, radii, tint, type } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { alertCount, filterTransactions } from '../state/selectors';
 import { listSmsTextByTxn } from '../db/repo';
+import * as haptics from '../services/haptics';
 import Amount from '../components/Amount';
 import Collapse from '../components/Collapse';
+import { Screen, Card, Chip, EmptyState } from '../components/ui';
+
+const SEARCH_DEBOUNCE_MS = 180;
+
+// These filters read as a segmented control — the active one is a solid fill,
+// not the tinted outline Chip uses by default — so they pass an explicit tone.
+const filterTone = (on, accent) => (on
+  ? { bg: accent, fg: '#FFFFFF', border: accent }
+  : { bg: colors.cardSurface, fg: colors.ink, border: colors.cardBorder });
 
 export default function TransactionsScreen() {
   const { state, set, openCategorySheet, categorizeTxn, deleteTransaction, splitTransaction } = useApp();
   const { txns, categories, search, filter, disabledCats } = state;
-  const alerts = alertCount(txns);
-  const view = filterTransactions(txns, { search, filter, categories });
+
+  // The search box types into local state and only lands in the shared app
+  // context after a pause. `search` lives in the one global context, so every
+  // keystroke used to re-render every screen that reads useApp() AND re-run the
+  // full-array filter below — the single worst typing path in the app.
+  const [draft, setDraft] = useState(search);
+  useEffect(() => {
+    if (draft === search) return undefined;
+    const id = setTimeout(() => set({ search: draft }), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft]);
+  // Keep the box in step when something else clears the search (e.g. the review
+  // shortcut from Home).
+  useEffect(() => { setDraft(search); }, [search]);
+
+  const alerts = useMemo(() => alertCount(txns), [txns]);
+  const view = useMemo(
+    () => filterTransactions(txns, { search, filter, categories }),
+    [txns, search, filter, categories],
+  );
 
   // "Show full message" is a view preference (default off), kept in localStorage
   // so it holds across launches without touching the data layer.
@@ -38,17 +67,23 @@ export default function TransactionsScreen() {
     }
   }, [showMessages, expandedId, smsMap]);
 
-  const pickCats = categories.filter((c) => c.id !== 'income' && !disabledCats.includes(c.id));
+  const pickCats = useMemo(
+    () => categories.filter((c) => c.id !== 'income' && !disabledCats.includes(c.id)),
+    [categories, disabledCats],
+  );
 
   // Group the (already date-sorted) list into collapsible day sections.
-  const now = new Date();
-  const groups = [];
-  const gmap = {};
-  for (const t of view) {
-    const b = dayBucket(t, now);
-    if (!gmap[b.key]) { gmap[b.key] = { key: b.key, label: b.label, items: [] }; groups.push(gmap[b.key]); }
-    gmap[b.key].items.push(t);
-  }
+  const groups = useMemo(() => {
+    const now = new Date();
+    const out = [];
+    const gmap = {};
+    for (const t of view) {
+      const b = dayBucket(t, now);
+      if (!gmap[b.key]) { gmap[b.key] = { key: b.key, label: b.label, items: [] }; out.push(gmap[b.key]); }
+      gmap[b.key].items.push(t);
+    }
+    return out;
+  }, [view]);
 
   const renderRow = (t) => {
     const cat = categories.find((c) => c.id === t.cat);
@@ -60,8 +95,9 @@ export default function TransactionsScreen() {
     return (
       <div key={t.id} style={{ borderBottom: `1px solid ${colors.divider}` }}>
         <button
-          onClick={() => setExpandedId(isOpen ? null : t.id)}
-          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 0', cursor: 'pointer', textAlign: 'left', width: '100%' }}
+          onClick={() => { haptics.select(); setExpandedId(isOpen ? null : t.id); }}
+          aria-expanded={isOpen}
+          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 0', cursor: 'pointer', textAlign: 'left', width: '100%', color: colors.ink }}
         >
           <div style={{ width: 38, height: 38, borderRadius: 12, background: uncat ? colors.dangerTint : tint(cat.color), color: uncat ? colors.danger : cat.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
             {uncat ? '?' : cat.mono}
@@ -101,7 +137,7 @@ export default function TransactionsScreen() {
                 return (
                   <button
                     key={c.id}
-                    onClick={() => { categorizeTxn(t.id, c.id); setExpandedId(null); }}
+                    onClick={() => { haptics.success(); categorizeTxn(t.id, c.id); setExpandedId(null); }}
                     style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, padding: '7px 12px', borderRadius: 100, cursor: 'pointer', background: on ? colors.primaryTint : colors.bgApp, border: `1.5px solid ${on ? colors.primary : colors.cardBorder}`, color: on ? colors.primary : colors.ink, fontSize: 13, fontWeight: 600 }}
                   >
                     <span style={{ width: 18, height: 18, borderRadius: 6, background: tint(c.color), color: c.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 8.5 }}>{c.mono}</span>
@@ -112,9 +148,10 @@ export default function TransactionsScreen() {
               })}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => openCategorySheet(t.id)} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.ink, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Edit details</button>
-              <button onClick={() => { splitTransaction(t.id); setExpandedId(null); }} style={{ flex: 1, background: colors.primaryTint, border: `1px solid ${colors.primary}`, color: colors.primary, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Split 50/50</button>
-              <button onClick={() => { deleteTransaction(t.id); setExpandedId(null); }} style={{ flex: 1, background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, color: colors.dangerDark, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
+              <button onClick={() => { haptics.select(); openCategorySheet(t.id); }} style={{ flex: 1, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.ink, borderRadius: radii.pill, padding: 11, fontSize: type.body, fontWeight: 600, cursor: 'pointer' }}>Edit details</button>
+              {/* splitTransaction toasts on success, and the toast carries the haptic. */}
+              <button onClick={() => { splitTransaction(t.id); setExpandedId(null); }} style={{ flex: 1, background: colors.primaryTint, border: `1px solid ${colors.primary}`, color: colors.primary, borderRadius: radii.pill, padding: 11, fontSize: type.body, fontWeight: 600, cursor: 'pointer' }}>Split 50/50</button>
+              <button onClick={() => { haptics.error(); deleteTransaction(t.id); setExpandedId(null); }} style={{ flex: 1, background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, color: colors.dangerDark, borderRadius: radii.pill, padding: 11, fontSize: type.body, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
             </div>
           </div>
         </Collapse>
@@ -123,35 +160,38 @@ export default function TransactionsScreen() {
   };
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 700, padding: '0 4px' }}>Transactions</div>
+    <Screen gap={12}>
+      <div style={{ fontFamily: fonts.heading, fontSize: type.screen, fontWeight: 700, padding: '0 4px' }}>Transactions</div>
       <input
-        value={search}
-        onChange={(e) => set({ search: e.target.value })}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
         placeholder="Search name, category or amount"
-        style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: '12px 18px', fontSize: 14.5, color: colors.ink }}
+        aria-label="Search transactions"
+        style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: radii.pill, padding: '12px 18px', fontSize: type.callout, color: colors.ink }}
       />
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <button
+        {/* Chip owns its own select() tick — don't add another here. */}
+        <Chip
+          label="All"
+          selected={filter === 'all'}
           onClick={() => set({ filter: 'all' })}
-          style={{ padding: '8px 16px', borderRadius: 100, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', background: filter === 'all' ? colors.primary : colors.cardSurface, color: filter === 'all' ? colors.onPrimary : colors.ink, border: `1px solid ${filter === 'all' ? colors.primary : colors.cardBorder}` }}
-        >
-          All
-        </button>
-        <button
+          tone={filterTone(filter === 'all', colors.primary)}
+        />
+        <Chip
+          label="Business"
+          selected={filter === 'business'}
           onClick={() => set({ filter: filter === 'business' ? 'all' : 'business' })}
-          style={{ padding: '8px 16px', borderRadius: 100, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', background: filter === 'business' ? colors.primary : colors.cardSurface, color: filter === 'business' ? colors.onPrimary : colors.ink, border: `1px solid ${filter === 'business' ? colors.primary : colors.cardBorder}` }}
-        >
-          Business
-        </button>
-        <button
+          tone={filterTone(filter === 'business', colors.primary)}
+        />
+        <Chip
+          label={`Needs review · ${alerts}`}
+          selected={filter === 'review'}
           onClick={() => set({ filter: 'review' })}
-          style={{ padding: '8px 16px', borderRadius: 100, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', background: filter === 'review' ? colors.danger : colors.cardSurface, color: filter === 'review' ? '#FFFFFF' : colors.ink, border: `1px solid ${filter === 'review' ? colors.danger : colors.cardBorder}` }}
-        >
-          Needs review · {alerts}
-        </button>
+          tone={filterTone(filter === 'review', colors.danger)}
+        />
         <button
-          onClick={toggleMessages}
+          onClick={() => { haptics.select(); toggleMessages(); }}
+          aria-pressed={showMessages}
           title="Show the full bank message under each transaction"
           style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', borderRadius: 100, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: showMessages ? colors.primaryTint : colors.cardSurface, color: showMessages ? colors.primary : colors.textSecondary, border: `1px solid ${showMessages ? colors.primary : colors.cardBorder}` }}
         >
@@ -166,13 +206,14 @@ export default function TransactionsScreen() {
         {groups.map((g) => {
           const collapsed = !!collapsedDays[g.key];
           return (
-            <div key={g.key} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: '2px 16px' }}>
+            <Card key={g.key} tight padded={false} style={{ padding: '2px 16px' }}>
               <button
-                onClick={() => setCollapsedDays((s) => ({ ...s, [g.key]: !s[g.key] }))}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', cursor: 'pointer', padding: '9px 0' }}
+                onClick={() => { haptics.select(); setCollapsedDays((s) => ({ ...s, [g.key]: !s[g.key] })); }}
+                aria-expanded={!collapsed}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', cursor: 'pointer', padding: '10px 0' }}
               >
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: colors.textSecondary }}>{g.label}</span>
-                <span style={{ fontSize: 12, color: colors.textTertiary }}>· {g.items.length}</span>
+                <span style={{ fontSize: type.footnote, fontWeight: 700, color: colors.textSecondary }}>{g.label}</span>
+                <span style={{ fontSize: type.footnote, color: colors.textTertiary }}>· {g.items.length}</span>
                 <svg className="bt-chev" data-open={collapsed ? '0' : '1'} width="11" height="7" viewBox="0 0 11 7" style={{ marginLeft: 'auto', color: colors.textTertiary }}>
                   <path d="M1 1l4.5 4L10 1" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -180,13 +221,22 @@ export default function TransactionsScreen() {
               <Collapse open={!collapsed}>
                 <div>{g.items.map(renderRow)}</div>
               </Collapse>
-            </div>
+            </Card>
           );
         })}
-        {view.length === 0 && <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '28px 16px', textAlign: 'center', color: colors.textSecondary, fontSize: 14 }}>No transactions match</div>}
+        {view.length === 0 && (
+          <Card style={{ alignItems: 'center', padding: '28px 16px' }}>
+            <EmptyState
+              text={search || filter !== 'all' ? 'No transactions match this search or filter.' : 'No transactions yet — tap + to add one.'}
+              action={search || filter !== 'all' ? 'Clear filters' : undefined}
+              onAction={search || filter !== 'all' ? () => { setDraft(''); set({ search: '', filter: 'all' }); } : undefined}
+              style={{ alignItems: 'center', textAlign: 'center' }}
+            />
+          </Card>
+        )}
       </div>
-      <div style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', padding: '4px 20px' }}>Tap a day to collapse it · tap a transaction to expand it</div>
-    </div>
+      <div style={{ fontSize: type.footnote, color: colors.textTertiary, textAlign: 'center', padding: '4px 20px' }}>Tap a day to collapse it · tap a transaction to expand it</div>
+    </Screen>
   );
 }
 

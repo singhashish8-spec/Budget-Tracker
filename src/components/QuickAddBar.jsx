@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { colors, tint } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 import { parseQuickEntry } from '../services/quickAdd';
+import * as haptics from '../services/haptics';
 
 // A one-line "type it and go" logger for cash / quick spends, e.g.
 // "500 groceries", "1200 petrol", "got 5000 salary". Guesses the category from
@@ -17,6 +18,8 @@ export default function QuickAddBar() {
   const commit = async ({ amount, type, item }, catId) => {
     const cat = cats.find((c) => c.id === catId);
     const merchant = item || (type === 'income' ? 'Money in' : cat?.label || 'Cash spend');
+    // addManualTransaction confirms with a toast, and the toast carries the
+    // success haptic — firing one here too would double-buzz a single commit.
     await addManualTransaction({ merchant, amount, type, method: 'cash', cat: catId, note: null, occurredAt: Date.now() });
     setText('');
     setPending(null);
@@ -24,9 +27,12 @@ export default function QuickAddBar() {
 
   const submit = async () => {
     const res = parseQuickEntry(text, catIds);
-    if (res.error) { showToast(res.error); return; }
+    // A rejected entry is the one moment the user needs to look at the screen,
+    // so it gets the distinct error pattern rather than the generic tap.
+    if (res.error) { showToast(res.error, 'error'); return; }
     if (res.cat) { await commit(res, res.cat); return; }
     // No category guessed — ask.
+    haptics.select();
     setPending({ amount: res.amount, type: res.type, item: res.item });
   };
 

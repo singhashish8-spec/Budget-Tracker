@@ -33,7 +33,7 @@ export default function PatternsScreen() {
       await setPatternPref(p.signature, 'dismissed');
       showToast(`"${p.merchant}" pattern dismissed`);
     } else if (!res.cancelled) {
-      showToast(res.message || 'Couldn’t verify — try again');
+      showToast(res.message || 'Couldn’t verify — try again', 'error');
     }
   };
 

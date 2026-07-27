@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { colors } from './theme/tokens';
+import { colors, fonts, type } from './theme/tokens';
 import { setActiveCurrency } from './utils/currency';
 import { AppProvider, useApp } from './state/AppContext';
 import Onboarding from './screens/onboarding/Onboarding';
@@ -106,7 +106,7 @@ function RecoveryScreen({ found }) {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: colors.bgApp, padding: 32, textAlign: 'center', gap: 12 }}>
-      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700 }}>We found your data</div>
+      <div style={{ fontFamily: fonts.heading, fontSize: 20, fontWeight: 700 }}>We found your data</div>
       <div style={{ fontSize: 14, color: colors.textSecondary, maxWidth: 340, lineHeight: 1.55 }}>
         This phone has a saved copy{when ? ` from ${when}` : ''}. You can put it back instead of starting over.
       </div>
@@ -128,9 +128,24 @@ function RecoveryScreen({ found }) {
   );
 }
 
+// Shown when the database could not be opened AND the automatic backup restore
+// in the bootstrap didn't recover anything.
+//
+// This screen used to offer exactly one button — "Reset & start fresh" — which
+// deletes the database, and told the user their "encrypted data can't be
+// unlocked" (encryption was removed; the copy was stale and pointed at the
+// wrong conclusion). The most common trigger is actually a TRANSIENT one: the
+// store timing out on a slow cold start. Handing someone a delete button as the
+// only way out of a temporary failure is how data gets lost, so retrying is now
+// the primary action and the destructive path is secondary and confirmed.
 function DatabaseErrorScreen({ message }) {
   const { resetApp } = useApp();
   const [resetting, setResetting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  // A timeout means the store never came up in time — the data is almost
+  // certainly still there and a retry usually clears it.
+  const looksTransient = /in time|timeout|timed out/i.test(message || '');
 
   const doReset = async () => {
     setResetting(true);
@@ -143,18 +158,48 @@ function DatabaseErrorScreen({ message }) {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: colors.bgApp, padding: 32, textAlign: 'center', gap: 12 }}>
-      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700 }}>Couldn't open your data</div>
-      <div style={{ fontSize: 13.5, color: colors.textSecondary, maxWidth: 340, lineHeight: 1.5 }}>
-        This usually happens when the app was restored to a new phone or reinstalled — the encrypted data can't be unlocked here. Starting fresh fixes it. If you have a backup file, you can restore it afterwards from Settings.
+      <div style={{ fontFamily: fonts.heading, fontSize: 18, fontWeight: 700 }}>
+        {looksTransient ? 'Couldn’t load your data' : 'Couldn’t open your data'}
       </div>
+      <div style={{ fontSize: type.body, color: colors.textSecondary, maxWidth: 350, lineHeight: 1.55 }}>
+        {looksTransient
+          ? 'Your data store took too long to start. This is usually temporary and your records are still on this phone — trying again normally fixes it.'
+          : 'The local data store couldn’t be opened this time. Your records are still on this phone, and the app keeps automatic backups, so try again first.'}
+      </div>
+
       <button
-        onClick={doReset}
-        disabled={resetting}
-        style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '14px 28px', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 8, opacity: resetting ? 0.6 : 1 }}
+        onClick={() => window.location.reload()}
+        style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '14px 30px', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 8 }}
       >
-        {resetting ? 'Resetting…' : 'Reset & start fresh'}
+        Try again
       </button>
-      <div style={{ fontSize: 11.5, color: colors.textTertiary, maxWidth: 320 }}>Technical detail: {message}</div>
+
+      {!confirming ? (
+        <button
+          onClick={() => setConfirming(true)}
+          style={{ fontSize: type.body, color: colors.textTertiary, cursor: 'pointer', padding: 10, marginTop: 4 }}
+        >
+          Still stuck?
+        </button>
+      ) : (
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 16, padding: '16px 18px', maxWidth: 340 }}>
+          <div style={{ fontSize: type.footnote, color: colors.dangerDark, lineHeight: 1.5 }}>
+            Starting fresh <strong>deletes the data on this phone</strong>. Only do this if trying again keeps failing. If an automatic backup exists, the app will offer it back on the next launch.
+          </div>
+          <button
+            onClick={doReset}
+            disabled={resetting}
+            style={{ background: colors.danger, color: '#FFFFFF', borderRadius: 100, padding: '12px 24px', fontSize: type.callout, fontWeight: 600, cursor: 'pointer', opacity: resetting ? 0.6 : 1 }}
+          >
+            {resetting ? 'Resetting…' : 'Delete and start fresh'}
+          </button>
+          <button onClick={() => setConfirming(false)} style={{ fontSize: type.footnote, color: colors.textSecondary, cursor: 'pointer', padding: 6 }}>
+            Cancel
+          </button>
+        </div>
+      )}
+
+      <div style={{ fontSize: type.caption, color: colors.textTertiary, maxWidth: 320, marginTop: 4 }}>Technical detail: {message}</div>
     </div>
   );
 }

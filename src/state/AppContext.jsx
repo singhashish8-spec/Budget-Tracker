@@ -7,7 +7,7 @@ import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransaction
 import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
 import { writeAutoBackup, readAutoBackup, clearAutoBackup } from '../services/autoBackup';
 import { applyTheme, applyDisplay } from '../services/theme';
-import { setHapticLevel } from '../services/haptics';
+import { setHapticLevel, success as hapticSuccess, error as hapticError } from '../services/haptics';
 import * as notify from '../services/notify';
 import { consumePendingShare, consumeShortcut, setSecureScreen } from '../services/appIntegration';
 import { isNotificationAccessEnabled, openNotificationSettings, getCapturedNotifications, addToCalendar as nativeAddToCalendar } from '../services/nativeTools';
@@ -483,8 +483,16 @@ export function AppProvider({ children }) {
   }, [state.loading, state.onboarded, state.warranties, state.reminders]);
 
   const showToastRef = useRef(null);
+  // A toast is the app's "that worked" announcement, so it carries the matching
+  // haptic. Hooking it here rather than at each of the ~16 call sites means
+  // every confirmation in the app is felt as well as seen, and new ones get it
+  // for free — haptic coverage was patchy precisely because it was opt-in per
+  // screen. `tone` lets a failure announce itself differently ('error') or a
+  // purely informational toast stay silent ('none').
   const showToast = useCallback(
-    (msg) => {
+    (msg, tone = 'success') => {
+      if (tone === 'error') hapticError();
+      else if (tone !== 'none') hapticSuccess();
       clearTimeout(toastTimer.current);
       set({ toast: msg });
       toastTimer.current = setTimeout(() => set({ toast: '' }), 2200);
@@ -667,7 +675,7 @@ export function AppProvider({ children }) {
     if (!state.appLock) {
       const { available, reason } = await checkLockAvailable();
       if (!available) {
-        showToast(reason || 'App lock isn’t available on this device');
+        showToast(reason || 'App lock isn’t available on this device', 'error');
         return;
       }
     }
@@ -682,7 +690,7 @@ export function AppProvider({ children }) {
     if (res.success) {
       set({ locked: false });
     } else if (!res.cancelled) {
-      showToast(res.message || 'Couldn’t verify — try again');
+      showToast(res.message || 'Couldn’t verify — try again', 'error');
     }
     return res;
   }, [set, showToast]);
@@ -717,7 +725,7 @@ export function AppProvider({ children }) {
       showToast('Your data is back');
     } catch (err) {
       set({ processing: false });
-      showToast(err?.message || 'Couldn’t restore that backup');
+      showToast(err?.message || 'Couldn’t restore that backup', 'error');
     }
   }, [state.recoverable, set, showToast, reloadData]);
 
@@ -1071,7 +1079,7 @@ export function AppProvider({ children }) {
   // time + amount + direction), keeping one of each. Cash entries are untouched.
   const cleanupDuplicates = useCallback(async () => {
     const ids = duplicateTxnIds(backStateRef.current.txns || []);
-    if (!ids.length) { showToast('No duplicates found'); return 0; }
+    if (!ids.length) { showToast('No duplicates found', 'none'); return 0; }
     // Show a real progress overlay: removing hundreds of rows takes long enough
     // on a phone to look frozen otherwise. Wrapped so a failure surfaces as a
     // toast instead of vanishing silently (which read as "nothing happened").
@@ -1084,7 +1092,7 @@ export function AppProvider({ children }) {
       return removed;
     } catch (err) {
       set({ processing: false, procProgress: null });
-      showToast(err?.message || 'Couldn’t remove duplicates — please try again');
+      showToast(err?.message || 'Couldn’t remove duplicates — please try again', 'error');
       return 0;
     }
   }, [set, showToast]);
@@ -1136,7 +1144,7 @@ export function AppProvider({ children }) {
   const scanSms = useCallback(
     async ({ silent = false, deep = false } = {}) => {
       if (!smsAvailable()) {
-        if (!silent) showToast('SMS reading works on an Android phone only');
+        if (!silent) showToast('SMS reading works on an Android phone only', 'error');
         return;
       }
       // Concurrency guard: auto-sync (on open/resume) and a manual tap could
@@ -1147,7 +1155,7 @@ export function AppProvider({ children }) {
       try {
         const granted = silent ? await hasSmsPermission() : await ensureSmsPermission();
         if (!granted) {
-          if (!silent) showToast('SMS permission is needed to auto-track from messages');
+          if (!silent) showToast('SMS permission is needed to auto-track from messages', 'error');
           return;
         }
         // A manual scan gets a visible progress overlay (reading the inbox and
@@ -1223,10 +1231,15 @@ export function AppProvider({ children }) {
         const stillUnmatched = (unmatched || []).filter((u) => !importedBodies.has((u.rawSms || '').trim()));
         const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
         set({ txns, smsLog, ...(deep || stillUnmatched.length ? { smsUnmatched: stillUnmatched } : {}) });
-        if (added) showToast(`Added ${added} transaction${added === 1 ? '' : 's'} from SMS`);
-        else if (!silent) showToast(deep ? 'Deep scan finished — nothing new to add' : 'No new transactions in your messages');
+        // A silent scan is the automatic one — it runs 800ms after launch and
+        // again on every resume from background. It must stay invisible AND
+        // untouchable: now that a toast carries a success haptic, announcing a
+        // background result here would vibrate the phone with no user action
+        // behind it. The "nothing new" branch below already guarded for this.
+        if (added) showToast(`Added ${added} transaction${added === 1 ? '' : 's'} from SMS`, silent ? 'none' : 'success');
+        else if (!silent) showToast(deep ? 'Deep scan finished — nothing new to add' : 'No new transactions in your messages', 'none');
       } catch (err) {
-        if (!silent) showToast(err?.message || 'Couldn’t read your messages');
+        if (!silent) showToast(err?.message || 'Couldn’t read your messages', 'error');
       } finally {
         if (!silent) set({ processing: false, procProgress: null });
         scanInFlightRef.current = false;
@@ -1244,7 +1257,7 @@ export function AppProvider({ children }) {
       if (next) {
         const granted = await isNotificationAccessEnabled();
         if (!granted) {
-          showToast('Grant notification access, then turn this on again');
+          showToast('Grant notification access, then turn this on again', 'error');
           await openNotificationSettings();
           return;
         }
@@ -1254,7 +1267,7 @@ export function AppProvider({ children }) {
       showToast(next ? 'Bank notification capture turned on' : 'Bank notification capture turned off');
     } catch {
       // Most likely an APK that predates this feature's native plugin.
-      showToast('This needs the latest app update to work');
+      showToast('This needs the latest app update to work', 'error');
     }
   }, [set, showToast]);
 
@@ -1340,7 +1353,7 @@ export function AppProvider({ children }) {
       try {
         await nativeAddToCalendar({ title: `${reminder.label} due`, notes: `Budget Tracker reminder — ₹${reminder.amount}`, at: dueAt });
       } catch (err) {
-        showToast(err?.message || 'Couldn’t open a calendar app');
+        showToast(err?.message || 'Couldn’t open a calendar app', 'error');
       }
     },
     [showToast],
@@ -1466,7 +1479,7 @@ export function AppProvider({ children }) {
     async (entry, type) => {
       const amount = extractAmount(entry.rawSms);
       if (!amount) {
-        showToast('Couldn’t read an amount in that message');
+        showToast('Couldn’t read an amount in that message', 'error');
         return;
       }
       const merchant = extractMerchant(entry.rawSms) || (type === 'income' ? 'Credit' : 'Payment');
@@ -1505,7 +1518,7 @@ export function AppProvider({ children }) {
     async (log, parentTxn) => {
       const parsed = parseSms(log.raw_sms);
       if (!parsed) {
-        showToast('Couldn’t read that message as a transaction');
+        showToast('Couldn’t read that message as a transaction', 'error');
         return;
       }
       const id = await repo.addTransaction({

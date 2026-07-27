@@ -38,7 +38,7 @@ export default function SettingsScreen() {
     try {
       await backupToDrive();
     } catch (err) {
-      if (!/cancel/i.test(err?.message || '')) showToast('Couldn’t start the backup — try again');
+      if (!/cancel/i.test(err?.message || '')) showToast('Couldn’t start the backup — try again', 'error');
     }
   };
 
@@ -46,7 +46,7 @@ export default function SettingsScreen() {
     try {
       await exportAllAsZip();
     } catch (err) {
-      if (!/cancel/i.test(err?.message || '')) showToast('Couldn’t build the export — try again');
+      if (!/cancel/i.test(err?.message || '')) showToast('Couldn’t build the export — try again', 'error');
     }
   };
 
@@ -59,7 +59,7 @@ export default function SettingsScreen() {
       await reloadData();
       showToast(`Restored ${counts.transactions} transactions, ${counts.budgets} budgets, ${counts.reminders} reminders`);
     } catch (err) {
-      showToast(err?.message || 'Couldn’t restore that file');
+      showToast(err?.message || 'Couldn’t restore that file', 'error');
     }
   };
 

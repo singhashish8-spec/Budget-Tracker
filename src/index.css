@@ -179,15 +179,29 @@ input, button, select {
   font-family: inherit;
 }
 
-input {
-  outline: none;
-}
-
 button {
   border: none;
   background: none;
   padding: 0;
   cursor: pointer;
+}
+
+/* ── Focus ───────────────────────────────────────────────────────────────────
+   Inputs used to be `outline: none` with nothing put back, which left keyboard,
+   Bluetooth-keyboard and Android switch-access users with no visible focus
+   anywhere in the app. :focus-visible only paints for keyboard-style focus, so
+   touch users never see a ring on tap. */
+input, textarea, select, button, [tabindex] {
+  outline: none;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -258,6 +272,16 @@ button:active { transform: scale(0.97); }
 .bt-chev { transition: transform 0.22s ease; }
 :root[data-motion='off'] .bt-chev { transition: none; }
 .bt-chev[data-open='1'] { transform: rotate(180deg); }
+
+/* ── Progress bar fill (ProgressBar component) ───────────────────────────────
+   Bars used to be a bare inline width, so every one of them snapped straight to
+   its value. Filling the bar is the clearest signal the app has that a number
+   moved, so it's worth animating — and doing it here means the motion setting
+   stills every bar in the app at once. */
+.bt-bar-fill { transition: width 0.55s cubic-bezier(0.2, 0.75, 0.3, 1); }
+@media (prefers-reduced-motion: reduce) { .bt-bar-fill { transition: none; } }
+:root[data-motion='reduced'] .bt-bar-fill,
+:root[data-motion='off'] .bt-bar-fill { transition: none; }
 
 /* ── Hide balances (privacy blur) ────────────────────────────────────────────
    The eye toggle in the top bar stamps [data-private] on the root; every amount

@@ -3,6 +3,7 @@ import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
 import { listSmsForTxn } from '../db/repo';
+import * as haptics from '../services/haptics';
 import Amount from './Amount';
 import Sheet from './Sheet';
 import Collapse from './Collapse';
@@ -131,7 +132,7 @@ export default function CategorySheet() {
   const footer = (
     <div style={{ display: 'flex', gap: 8 }}>
       <button
-        onClick={() => (editing ? setEditing(false) : startEdit())}
+        onClick={() => { haptics.tap(); if (editing) setEditing(false); else startEdit(); }}
         style={{ flex: 1, background: editing ? colors.primary : colors.cardSurface, color: editing ? colors.onPrimary : colors.ink, border: `1px solid ${editing ? 'transparent' : colors.cardBorder}`, borderRadius: 100, padding: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
       >
         {editing ? 'Close edit' : 'Edit'}
@@ -145,7 +146,7 @@ export default function CategorySheet() {
         </button>
       )}
       <button
-        onClick={() => deleteTransaction(txn.id)}
+        onClick={() => { haptics.error(); deleteTransaction(txn.id); }}
         style={{ flex: 1, background: colors.dangerTint, color: colors.dangerDark, border: `1px solid ${colors.dangerBorder}`, borderRadius: 100, padding: 12, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
       >
         Delete
@@ -163,7 +164,7 @@ export default function CategorySheet() {
               {[{ key: 'expense', label: 'Spent' }, { key: 'income', label: 'Received' }].map((o) => (
                 <button
                   key={o.key}
-                  onClick={() => setDraft({ ...draft, type: o.key })}
+                  onClick={() => { haptics.select(); setDraft({ ...draft, type: o.key }); }}
                   style={{ flex: 1, padding: '9px 4px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: draft.type === o.key ? colors.primary : colors.bgApp, color: draft.type === o.key ? colors.onPrimary : colors.textSecondary, border: `1px solid ${draft.type === o.key ? 'transparent' : colors.cardBorder}` }}
                 >
                   {o.label}
@@ -195,7 +196,7 @@ export default function CategorySheet() {
               {METHODS.map((m) => (
                 <button
                   key={m.key}
-                  onClick={() => setDraft({ ...draft, method: draft.method === m.key ? '' : m.key })}
+                  onClick={() => { haptics.select(); setDraft({ ...draft, method: draft.method === m.key ? '' : m.key }); }}
                   style={{ flex: 1, padding: '8px 2px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: draft.method === m.key ? colors.primary : colors.onPrimary, color: draft.method === m.key ? colors.onPrimary : colors.textSecondary, border: `1px solid ${draft.method === m.key ? 'transparent' : colors.cardBorder}` }}
                 >
                   {m.label}
@@ -234,7 +235,7 @@ export default function CategorySheet() {
           .map((c) => (
             <button
               key={c.id}
-              onClick={() => { saveNote(); setTxnCategory(c.id); }}
+              onClick={() => { haptics.success(); saveNote(); setTxnCategory(c.id); }}
               style={{ display: 'flex', alignItems: 'center', gap: 9, background: colors.cardSurface, border: `1px solid ${txn.cat === c.id ? colors.primary : colors.cardBorder}`, borderRadius: 14, padding: '10px 11px', cursor: 'pointer', textAlign: 'left' }}
             >
               <div style={{ width: 28, height: 28, borderRadius: 9, background: tint(c.color), color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 11, flexShrink: 0 }}>

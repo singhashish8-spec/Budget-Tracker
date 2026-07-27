@@ -36,11 +36,18 @@ export default function BottomNav() {
         padding: '8px 8px calc(env(safe-area-inset-bottom, 0px) + 14px)',
       }}
     >
-      {TABS.map((tab, i) =>
+      {TABS.map((tab) =>
         tab ? (
           <button
             key={tab.key}
-            onClick={() => haptics.select() || goTab(tab.key)}
+            // Re-tapping the tab you're already on isn't a state change, so it
+            // stays silent — buzzing on a no-op is what makes an app feel buzzy.
+            onClick={() => {
+              if (state.screen === tab.key) return;
+              haptics.select();
+              goTab(tab.key);
+            }}
+            aria-current={state.screen === tab.key ? 'page' : undefined}
             style={{
               flex: 1,
               display: 'flex',

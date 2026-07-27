@@ -1,5 +1,6 @@
-import { colors } from '../theme/tokens';
+import { colors, fonts } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
+import * as haptics from '../services/haptics';
 
 const ITEMS = [
   { key: 'settings', label: 'Settings', mono: 'ST', color: colors.primary, tintBg: colors.primaryTint },
@@ -35,12 +36,12 @@ export default function HamburgerDrawer() {
         }}
       >
         <div style={{ padding: '0 6px 10px' }}>
-          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700 }}>Budget Tracker</div>
+          <div style={{ fontFamily: fonts.heading, fontSize: 20, fontWeight: 700 }}>Budget Tracker</div>
         </div>
         {ITEMS.filter((i) => !i.needsZeroBased || state.zeroBased).map((item) => (
           <button
             key={item.key}
-            onClick={() => go(item.key)}
+            onClick={() => { haptics.select(); go(item.key); }}
             style={{
               display: 'flex',
               alignItems: 'center',

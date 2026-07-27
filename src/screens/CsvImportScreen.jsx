@@ -39,13 +39,13 @@ export default function CsvImportScreen() {
       const delimiter = detectDelimiter(text);
       const parsed = parseCsv(text, delimiter);
       if (!parsed.length) {
-        showToast('Couldn’t find any rows in that file');
+        showToast('Couldn’t find any rows in that file', 'error');
         return;
       }
       setRows(parsed);
       setFileName(file.name);
     } catch {
-      showToast('Couldn’t read that file');
+      showToast('Couldn’t read that file', 'error');
     }
   };
 
@@ -61,7 +61,7 @@ export default function CsvImportScreen() {
   const doImport = async () => {
     const txns = rowsToTransactions(rows, mapping, profileName.trim() || fileName);
     if (!txns.length) {
-      showToast('None of these rows could be read — check the column mapping');
+      showToast('None of these rows could be read — check the column mapping', 'error');
       return;
     }
     if (remember && profileName.trim()) {

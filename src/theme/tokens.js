@@ -82,3 +82,27 @@ export const spacing = {
   screenTop: 74,
   screenBottom: 100,
 };
+
+// Type scale. The app previously used fifteen ad-hoc sizes (11.5, 12, 12.5, 13,
+// 13.5, 14, 14.5, 15, 17, 18, 20, 22, 24, 36) — half-point steps that are
+// invisible on their own but collectively make the app feel unrhythmic. These
+// seven steps replace them. Primitives below read from here, so adopting a
+// primitive normalises a screen's typography for free.
+export const type = {
+  caption: 11.5, // micro labels, uppercase eyebrows, footnotes
+  footnote: 12.5, // secondary meta under a row title
+  body: 13.5, // default body / secondary text
+  callout: 14.5, // row titles, primary body
+  title: 17, // card headings
+  screen: 24, // screen title
+  display: 36, // the one hero figure
+};
+
+// Elevation. The app was entirely flat (1px border, no shadow) which read as
+// "wireframe that got coloured in". These are deliberately soft — a WebView
+// blurs shadows cheaply, but only if the radius stays modest.
+export const shadow = {
+  card: '0 1px 2px rgba(16,20,24,0.04), 0 4px 12px rgba(16,20,24,0.05)',
+  raised: '0 4px 10px rgba(16,20,24,0.07), 0 12px 28px rgba(16,20,24,0.09)',
+  sheet: '0 -10px 34px rgba(0,0,0,0.20)',
+};

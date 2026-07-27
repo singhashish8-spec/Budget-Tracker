@@ -43,7 +43,10 @@ async function ensureWebStore() {
   await Promise.race([
     sqlite.initWebStore(),
     new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Web SQLite store (jeep-sqlite) did not initialize in time')), 10000),
+      // 10s was tight enough that a cold `npm run dev` start regularly tripped
+      // it and dropped the user on the database-error screen for no real
+      // reason. This path is dev-only; native talks to real SQLite.
+      setTimeout(() => reject(new Error('Web SQLite store (jeep-sqlite) did not initialize in time')), 25000),
     ),
   ]);
 }
