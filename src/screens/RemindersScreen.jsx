@@ -8,6 +8,15 @@ import Sheet from '../components/Sheet';
 import ReminderDetail from '../components/ReminderDetail';
 import * as haptics from '../services/haptics';
 
+// The next occurrence of a due-day, so "Add to calendar" always creates a
+// forward-looking event rather than one that already passed this month.
+function nextDueTs(dueDay) {
+  const now = new Date();
+  let d = new Date(now.getFullYear(), now.getMonth(), dueDay);
+  if (d.getTime() < now.getTime()) d = new Date(now.getFullYear(), now.getMonth() + 1, dueDay);
+  return d.getTime();
+}
+
 const KINDS = [
   { key: 'bill', label: 'Bill' },
   { key: 'emi', label: 'Loan / EMI' },
@@ -28,7 +37,7 @@ function tsToMonth(ts) {
 }
 
 export default function RemindersScreen() {
-  const { state, go, goBack, addReminder, toggleReminderPaid, deleteReminder, editReminder, addWarranty, editWarranty, deleteWarranty } = useApp();
+  const { state, go, goBack, addReminder, toggleReminderPaid, deleteReminder, editReminder, addWarranty, editWarranty, deleteWarranty, addReminderToCalendar } = useApp();
   const [viewingId, setViewingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [label, setLabel] = useState('');
@@ -127,6 +136,13 @@ export default function RemindersScreen() {
                       style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 13px', borderRadius: 100, cursor: 'pointer', background: paid ? colors.successTint : colors.primary, color: paid ? colors.primary : colors.onPrimary, border: `1px solid ${paid ? colors.successBorder : colors.primary}` }}
                     >
                       {paid ? 'Paid' : 'Mark paid'}
+                    </button>
+                    <button
+                      onClick={() => addReminderToCalendar(b.raw, nextDueTs(b.dueDay))}
+                      title="Add to calendar"
+                      style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 10px', borderRadius: 100, cursor: 'pointer', background: 'transparent', color: colors.textTertiary }}
+                    >
+                      📅
                     </button>
                     <button onClick={() => deleteReminder(b.id)} style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 10px', borderRadius: 100, cursor: 'pointer', background: 'transparent', color: colors.textTertiary }}>
                       ✕

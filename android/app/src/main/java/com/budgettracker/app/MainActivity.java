@@ -4,12 +4,17 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import com.getcapacitor.BridgeActivity;
+import com.google.android.material.color.DynamicColors;
 
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AppIntegrationPlugin.class);
+        registerPlugin(NativeToolsPlugin.class);
         super.onCreate(savedInstanceState);
+        // Material You: tint the app's colours from the user's wallpaper on
+        // Android 12+. A no-op on older versions or devices without it.
+        DynamicColors.applyToActivityIfAvailable(this);
     }
 
     /**

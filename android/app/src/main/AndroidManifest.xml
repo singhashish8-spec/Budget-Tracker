@@ -31,6 +31,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
         android:theme="@style/AppTheme">
 
         <activity
@@ -70,6 +71,22 @@
                 android:resource="@xml/shortcuts" />
 
         </activity>
+
+        <!-- Reads bank/UPI/RCS notification text — RCS never reaches
+             content://sms, so this is the only route to it, and it catches
+             bank/UPI app notifications too. Inactive until the user
+             explicitly grants notification access in system settings;
+             BIND_NOTIFICATION_LISTENER_SERVICE ensures only the system can
+             bind to it. -->
+        <service
+            android:name=".BankNotificationListenerService"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
         <provider
             android:name="androidx.core.content.FileProvider"

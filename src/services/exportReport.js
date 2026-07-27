@@ -1,6 +1,7 @@
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { fmt } from '../utils/currency';
+import { printHtmlAsPdf } from './nativeTools';
 
 // CSV formula/injection guard (CWE-1236): a merchant or date string that
 // originates from AI-extracted, attacker-influenceable file content (a
@@ -64,4 +65,12 @@ function buildReportHtml(txns, categories) {
 export async function exportHtmlReport(txns, categories) {
   const html = buildReportHtml(txns, categories);
   await writeAndShare(`budget-tracker-report-${Date.now()}.html`, html, 'text/html');
+}
+
+// A real PDF via Android's native PrintManager (its "Save as PDF" virtual
+// printer is backed by android.graphics.pdf.PdfDocument) — an alternative to
+// the HTML report above for anyone who specifically wants a .pdf file.
+export async function exportPdfReport(txns, categories) {
+  const html = buildReportHtml(txns, categories);
+  await printHtmlAsPdf(html, `Budget Tracker report ${new Date().toLocaleDateString('en-IN')}`);
 }

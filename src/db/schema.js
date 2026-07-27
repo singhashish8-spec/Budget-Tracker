@@ -271,6 +271,33 @@ export const MIGRATIONS = [
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_envelope_period ON envelopes(category_id, period_key);`,
     ],
   },
+  {
+    // Additive only.
+    version: 13,
+    statements: [
+      // Named temporary budgets for festivals/weddings/events: a date range +
+      // an amount, optionally scoped to one category. Spend is computed live
+      // from transactions whose occurred date falls in [starts_at, ends_at],
+      // not stored — so editing the range or category re-scopes it for free.
+      `CREATE TABLE IF NOT EXISTS event_budgets (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        starts_at INTEGER NOT NULL,
+        ends_at INTEGER NOT NULL,
+        budget_amount INTEGER NOT NULL,
+        category_id TEXT REFERENCES categories(id),
+        created_at INTEGER NOT NULL
+      );`,
+      // Remembered CSV column layout per bank, keyed by a user-given name
+      // ("HDFC", "SBI credit card"...), so re-importing that bank's export
+      // later skips the column-mapping step.
+      `CREATE TABLE IF NOT EXISTS csv_bank_profiles (
+        name TEXT PRIMARY KEY,
+        mapping TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

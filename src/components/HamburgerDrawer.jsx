@@ -7,6 +7,7 @@ const ITEMS = [
   { key: 'reminders', label: 'Bill reminders', mono: 'BR', color: colors.warning, tintBg: colors.warningTint },
   { key: 'warranty', label: 'Warranties', mono: 'WR', color: '#1E8F72', tintBg: '#1E8F721F' },
   { key: 'envelopes', label: 'Envelopes', mono: 'EV', color: '#5B6B8F', tintBg: '#5B6B8F1F', needsZeroBased: true },
+  { key: 'eventBudgets', label: 'Festival & event budgets', mono: 'FB', color: '#8F4D9E', tintBg: '#8F4D9E1F' },
   { key: 'patterns', label: 'Smart patterns', mono: 'SP', color: colors.warning, tintBg: colors.warningTint },
 ];
 

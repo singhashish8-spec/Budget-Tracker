@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { colors } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
-import { exportCsv, exportHtmlReport } from '../services/exportReport';
+import { exportCsv, exportHtmlReport, exportPdfReport } from '../services/exportReport';
 import Amount from '../components/Amount';
 import Collapse from '../components/Collapse';
 import { businessSummary, netWorthProjection } from '../state/selectors';
@@ -45,6 +45,13 @@ export default function InsightsScreen() {
       showToast('Couldn’t export — try again');
     }
   };
+  const doExportPdf = async () => {
+    try {
+      await exportPdfReport(state.txns, state.categories);
+    } catch (err) {
+      showToast(err?.message || 'Couldn’t export — try again');
+    }
+  };
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -66,6 +73,9 @@ export default function InsightsScreen() {
             CSV
           </button>
         </div>
+        <button onClick={doExportPdf} style={{ width: '100%', marginTop: 10, textAlign: 'center', padding: 12, borderRadius: 100, background: colors.cardSurface, color: colors.primary, border: `1.5px solid ${colors.primary}`, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+          PDF (Android print dialog)
+        </button>
       </div>
 
       <HubLink label="Bill reminders" sub={`${state.reminders.length} tracked`} onClick={() => go('reminders')} />

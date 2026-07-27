@@ -462,6 +462,86 @@ export function duplicateTxnIds(txns) {
   return remove;
 }
 
+// ── event budgets (festivals, weddings, temporary named budgets) ──
+
+// Spend inside an event's date range, optionally scoped to one category.
+// Computed live from transactions rather than stored, so editing the range or
+// category re-scopes the total for free.
+function eventSpend(event, txns) {
+  const from = event.starts_at;
+  const to = event.ends_at;
+  return txns
+    .filter((t) => t.type === 'expense')
+    .filter((t) => !event.category_id || t.cat === event.category_id)
+    .filter((t) => {
+      const ts = txnTime(t);
+      return ts >= from && ts <= to;
+    })
+    .reduce((a, t) => a + t.amount, 0);
+}
+
+// A same-named event from a strictly earlier year, for year-on-year
+// comparison ("Diwali 2025" vs "Diwali 2026"). Matches on the label with any
+// trailing 4-digit year stripped, so the user doesn't have to name events
+// identically — picks the most recent prior match if more than one exists.
+function normalizeEventLabel(label) {
+  return (label || '').trim().toLowerCase().replace(/\b(19|20)\d{2}\b/g, '').replace(/\s+/g, ' ').trim();
+}
+
+export function findPriorYearEvent(events, current) {
+  const sig = normalizeEventLabel(current.label);
+  if (!sig) return null;
+  const candidates = events.filter(
+    (e) => e.id !== current.id && normalizeEventLabel(e.label) === sig && e.starts_at < current.starts_at,
+  );
+  if (!candidates.length) return null;
+  return candidates.sort((a, b) => b.starts_at - a.starts_at)[0];
+}
+
+export function eventBudgetRow(event, txns, categories, events = []) {
+  const cat = event.category_id ? categoryById(categories, event.category_id) : null;
+  const spent = eventSpend(event, txns);
+  const limit = event.budget_amount || 0;
+  const pct = limit ? Math.round((spent / limit) * 100) : 0;
+  const over = limit > 0 && spent > limit;
+  const now = Date.now();
+  const status = now < event.starts_at ? 'upcoming' : now > event.ends_at ? 'past' : 'active';
+
+  const prior = findPriorYearEvent(events, event);
+  let priorSpent = null;
+  let priorDeltaPct = null;
+  if (prior) {
+    priorSpent = eventSpend(prior, txns);
+    priorDeltaPct = priorSpent > 0 ? Math.round(((spent - priorSpent) / priorSpent) * 100) : null;
+  }
+
+  return {
+    id: event.id,
+    label: event.label,
+    startsAt: event.starts_at,
+    endsAt: event.ends_at,
+    startLabel: new Date(event.starts_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+    endLabel: new Date(event.ends_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+    categoryId: event.category_id || null,
+    categoryLabel: cat?.label ?? 'All categories',
+    color: cat?.color ?? '#8A8577',
+    mono: cat?.mono ?? 'FB',
+    spent,
+    limit,
+    spentF: fmt(spent),
+    limitF: fmt(limit),
+    barPct: Math.min(100, pct),
+    over,
+    remaining: Math.max(0, limit - spent),
+    remainingF: fmt(Math.max(0, limit - spent)),
+    status,
+    priorLabel: prior ? prior.label : null,
+    priorSpent,
+    priorSpentF: priorSpent == null ? null : fmt(priorSpent),
+    priorDeltaPct,
+  };
+}
+
 // ── drill-down dashboard ──
 
 // Everything the reusable detail screen shows for one spending category:

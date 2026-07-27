@@ -4,6 +4,7 @@ import { CURRENCIES } from '../utils/currency';
 import { salaryDayLabel } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { backupToDrive, restoreFromFile } from '../services/backup';
+import { exportAllAsZip } from '../services/zipExport';
 import { MODES, ACCENTS, SURFACES, MOTIONS } from '../services/theme';
 import { HAPTIC_LEVELS } from '../services/haptics';
 import * as haptics from '../services/haptics';
@@ -25,7 +26,7 @@ const SECTIONS = [
 ];
 
 export default function SettingsScreen() {
-  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setZeroBased, setHapticPref, askNotificationPermission, factoryReset, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref } = useApp();
+  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setZeroBased, setHapticPref, askNotificationPermission, factoryReset, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref, toggleRcsCapture, toggleClipboardCapture, confirmCapture, dismissCapture } = useApp();
   const [section, setSection] = useState(null);
   const restoreRef = useRef(null);
   // { phase, ... } where phase = idle | web | checking | uptodate | available |
@@ -38,6 +39,14 @@ export default function SettingsScreen() {
       await backupToDrive();
     } catch (err) {
       if (!/cancel/i.test(err?.message || '')) showToast('Couldn’t start the backup — try again');
+    }
+  };
+
+  const doZipExport = async () => {
+    try {
+      await exportAllAsZip();
+    } catch (err) {
+      if (!/cancel/i.test(err?.message || '')) showToast('Couldn’t build the export — try again');
     }
   };
 
@@ -265,6 +274,26 @@ export default function SettingsScreen() {
             </div>
             <div style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>Back up</div>
           </button>
+          <button
+            onClick={doZipExport}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer', padding: '13px 0', borderBottom: `1px solid ${colors.divider}` }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 600 }}>Export everything as a ZIP</div>
+              <div style={{ fontSize: 12.5, color: colors.textSecondary }}>CSV + HTML report + JSON backup + every warranty document, bundled in one file</div>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>Export</div>
+          </button>
+          <button
+            onClick={() => go('csvImport')}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer', padding: '13px 0', borderBottom: `1px solid ${colors.divider}` }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 600 }}>Import CSV (no AI)</div>
+              <div style={{ fontSize: 12.5, color: colors.textSecondary }}>Bank statement CSV, parsed on-device — you map the columns once</div>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>Import</div>
+          </button>
           <input ref={restoreRef} type="file" accept="application/json,.json" onChange={onRestoreFile} style={{ display: 'none' }} />
           <button
             onClick={() => restoreRef.current?.click()}
@@ -334,7 +363,38 @@ export default function SettingsScreen() {
             </div>
             <div style={{ color: colors.textTertiary, fontWeight: 600 }}>›</div>
           </button>
-          <ToggleRow title="App lock" sub="Fingerprint / face / PIN unlock on open" on={state.appLock} onToggle={toggleAppLock} />
+          <ToggleRow title="App lock" sub="Fingerprint / face / PIN unlock on open" on={state.appLock} onToggle={toggleAppLock} border />
+          <ToggleRow
+            title="Bank notification capture"
+            sub="Also catches RCS bank alerts, which never reach SMS — needs notification access, granted separately in system settings"
+            on={state.rcsCaptureEnabled}
+            onToggle={toggleRcsCapture}
+            border
+          />
+          <ToggleRow
+            title="Clipboard capture"
+            sub="Offers to add a transaction when a payment message is copied to your clipboard"
+            on={state.clipboardCaptureEnabled}
+            onToggle={toggleClipboardCapture}
+          />
+
+          {state.captureQueue.length > 0 && (
+            <div style={{ marginTop: 13, paddingTop: 13, borderTop: `1px solid ${colors.divider}`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 600 }}>{state.captureQueue.length} captured item{state.captureQueue.length === 1 ? '' : 's'} to review</div>
+              {state.captureQueue.map((item) => (
+                <div key={item.id} style={{ background: colors.bgApp, borderRadius: 14, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>{item.merchant}</div>
+                    <div style={{ fontSize: 12, color: colors.textSecondary }}>
+                      {item.type === 'income' ? '+' : '−'}₹{item.amount} · {item.source === 'clipboard' ? 'Clipboard' : 'Notification'}
+                    </div>
+                  </div>
+                  <button onClick={() => confirmCapture(item)} style={{ fontSize: 12.5, fontWeight: 600, color: colors.primary, cursor: 'pointer', padding: '6px 10px' }}>Add</button>
+                  <button onClick={() => dismissCapture(item)} style={{ fontSize: 12.5, fontWeight: 600, color: colors.textTertiary, cursor: 'pointer', padding: '6px 10px' }}>Ignore</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -10,6 +10,8 @@ import { applyTheme, applyDisplay } from '../services/theme';
 import { setHapticLevel } from '../services/haptics';
 import * as notify from '../services/notify';
 import { consumePendingShare, consumeShortcut, setSecureScreen } from '../services/appIntegration';
+import { isNotificationAccessEnabled, openNotificationSettings, getCapturedNotifications, addToCalendar as nativeAddToCalendar } from '../services/nativeTools';
+import { readClipboardText } from '../services/clipboardCapture';
 import { duplicateTxnIds } from './selectors';
 
 const AppStateContext = createContext(null);
@@ -43,6 +45,15 @@ const initialState = {
   warrantyDocs: [],
   warrantyClaims: [],
   envelopes: [],
+  eventBudgets: [],
+  csvProfiles: [],
+  // Bank/UPI notification capture (also the only route to RCS, which never
+  // reaches content://sms) and clipboard capture, each opt-in and off by
+  // default. captureQueue holds money-looking items from either source,
+  // pending the user's confirm/ignore — same shape regardless of source.
+  rcsCaptureEnabled: false,
+  clipboardCaptureEnabled: false,
+  captureQueue: [],
   // Zero-based budgeting is an opt-in mode: a different way of thinking about
   // money from the plain category limits, so it never replaces them silently.
   zeroBased: false,
@@ -151,6 +162,8 @@ export function AppProvider({ children }) {
           warrantyDocs,
           warrantyClaims,
           envelopes,
+          eventBudgets,
+          csvProfiles,
           patternPrefs,
           smsLog,
           merchantRulesList,
@@ -171,6 +184,8 @@ export function AppProvider({ children }) {
           motionPrefStr,
           hapticLevelStr,
           privacyStr,
+          rcsCaptureEnabledStr,
+          clipboardCaptureEnabledStr,
         ] = await Promise.all([
           repo.listCategories(),
           repo.listTransactions(),
@@ -182,6 +197,8 @@ export function AppProvider({ children }) {
           repo.listWarrantyDocuments(),
           repo.listWarrantyClaims(),
           repo.listEnvelopes(),
+          repo.listEventBudgets(),
+          repo.listCsvProfiles(),
           repo.listPatternPrefs(),
           repo.listSmsLog(),
           repo.listMerchantRules(),
@@ -202,6 +219,8 @@ export function AppProvider({ children }) {
           repo.getSetting('motionPref', 'on'),
           repo.getSetting('hapticLevel', 'full'),
           repo.getSetting('privacy', '0'),
+          repo.getSetting('rcsCaptureEnabled', '0'),
+          repo.getSetting('clipboardCaptureEnabled', '0'),
         ]);
         const onboarded = onboardedFlag === '1';
         const appLock = appLockFlag === '1';
@@ -216,6 +235,8 @@ export function AppProvider({ children }) {
           warrantyDocs,
           warrantyClaims,
           envelopes,
+          eventBudgets,
+          csvProfiles,
           patternPrefs,
           smsLog,
           merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])),
@@ -238,6 +259,8 @@ export function AppProvider({ children }) {
           motionPref: motionPrefStr || 'on',
           hapticLevel: hapticLevelStr || 'full',
           privacy: privacyStr === '1',
+          rcsCaptureEnabled: rcsCaptureEnabledStr === '1',
+          clipboardCaptureEnabled: clipboardCaptureEnabledStr === '1',
           loading: false,
         });
         // Re-apply from the authoritative (DB) values in case the cache differed.
@@ -357,7 +380,7 @@ export function AppProvider({ children }) {
 
   // Re-read all table-backed data into state (used after a restore-from-backup).
   const reloadData = useCallback(async () => {
-    const [categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, envelopes, patternPrefs, smsLog, merchantRulesList] = await Promise.all([
+    const [categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, envelopes, eventBudgets, csvProfiles, patternPrefs, smsLog, merchantRulesList] = await Promise.all([
       repo.listCategories(),
       repo.listTransactions(),
       repo.listBudgets(),
@@ -368,11 +391,13 @@ export function AppProvider({ children }) {
       repo.listWarrantyDocuments(),
       repo.listWarrantyClaims(),
       repo.listEnvelopes(),
+      repo.listEventBudgets(),
+      repo.listCsvProfiles(),
       repo.listPatternPrefs(),
       repo.listSmsLog(),
       repo.listMerchantRules(),
     ]);
-    set({ categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, envelopes, patternPrefs, smsLog, merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])) });
+    set({ categories, txns, budgets, reminders, goals, netWorthItems, warranties, warrantyDocs, warrantyClaims, envelopes, eventBudgets, csvProfiles, patternPrefs, smsLog, merchantRules: Object.fromEntries((merchantRulesList || []).map((r) => [r.signature, r.category_id])) });
   }, [set]);
 
   // Refs so the once-registered lifecycle listener always sees current values.
@@ -380,6 +405,7 @@ export function AppProvider({ children }) {
   const onboardedRef = useRef(state.onboarded);
   const smsOnRef = useRef(state.accounts.sms);
   const autoScanRef = useRef(null); // set to scanSms after it's defined below
+  const checkCapturesRef = useRef(null); // set to checkCaptures after it's defined below
   const scanInFlightRef = useRef(false); // guards against concurrent scans (auto-sync + manual)
   useEffect(() => {
     appLockRef.current = state.appLock;
@@ -397,6 +423,7 @@ export function AppProvider({ children }) {
         return;
       }
       if (onboardedRef.current && smsOnRef.current) autoScanRef.current?.({ silent: true });
+      if (onboardedRef.current) checkCapturesRef.current?.();
     });
     return () => {
       handle.then((h) => h.remove()).catch(() => {});
@@ -914,6 +941,51 @@ export function AppProvider({ children }) {
     [set],
   );
 
+  // ── event budgets (festivals, weddings, temporary named budgets) ──
+  const addEventBudget = useCallback(
+    async ({ label, startsAt, endsAt, budgetAmount, categoryId = null }) => {
+      await repo.addEventBudget({ label, startsAt, endsAt, budgetAmount, categoryId });
+      set({ eventBudgets: await repo.listEventBudgets() });
+      showToast(`"${label}" event budget added`);
+    },
+    [set, showToast],
+  );
+
+  const editEventBudget = useCallback(
+    async (id, patch) => {
+      await repo.updateEventBudget(id, patch);
+      set({ eventBudgets: await repo.listEventBudgets() });
+      showToast('Event budget updated');
+    },
+    [set, showToast],
+  );
+
+  const deleteEventBudget = useCallback(
+    async (id) => {
+      await repo.deleteEventBudget(id);
+      set({ eventBudgets: await repo.listEventBudgets() });
+      showToast('Event budget removed');
+    },
+    [set, showToast],
+  );
+
+  // ── CSV bank profiles (remembered column mapping, for CSV import) ──
+  const saveCsvProfile = useCallback(
+    async (name, mapping) => {
+      await repo.upsertCsvProfile(name, mapping);
+      set({ csvProfiles: await repo.listCsvProfiles() });
+    },
+    [set],
+  );
+
+  const deleteCsvProfile = useCallback(
+    async (name) => {
+      await repo.deleteCsvProfile(name);
+      set({ csvProfiles: await repo.listCsvProfiles() });
+    },
+    [set],
+  );
+
   // ── savings goals ──
   const addGoal = useCallback(
     async ({ label, targetAmount, targetDate = null }) => {
@@ -1163,6 +1235,117 @@ export function AppProvider({ children }) {
     [set, showToast],
   );
 
+  // ── bank/UPI notification capture (also the only route to RCS) + clipboard capture ──
+  const lastClipboardSigRef = useRef('');
+
+  const toggleRcsCapture = useCallback(async () => {
+    const next = !backStateRef.current.rcsCaptureEnabled;
+    try {
+      if (next) {
+        const granted = await isNotificationAccessEnabled();
+        if (!granted) {
+          showToast('Grant notification access, then turn this on again');
+          await openNotificationSettings();
+          return;
+        }
+      }
+      set({ rcsCaptureEnabled: next });
+      await repo.setSetting('rcsCaptureEnabled', next ? '1' : '0');
+      showToast(next ? 'Bank notification capture turned on' : 'Bank notification capture turned off');
+    } catch {
+      // Most likely an APK that predates this feature's native plugin.
+      showToast('This needs the latest app update to work');
+    }
+  }, [set, showToast]);
+
+  const toggleClipboardCapture = useCallback(async () => {
+    const next = !backStateRef.current.clipboardCaptureEnabled;
+    set({ clipboardCaptureEnabled: next });
+    await repo.setSetting('clipboardCaptureEnabled', next ? '1' : '0');
+    showToast(next ? 'Clipboard capture turned on' : 'Clipboard capture turned off');
+  }, [set, showToast]);
+
+  // Silent, best-effort: drains captured bank/UPI/RCS notifications and (if
+  // enabled) checks the clipboard once, turning anything that parses as a
+  // transaction into a captureQueue entry the user can confirm or ignore.
+  // Never prompts and never throws — called on every app resume.
+  const checkCaptures = useCallback(async () => {
+    const s = backStateRef.current;
+    if (!s.rcsCaptureEnabled && !s.clipboardCaptureEnabled) return;
+    try {
+      const ignores = new Set(await repo.listSmsIgnores());
+      const queued = new Set(s.captureQueue.map((c) => c.signature));
+      const next = [];
+
+      if (s.rcsCaptureEnabled) {
+        const items = await getCapturedNotifications();
+        for (const it of items) {
+          const sig = smsSignature(it.text);
+          if (ignores.has(sig) || queued.has(sig)) continue;
+          const parsed = parseSms(it.text);
+          if (!parsed) continue;
+          queued.add(sig);
+          next.push({ id: `cap-${it.postedAt}-${Math.random().toString(36).slice(2, 7)}`, source: 'notification', merchant: parsed.merchant, amount: parsed.amount, type: parsed.type, text: it.text, postedAt: it.postedAt || Date.now(), signature: sig });
+        }
+      }
+
+      if (s.clipboardCaptureEnabled) {
+        const text = await readClipboardText();
+        const sig = text ? smsSignature(text) : '';
+        if (text && sig !== lastClipboardSigRef.current && !ignores.has(sig) && !queued.has(sig)) {
+          const parsed = parseSms(text);
+          if (parsed) {
+            next.push({ id: `cap-clip-${Date.now()}`, source: 'clipboard', merchant: parsed.merchant, amount: parsed.amount, type: parsed.type, text, postedAt: Date.now(), signature: sig });
+          }
+        }
+        if (text) lastClipboardSigRef.current = sig;
+      }
+
+      if (next.length) set({ captureQueue: [...backStateRef.current.captureQueue, ...next] });
+    } catch {
+      /* best-effort — never interrupt the user */
+    }
+  }, [set]);
+
+  const confirmCapture = useCallback(
+    async (item) => {
+      const dayLabel = new Date(item.postedAt || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      await repo.addTransaction({
+        merchant: item.merchant,
+        account: item.source === 'clipboard' ? 'Clipboard · added by you' : 'Notification · auto-tracked',
+        date: dayLabel,
+        amount: item.amount,
+        cat: null,
+        type: item.type,
+        source: 'manual',
+        occurredAt: item.postedAt,
+      });
+      set({ txns: await repo.listTransactions(), captureQueue: backStateRef.current.captureQueue.filter((x) => x.id !== item.id) });
+      showToast(`Added ${item.type === 'income' ? 'money in' : 'a spend'}`);
+    },
+    [set, showToast],
+  );
+
+  const dismissCapture = useCallback(
+    async (item) => {
+      await repo.addSmsIgnore(item.signature);
+      set({ captureQueue: backStateRef.current.captureQueue.filter((x) => x.id !== item.id) });
+    },
+    [set],
+  );
+
+  // Delegates a bill/EMI reminder to the user's calendar app.
+  const addReminderToCalendar = useCallback(
+    async (reminder, dueAt) => {
+      try {
+        await nativeAddToCalendar({ title: `${reminder.label} due`, notes: `Budget Tracker reminder — ₹${reminder.amount}`, at: dueAt });
+      } catch (err) {
+        showToast(err?.message || 'Couldn’t open a calendar app');
+      }
+    },
+    [showToast],
+  );
+
   const splitTransaction = useCallback(
     async (txnId) => {
       const txn = state.txns.find((t) => t.id === txnId);
@@ -1359,6 +1542,9 @@ export function AppProvider({ children }) {
     autoScanRef.current = scanSms;
   }, [scanSms]);
   useEffect(() => {
+    checkCapturesRef.current = checkCaptures;
+  }, [checkCaptures]);
+  useEffect(() => {
     if (!state.loading && state.onboarded && state.accounts.sms) {
       const t = setTimeout(() => scanSms({ silent: true }), 800);
       return () => clearTimeout(t);
@@ -1431,6 +1617,17 @@ export function AppProvider({ children }) {
       assignToEnvelope,
       clearEnvelope,
       setZeroBased,
+      addEventBudget,
+      editEventBudget,
+      deleteEventBudget,
+      saveCsvProfile,
+      deleteCsvProfile,
+      toggleRcsCapture,
+      toggleClipboardCapture,
+      checkCaptures,
+      confirmCapture,
+      dismissCapture,
+      addReminderToCalendar,
       addWarrantyDocument,
       removeWarrantyDocument,
       addWarrantyClaim,
@@ -1514,6 +1711,17 @@ export function AppProvider({ children }) {
       assignToEnvelope,
       clearEnvelope,
       setZeroBased,
+      addEventBudget,
+      editEventBudget,
+      deleteEventBudget,
+      saveCsvProfile,
+      deleteCsvProfile,
+      toggleRcsCapture,
+      toggleClipboardCapture,
+      checkCaptures,
+      confirmCapture,
+      dismissCapture,
+      addReminderToCalendar,
       addWarrantyDocument,
       removeWarrantyDocument,
       addWarrantyClaim,

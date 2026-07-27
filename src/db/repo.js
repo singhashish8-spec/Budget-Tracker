@@ -665,13 +665,85 @@ export async function addSmsIgnore(signature) {
   await persist();
 }
 
+// ── event budgets (festivals, weddings, temporary named budgets) ──
+
+export async function listEventBudgets() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM event_budgets ORDER BY starts_at DESC`);
+  return res.values ?? [];
+}
+
+export async function addEventBudget({ label, startsAt, endsAt, budgetAmount, categoryId = null }) {
+  const db = await getDb();
+  const id = newId('evt');
+  await db.run(
+    `INSERT INTO event_budgets (id, label, starts_at, ends_at, budget_amount, category_id, created_at) VALUES (?,?,?,?,?,?,?)`,
+    [id, label, Math.round(startsAt), Math.round(endsAt), Math.round(budgetAmount), categoryId, Date.now()],
+  );
+  await persist();
+  return id;
+}
+
+const EVENT_BUDGET_FIELDS = {
+  label: (v) => String(v),
+  startsAt: (v) => Math.round(v),
+  endsAt: (v) => Math.round(v),
+  budgetAmount: (v) => Math.round(v),
+  categoryId: (v) => (v == null ? null : String(v)),
+};
+const EVENT_BUDGET_COLS = { label: 'label', startsAt: 'starts_at', endsAt: 'ends_at', budgetAmount: 'budget_amount', categoryId: 'category_id' };
+
+export async function updateEventBudget(id, patch) {
+  const sets = [];
+  const values = [];
+  for (const [key, coerce] of Object.entries(EVENT_BUDGET_FIELDS)) {
+    if (patch[key] === undefined) continue;
+    sets.push(`${EVENT_BUDGET_COLS[key]} = ?`);
+    values.push(coerce(patch[key]));
+  }
+  if (!sets.length) return;
+  const db = await getDb();
+  await db.run(`UPDATE event_budgets SET ${sets.join(', ')} WHERE id = ?`, [...values, id]);
+  await persist();
+}
+
+export async function deleteEventBudget(id) {
+  const db = await getDb();
+  await db.run(`DELETE FROM event_budgets WHERE id = ?`, [id]);
+  await persist();
+}
+
+// ── CSV bank profiles (remembered column mapping per bank, for CSV import) ──
+
+export async function listCsvProfiles() {
+  const db = await getDb();
+  const res = await db.query(`SELECT * FROM csv_bank_profiles ORDER BY name ASC`);
+  return (res.values ?? []).map((r) => ({ name: r.name, mapping: JSON.parse(r.mapping), created_at: r.created_at }));
+}
+
+export async function upsertCsvProfile(name, mapping) {
+  const db = await getDb();
+  await db.run(
+    `INSERT INTO csv_bank_profiles (name, mapping, created_at) VALUES (?,?,?)
+     ON CONFLICT(name) DO UPDATE SET mapping = excluded.mapping`,
+    [name, JSON.stringify(mapping), Date.now()],
+  );
+  await persist();
+}
+
+export async function deleteCsvProfile(name) {
+  const db = await getDb();
+  await db.run(`DELETE FROM csv_bank_profiles WHERE name = ?`, [name]);
+  await persist();
+}
+
 // ── restore from a backup file ──
 // Idempotent: uses each row's original id with INSERT OR REPLACE, so restoring
 // merges into whatever is already there (re-running a restore won't duplicate).
 // This is the real recovery path after a reinstall wipes the local database.
 export async function importBackup(data) {
   const db = await getDb();
-  const counts = { categories: 0, transactions: 0, budgets: 0, reminders: 0, goals: 0, netWorthItems: 0 };
+  const counts = { categories: 0, transactions: 0, budgets: 0, reminders: 0, goals: 0, netWorthItems: 0, eventBudgets: 0, csvProfiles: 0 };
 
   for (const c of data.categories ?? []) {
     await db.run(
@@ -744,6 +816,22 @@ export async function importBackup(data) {
       `INSERT OR REPLACE INTO merchant_rules (signature, category_id) VALUES (?,?)`,
       [m.signature, m.category_id],
     );
+  }
+  for (const e of data.eventBudgets ?? []) {
+    await db.run(
+      `INSERT OR REPLACE INTO event_budgets (id, label, starts_at, ends_at, budget_amount, category_id, created_at) VALUES (?,?,?,?,?,?,?)`,
+      [e.id, e.label, Math.round(e.starts_at), Math.round(e.ends_at), Math.round(e.budget_amount), e.category_id ?? null, e.created_at ?? Date.now()],
+    );
+    counts.eventBudgets++;
+  }
+  for (const p of data.csvProfiles ?? []) {
+    if (!p.name || !p.mapping) continue;
+    const mapping = typeof p.mapping === 'string' ? p.mapping : JSON.stringify(p.mapping);
+    await db.run(
+      `INSERT OR REPLACE INTO csv_bank_profiles (name, mapping, created_at) VALUES (?,?,?)`,
+      [p.name, mapping, p.created_at ?? Date.now()],
+    );
+    counts.csvProfiles++;
   }
   // Note: sms_log is intentionally NOT restored. It could be hundreds of rows
   // (which made restore freeze), and de-dup no longer depends on it — the SMS

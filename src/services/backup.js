@@ -10,7 +10,7 @@ import * as repo from '../db/repo';
 // README "Backup".
 
 export async function gatherData() {
-  const [categories, transactions, budgets, reminders, goals, netWorthItems, warranties, warrantyDocuments, warrantyClaims, envelopes, merchantRules, smsIgnores, settings] = await Promise.all([
+  const [categories, transactions, budgets, reminders, goals, netWorthItems, warranties, warrantyDocuments, warrantyClaims, envelopes, merchantRules, smsIgnores, settings, eventBudgets, csvProfiles] = await Promise.all([
     repo.listCategories(),
     repo.listTransactions(),
     repo.listBudgets(),
@@ -24,10 +24,12 @@ export async function gatherData() {
     repo.listMerchantRules(),
     repo.listSmsIgnores(),
     repo.listSettingsForBackup(),
+    repo.listEventBudgets(),
+    repo.listCsvProfiles(),
   ]);
   return {
     app: 'Budget Tracker',
-    backupVersion: 2,
+    backupVersion: 3,
     exportedAt: new Date().toISOString(),
     categories,
     transactions,
@@ -46,6 +48,8 @@ export async function gatherData() {
     // import guard skips any message whose time+amount+direction already exists.
     smsIgnores,
     settings,
+    eventBudgets,
+    csvProfiles,
   };
 }
 
