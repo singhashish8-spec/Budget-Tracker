@@ -5,6 +5,7 @@ import { billRow, warrantyStatus } from '../state/selectors';
 import { fmt } from '../utils/currency';
 import { currentMonthKey, ordinal } from '../utils/date';
 import DetentSheet from './DetentSheet';
+import * as haptics from '../services/haptics';
 import ConfirmDialog from './ConfirmDialog';
 
 const KIND_LABEL = { emi: 'Loan / EMI', subscription: 'Subscription', bill: 'Bill' };
@@ -65,7 +66,7 @@ export default function ReminderDetail({ reminder, onEdit, onClose }) {
   const footer = (
     <div style={{ display: 'flex', gap: 8 }}>
       <button
-        onClick={() => toggleReminderPaid(reminder.id, monthKey)}
+        onClick={() => { haptics.success(); toggleReminderPaid(reminder.id, monthKey); }}
         style={{ flex: 1, borderRadius: 100, padding: 13, fontSize: 14.5, fontWeight: 600, cursor: 'pointer', background: paid ? colors.successTint : colors.primary, color: paid ? colors.primary : colors.onPrimary, border: `1px solid ${paid ? colors.successBorder : colors.primary}` }}
       >
         {paid ? 'Paid ✓' : 'Mark paid'}

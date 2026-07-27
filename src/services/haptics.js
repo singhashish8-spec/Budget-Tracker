@@ -44,9 +44,15 @@ export function tap() {
   safe(() => Haptics.impact({ style: level === 'light' ? ImpactStyle.Light : ImpactStyle.Medium }));
 }
 
+// A light tick for changing a choice.
+//
+// This deliberately does NOT use Haptics.selectionChanged(). On Android that
+// call is a no-op unless selectionStart() ran first — the plugin guards it
+// behind an internal flag — so every chip, segment and stepper tick fired
+// nothing at all. impact(Light) is a real vibration and needs no setup, which
+// makes it both correct and consistent with the rest of the scale.
 export function select() {
-  // selectionChanged is the light tick used while moving through options.
-  safe(() => Haptics.selectionChanged());
+  safe(() => Haptics.impact({ style: ImpactStyle.Light }));
 }
 
 export function success() {
