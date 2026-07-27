@@ -7,19 +7,23 @@ import Amount from '../components/Amount';
 import Collapse from '../components/Collapse';
 import { businessSummary, netWorthProjection } from '../state/selectors';
 import { payCycleWindow } from '../utils/date';
+import { Icon } from '../components/ui';
 
 const TAX_80C_LIMIT = 150000;
 
 // How savings are actually held here, so the list groups the way people think
 // rather than as one undifferentiated pile of "assets".
+// `icon` names a glyph in components/ui/Icon rather than holding an emoji:
+// emoji ship a different set on every Android skin, so this list rendered
+// inconsistently across phones and clashed with the app's own monogram chips.
 const HOLDINGS = [
-  { key: 'gold', label: 'Gold', icon: '🪙', weighed: true },
-  { key: 'sip', label: 'SIP / MF', icon: '📈' },
-  { key: 'fd', label: 'FD / RD', icon: '🏦' },
-  { key: 'chit', label: 'Chit fund', icon: '🤝' },
-  { key: 'property', label: 'Property', icon: '🏠' },
-  { key: 'cash', label: 'Cash / bank', icon: '💵' },
-  { key: 'other', label: 'Other', icon: '📦' },
+  { key: 'gold', label: 'Gold', icon: 'coin', weighed: true },
+  { key: 'sip', label: 'SIP / MF', icon: 'trendUp' },
+  { key: 'fd', label: 'FD / RD', icon: 'bank' },
+  { key: 'chit', label: 'Chit fund', icon: 'people' },
+  { key: 'property', label: 'Property', icon: 'home' },
+  { key: 'cash', label: 'Cash / bank', icon: 'cash' },
+  { key: 'other', label: 'Other', icon: 'box' },
 ];
 
 export default function InsightsScreen() {
@@ -240,7 +244,7 @@ function NetWorthCard({ assets, liab, items, onAdd, onDelete }) {
               <div>
                 {groupItems.map((i) => (
                   <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 13.5 }}>
-                    <span style={{ flexShrink: 0 }}>{HOLDINGS.find((h) => h.key === i.category)?.icon || ''}</span>
+                    <Icon name={HOLDINGS.find((h) => h.key === i.category)?.icon} size={15} style={{ color: colors.textTertiary }} />
                     <span style={{ flex: 1, color: colors.textSecondary, minWidth: 0 }}>
                       {i.label}
                       {i.quantity ? <span style={{ color: colors.textTertiary, fontSize: 11.5 }}> · {i.quantity}{i.unit || ''}</span> : null}
@@ -268,9 +272,10 @@ function NetWorthCard({ assets, liab, items, onAdd, onDelete }) {
                 <button
                   key={h.key}
                   onClick={() => setHolding(h.key)}
-                  style={{ padding: '7px 11px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: holding === h.key ? colors.primary : colors.bgApp, color: holding === h.key ? colors.onPrimary : colors.textSecondary, border: `1px solid ${holding === h.key ? colors.primary : colors.cardBorder}` }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 11px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: holding === h.key ? colors.primary : colors.bgApp, color: holding === h.key ? colors.onPrimary : colors.textSecondary, border: `1px solid ${holding === h.key ? colors.primary : colors.cardBorder}` }}
                 >
-                  {h.icon} {h.label}
+                  <Icon name={h.icon} size={14} />
+                  {h.label}
                 </button>
               ))}
             </div>

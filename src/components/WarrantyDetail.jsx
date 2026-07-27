@@ -8,6 +8,7 @@ import DetentSheet from './DetentSheet';
 import * as haptics from '../services/haptics';
 import ConfirmDialog from './ConfirmDialog';
 import DocumentViewer from './DocumentViewer';
+import { Icon } from './ui';
 
 const STATUS = {
   valid: { color: colors.successText, tint: colors.successTint, label: 'In warranty' },
@@ -148,7 +149,7 @@ export default function WarrantyDetail({ item, onEdit, onClose }) {
                         onClick={() => setViewing(d)}
                         style={{ width: 74, height: 74, borderRadius: 12, overflow: 'hidden', border: `1px solid ${colors.cardBorder}`, background: colors.cardSurface, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        {pdf ? <span style={{ fontSize: 26 }}>📄</span> : <img src={d.data} alt={d.name || 'bill'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                        {pdf ? <Icon name="doc" size={26} style={{ color: colors.textSecondary }} /> : <img src={d.data} alt={d.name || 'bill'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                       </button>
                       <button
                         onClick={() => setConfirm({ kind: 'doc', id: d.id, title: 'Remove this document?', message: 'This is the only copy stored in the app. If you need it for a claim later, it will be gone.' })}
@@ -163,7 +164,7 @@ export default function WarrantyDetail({ item, onEdit, onClose }) {
               </div>
             )}
             <button onClick={() => fileRef.current?.click()} disabled={busy} style={ghost}>
-              {busy ? 'Attaching…' : docs.length ? '+ Add another document' : '📎 Add bill or warranty document'}
+              {busy ? 'Attaching…' : docs.length ? '+ Add another document' : <><Icon name="clip" size={15} /> Add bill or warranty document</>}
             </button>
             <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 6 }}>
               Photos or PDFs. {docs.length > 0 ? `Using ${formatBytes(docBytes)} · included in your backup.` : 'Emailed PDF bills work too.'}
@@ -201,7 +202,7 @@ export default function WarrantyDetail({ item, onEdit, onClose }) {
               const cs = CLAIM_STATUS[c.status] || CLAIM_STATUS.open;
               return (
                 <div key={c.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '9px 0', borderBottom: `1px solid ${colors.divider}` }}>
-                  <span style={{ fontSize: 15, flexShrink: 0 }}>{c.kind === 'service' ? '🔧' : '🛠️'}</span>
+                  <Icon name="wrench" size={16} style={{ color: colors.textTertiary, marginTop: 1 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600 }}>{c.issue}</div>
                     <div style={{ fontSize: 11.5, color: colors.textTertiary }}>

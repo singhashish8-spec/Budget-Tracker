@@ -7,6 +7,7 @@ import Amount from '../components/Amount';
 import Sheet from '../components/Sheet';
 import WarrantyDetail from '../components/WarrantyDetail';
 import * as haptics from '../services/haptics';
+import { Icon } from '../components/ui';
 
 const STATUS = {
   valid: { color: colors.successText, tint: colors.successTint, label: 'In warranty' },
@@ -118,7 +119,7 @@ export default function WarrantyScreen() {
               {(thumbs[w.id] || w.photo) ? (
                 <img src={thumbs[w.id] || w.photo} alt="" style={{ width: 46, height: 46, borderRadius: 12, objectFit: 'cover', flexShrink: 0, border: `1px solid ${colors.cardBorder}` }} />
               ) : (
-                <div style={{ width: 46, height: 46, borderRadius: 12, background: s.tint, color: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, flexShrink: 0 }}>🧾</div>
+                <div style={{ width: 46, height: 46, borderRadius: 12, background: s.tint, color: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0 }}><Icon name="receipt" size={22} /></div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>

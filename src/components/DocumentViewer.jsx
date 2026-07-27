@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { colors } from '../theme/tokens';
+import { Icon } from './ui';
 
 // Full-screen look at a stored bill or warranty card.
 //
@@ -51,7 +52,7 @@ export default function DocumentViewer({ doc, onClose }) {
       <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: isPdf ? 'center' : zoomed ? 'flex-start' : 'center', justifyContent: 'center', padding: 14, minHeight: 0 }}>
         {isPdf ? (
           <div style={{ textAlign: 'center', color: '#D8DCD2', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
-            <div style={{ fontSize: 54 }}>📄</div>
+            <Icon name="doc" size={54} />
             <div style={{ fontSize: 15, fontWeight: 600, color: '#F2F4EE' }}>{name}</div>
             <div style={{ fontSize: 13, lineHeight: 1.5, opacity: 0.75 }}>
               PDFs open in your phone's document viewer. Your copy stays saved here and travels with your backup.

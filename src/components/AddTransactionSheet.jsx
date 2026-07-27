@@ -6,6 +6,7 @@ import { globalBudgetWarning, largePurchaseWarning } from '../state/selectors';
 import { fmt } from '../utils/currency';
 import { payCycleWindow } from '../utils/date';
 import * as haptics from '../services/haptics';
+import { Icon } from './ui';
 
 // Hand-entered transactions. Cash never generates an SMS, so without this
 // there was no way to record it at all — money simply left the picture. Also
@@ -129,7 +130,7 @@ export default function AddTransactionSheet() {
       {!income && bigWarn && (
         <div style={{ background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 14, padding: '12px 14px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 16 }}>🚨</span>
+            <Icon name="warning" size={17} style={{ color: colors.danger }} />
             <div style={{ fontSize: 13.5, fontWeight: 700, color: colors.dangerDark }}>Cooling Off Warning</div>
           </div>
           <div style={{ fontSize: 12.5, color: colors.dangerDark, lineHeight: 1.4 }}>
@@ -140,7 +141,7 @@ export default function AddTransactionSheet() {
       {!income && !bigWarn && budgetWarn && (
         <div style={{ background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 14, padding: '12px 14px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 16 }}>🚨</span>
+            <Icon name="warning" size={17} style={{ color: colors.danger }} />
             <div style={{ fontSize: 13.5, fontWeight: 700, color: colors.dangerDark }}>Cooling Off Warning</div>
           </div>
           <div style={{ fontSize: 12.5, color: colors.dangerDark, lineHeight: 1.4 }}>

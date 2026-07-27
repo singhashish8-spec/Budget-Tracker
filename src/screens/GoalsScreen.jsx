@@ -3,6 +3,7 @@ import { colors } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 import { goalsSummary } from '../state/selectors';
 import Amount from '../components/Amount';
+import { Icon } from '../components/ui';
 
 // "YYYY-MM" (from <input type="month">) → timestamp at the last day of that month.
 function monthValueToTs(v) {
@@ -193,7 +194,7 @@ function AddGoal({ onAdd, txns }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button onClick={() => setOpen(true)} style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 100, padding: '13px 20px', fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>+ New savings goal</button>
-        <button onClick={startEmergency} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.primary, borderRadius: 100, padding: '12px 20px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>🛟 Start an emergency fund</button>
+        <button onClick={startEmergency} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.primary, borderRadius: 100, padding: '12px 20px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}><Icon name="umbrella" size={15} /> Start an emergency fund</button>
       </div>
     );
   }

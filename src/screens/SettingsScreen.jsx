@@ -11,6 +11,7 @@ import * as haptics from '../services/haptics';
 import { notificationsSupported } from '../services/notify';
 import { dataUrlBytes, formatBytes } from '../utils/image';
 import { updatesSupported, fetchManifest, getCurrentVersion, downloadUpdate, applyUpdateAndReload } from '../services/liveUpdate';
+import { Icon } from '../components/ui';
 
 // Settings is a menu of categories, not a wall of controls: the top level lists
 // sections, and every actual control lives one tap inside its section. `section`
@@ -573,7 +574,10 @@ function StorageSummary({ docs }) {
       </div>
       {biggest.map((d, i) => (
         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '6px 0', borderBottom: `1px solid ${colors.divider}`, fontSize: 13 }}>
-          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.pdf ? '📄' : '🖼️'} {d.name}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, overflow: 'hidden' }}>
+            <Icon name={d.pdf ? 'doc' : 'image'} size={15} style={{ color: colors.textTertiary }} />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.name}</span>
+          </span>
           <span style={{ color: colors.textTertiary, flexShrink: 0 }}>{formatBytes(d.bytes)}</span>
         </div>
       ))}
