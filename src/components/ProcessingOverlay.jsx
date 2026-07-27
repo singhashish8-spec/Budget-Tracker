@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { colors } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 
@@ -6,7 +7,18 @@ import { useApp } from '../state/AppContext';
 // determinate bar with an "X of Y" count when the work has a known total, and an
 // indeterminate sweeping bar otherwise.
 export default function ProcessingOverlay() {
-  const { state } = useApp();
+  const { state, set } = useApp();
+  // A full-screen overlay with no exit is the worst failure mode there is: an
+  // app-wide dead end reached through no fault of the user. If the work hasn't
+  // finished in half a minute, offer a way out rather than leaving them staring
+  // at a bar that may never move again.
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    if (!state.processing) { setStalled(false); return undefined; }
+    const t = setTimeout(() => setStalled(true), 30000);
+    return () => clearTimeout(t);
+  }, [state.processing]);
+
   if (!state.processing) return null;
 
   const p = state.procProgress; // { done, total } | null
@@ -35,6 +47,20 @@ export default function ProcessingOverlay() {
           </div>
         )}
       </div>
+
+      {stalled && (
+        <div style={{ textAlign: 'center', maxWidth: 300, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontSize: 12.5, color: colors.textTertiary, lineHeight: 1.5 }}>
+            This is taking longer than it should. You can carry on into the app — nothing already saved is lost.
+          </div>
+          <button
+            onClick={() => set({ processing: false, procTitle: '', procSub: '', procProgress: null })}
+            style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, color: colors.ink, borderRadius: 100, padding: '11px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Continue anyway
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -18,6 +18,12 @@ const DEFAULT_ACCOUNTS = { bank: true, card: true, upi: true, sms: true, cash: f
 
 // Shown as the transaction's "account" line so a hand-entered row reads the
 // same way an SMS-derived one does.
+// An automatic restore must never be able to hang the app. Documents can be
+// several megabytes of base64 crossing the native bridge, so the work is real —
+// but unbounded is not an option when the alternative is a screen the user
+// cannot leave.
+const RESTORE_TIMEOUT_MS = 45000;
+
 const METHOD_LABELS = { cash: 'Cash', upi: 'UPI', card: 'Card', bank: 'Bank transfer' };
 
 const initialState = {
@@ -260,10 +266,27 @@ export function AppProvider({ children }) {
               } else {
                 try { sessionStorage.setItem('bt-autorestore', '1'); } catch { /* ignore */ }
                 set({ processing: true, procTitle: 'Restoring your data', procSub: 'Just a moment…' });
-                await repo.importBackup(found.data);
-                await repo.setSetting('onboarded', '1');
-                window.location.reload();
-                return;
+                // The restore is raced against a deadline and its failure is
+                // handled HERE rather than by the outer catch. Previously a
+                // throw fell through to a catch that only swallowed the error,
+                // leaving processing:true on screen forever — and because
+                // sessionStorage resets on every launch, reopening the app
+                // reproduced the same dead screen every time. Whatever happens
+                // now, the overlay comes down and the user gets a way forward.
+                try {
+                  await Promise.race([
+                    repo.importBackup(found.data),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('restore-timeout')), RESTORE_TIMEOUT_MS)),
+                  ]);
+                  await repo.setSetting('onboarded', '1');
+                  window.location.reload();
+                  return;
+                } catch {
+                  // Fall back to the manual prompt, which lets the user retry
+                  // or start fresh instead of staring at a spinner.
+                  set({ processing: false, procTitle: '', procSub: '', recoverable: found });
+                  return;
+                }
               }
             }
           } catch {
@@ -289,7 +312,16 @@ export function AppProvider({ children }) {
               try { sessionStorage.setItem('bt-dbreset', '1'); } catch { /* ignore */ }
               set({ processing: true, procTitle: 'Updating your data store', procSub: 'Keeping your records safe…' });
               await resetDatabase();
-              await repo.importBackup(found.data);
+              try {
+                await Promise.race([
+                  repo.importBackup(found.data),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('restore-timeout')), RESTORE_TIMEOUT_MS)),
+                ]);
+              } catch {
+                // A partial restore still beats a dead screen: keep whatever
+                // landed and let the app open rather than hanging here.
+                set({ processing: false, procTitle: '', procSub: '' });
+              }
               await repo.setSetting('onboarded', '1');
               window.location.reload();
               recovered = true;

@@ -724,13 +724,6 @@ export async function importBackup(data) {
       [w.id, w.product, w.brand ?? null, w.amount ?? null, w.purchase_at ?? Date.now(), w.warranty_months ?? 0, w.extended_months ?? null, w.store ?? null, w.serial ?? null, w.photo ?? null, w.txn_id ?? null, w.reminder_id ?? null, w.note ?? null, w.created_at ?? Date.now()],
     );
   }
-  for (const d of data.warrantyDocuments ?? []) {
-    if (!d.id || !d.data) continue;
-    await db.run(
-      `INSERT OR REPLACE INTO warranty_documents (id, warranty_id, name, mime, data, created_at) VALUES (?,?,?,?,?,?)`,
-      [d.id, d.warranty_id, d.name ?? 'Document', d.mime ?? 'image/jpeg', d.data, d.created_at ?? Date.now()],
-    );
-  }
   for (const c of data.warrantyClaims ?? []) {
     if (!c.id || !c.warranty_id) continue;
     await db.run(
@@ -760,6 +753,21 @@ export async function importBackup(data) {
     if (!sig) continue;
     await db.run(`INSERT OR IGNORE INTO sms_ignores (signature, created_at) VALUES (?,?)`, [sig, Date.now()]);
   }
+  // Documents last: they are by far the largest rows, and a restore that
+  // dropped every transaction because one photo failed would be the worst
+  // possible trade. Each is isolated so a bad one costs only itself.
+  for (const d of data.warrantyDocuments ?? []) {
+    if (!d.id || !d.data) continue;
+    try {
+      await db.run(
+      `INSERT OR REPLACE INTO warranty_documents (id, warranty_id, name, mime, data, created_at) VALUES (?,?,?,?,?,?)`,
+      [d.id, d.warranty_id, d.name ?? 'Document', d.mime ?? 'image/jpeg', d.data, d.created_at ?? Date.now()],
+      );
+    } catch {
+      counts.documentsSkipped = (counts.documentsSkipped || 0) + 1;
+    }
+  }
+
   // Restore settings (salary day, currency, theme, and crucially smsLastRead —
   // the scan high-water mark). appLock is intentionally excluded on export.
   for (const kv of data.settings ?? []) {
