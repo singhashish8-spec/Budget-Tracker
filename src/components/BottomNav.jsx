@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { colors } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
+import * as haptics from '../services/haptics';
 import { alertCount } from '../state/selectors';
 
 // The "+" opens a choice rather than jumping straight to the camera: most
@@ -39,7 +40,7 @@ export default function BottomNav() {
         tab ? (
           <button
             key={tab.key}
-            onClick={() => goTab(tab.key)}
+            onClick={() => haptics.select() || goTab(tab.key)}
             style={{
               flex: 1,
               display: 'flex',
@@ -70,7 +71,7 @@ export default function BottomNav() {
         ) : (
           <div key="fab" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
             <button
-              onClick={() => setChoosing(true)}
+              onClick={() => { haptics.tap(); setChoosing(true); }}
               style={{
                 width: 54,
                 height: 54,
@@ -102,6 +103,7 @@ export default function BottomNav() {
             <div style={{ width: 40, height: 4, borderRadius: 100, background: colors.track, margin: '0 auto 16px' }} />
             <button
               onClick={() => {
+                haptics.tap();
                 setChoosing(false);
                 set({ addSheetOpen: true });
               }}

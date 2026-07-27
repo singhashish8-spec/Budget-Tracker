@@ -5,6 +5,7 @@ import { billRow } from '../state/selectors';
 import { fmt } from '../utils/currency';
 import { fileToStoredDocument, dataUrlBytes, formatBytes } from '../utils/image';
 import DetentSheet from './DetentSheet';
+import * as haptics from '../services/haptics';
 import ConfirmDialog from './ConfirmDialog';
 import DocumentViewer from './DocumentViewer';
 
@@ -72,6 +73,7 @@ export default function WarrantyDetail({ item, onEdit, onClose }) {
     try {
       const stored = await fileToStoredDocument(file);
       await addWarrantyDocument(item.id, stored);
+      haptics.success();
     } catch (err) {
       setDocErr(err?.message || "Couldn't attach that file");
     } finally {
@@ -216,7 +218,7 @@ export default function WarrantyDetail({ item, onEdit, onClose }) {
                 Nothing logged yet. Keep a record of repairs and service visits — it's what you'll need if you ever argue a claim.
               </div>
             )}
-            <button onClick={() => setAddingClaim(true)} style={{ ...ghost, marginTop: 8 }}>+ Log a claim or service visit</button>
+            <button onClick={() => { haptics.tap(); setAddingClaim(true); }} style={{ ...ghost, marginTop: 8 }}>+ Log a claim or service visit</button>
           </Section>
         )}
 
