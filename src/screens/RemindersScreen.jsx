@@ -97,7 +97,7 @@ export default function RemindersScreen() {
   const rows = [...state.reminders].sort((a, b) => a.due_day - b.due_day).map((r) => ({ raw: r, ...billRow(r) }));
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
         <button onClick={goBack} style={backBtnStyle}>
           <BackIcon />

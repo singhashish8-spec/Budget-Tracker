@@ -169,31 +169,41 @@ export default function TransactionsScreen() {
         aria-label="Search transactions"
         style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: radii.pill, padding: '12px 18px', fontSize: type.callout, color: colors.ink }}
       />
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        {/* Chip owns its own select() tick — don't add another here. */}
-        <Chip
-          label="All"
-          selected={filter === 'all'}
-          onClick={() => set({ filter: 'all' })}
-          tone={filterTone(filter === 'all', colors.primary)}
-        />
-        <Chip
-          label="Business"
-          selected={filter === 'business'}
-          onClick={() => set({ filter: filter === 'business' ? 'all' : 'business' })}
-          tone={filterTone(filter === 'business', colors.primary)}
-        />
-        <Chip
-          label={`Needs review · ${alerts}`}
-          selected={filter === 'review'}
-          onClick={() => set({ filter: 'review' })}
-          tone={filterTone(filter === 'review', colors.danger)}
-        />
+      {/* The filters can't fit a phone's width — "Needs review · 393" alone is
+          most of it — so they scroll in their own strip. The Messages toggle
+          sits outside that strip so it stays reachable without scrolling.
+          minWidth:0 is what lets the strip shrink below its content width;
+          without it the row pushes the whole screen wide. */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
+        <div className="bt-hscroll" style={{ display: 'flex', gap: 8, flex: 1, minWidth: 0, padding: '2px 0' }}>
+          {/* Chip owns its own select() tick — don't add another here. */}
+          <Chip
+            label="All"
+            selected={filter === 'all'}
+            onClick={() => set({ filter: 'all' })}
+            tone={filterTone(filter === 'all', colors.primary)}
+            style={{ flexShrink: 0 }}
+          />
+          <Chip
+            label="Business"
+            selected={filter === 'business'}
+            onClick={() => set({ filter: filter === 'business' ? 'all' : 'business' })}
+            tone={filterTone(filter === 'business', colors.primary)}
+            style={{ flexShrink: 0 }}
+          />
+          <Chip
+            label={`Needs review · ${alerts}`}
+            selected={filter === 'review'}
+            onClick={() => set({ filter: 'review' })}
+            tone={filterTone(filter === 'review', colors.danger)}
+            style={{ flexShrink: 0 }}
+          />
+        </div>
         <button
           onClick={() => { haptics.select(); toggleMessages(); }}
           aria-pressed={showMessages}
           title="Show the full bank message under each transaction"
-          style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', borderRadius: 100, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: showMessages ? colors.primaryTint : colors.cardSurface, color: showMessages ? colors.primary : colors.textSecondary, border: `1px solid ${showMessages ? colors.primary : colors.cardBorder}` }}
+          style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', borderRadius: 100, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: showMessages ? colors.primaryTint : colors.cardSurface, color: showMessages ? colors.primary : colors.textSecondary, border: `1px solid ${showMessages ? colors.primary : colors.cardBorder}` }}
         >
           <span style={{ width: 26, height: 15, borderRadius: 100, background: showMessages ? colors.primary : colors.track, position: 'relative', flexShrink: 0 }}>
             <span style={{ position: 'absolute', top: 2, left: showMessages ? 13 : 2, width: 11, height: 11, borderRadius: '50%', background: '#FFFFFF', transition: 'left 0.15s' }} />

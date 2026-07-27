@@ -403,6 +403,21 @@ button:active { transform: scale(0.97); }
 :root[data-motion='off'] .bt-chev { transition: none; }
 .bt-chev[data-open='1'] { transform: rotate(180deg); }
 
+/* ── Horizontal chip strips ──────────────────────────────────────────────────
+   A row of filter chips is always going to be wider than a phone. It has to
+   scroll on its own; if it doesn't, it widens its whole screen and the entire
+   page scrolls sideways — which reads as the app being broken, because the
+   fixed top bar and tab bar stay put while everything else slides under them.
+   The scrollbar is hidden because this is a touch surface. */
+.bt-hscroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.bt-hscroll::-webkit-scrollbar { display: none; }
+
 /* ── Elevation ───────────────────────────────────────────────────────────────
    The app was entirely flat: a 1px border and nothing else, which read as a
    wireframe that got coloured in. This gives every surface depth using the same

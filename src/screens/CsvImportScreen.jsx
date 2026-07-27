@@ -92,7 +92,7 @@ export default function CsvImportScreen() {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 100px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
         <button onClick={rows ? () => setRows(null) : goBack} style={backBtnStyle}>
           <BackIcon />
@@ -210,7 +210,7 @@ function CsvReviewStep({ imported, source, categories, editingId, setEditingId, 
   const needCount = imported.filter((t) => !t.cat).length;
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 120px', display: 'flex', flexDirection: 'column', gap: 12, position: 'relative', minHeight: '100vh' }}>
+    <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 'calc(env(safe-area-inset-top, 0px) + 74px) 16px 120px', display: 'flex', flexDirection: 'column', gap: 12, position: 'relative', minHeight: '100vh' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
         <button onClick={onBack} style={backBtnStyle}>
           <BackIcon />
