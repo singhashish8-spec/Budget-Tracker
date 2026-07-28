@@ -55,7 +55,7 @@ export default function QuickAddBar() {
       </div>
 
       {pending && (
-        <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ fontSize: 12.5, color: colors.textSecondary }}>
             {pending.item ? `“${pending.item}” · ` : ''}₹{Math.round(pending.amount).toLocaleString('en-IN')} — which category?
           </div>

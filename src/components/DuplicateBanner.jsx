@@ -19,7 +19,7 @@ export default function DuplicateBanner() {
   };
 
   return (
-    <div style={{ background: colors.warningTint, border: `1px solid ${colors.warningBorder}`, borderRadius: 16, padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: confirming ? 10 : 0 }}>
+    <div style={{ background: colors.warningTint, border: `1px solid ${colors.warningBorder}`, borderRadius: 12, padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: confirming ? 10 : 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: colors.warningDark }}>{count} duplicate {count === 1 ? 'entry' : 'entries'} found</div>

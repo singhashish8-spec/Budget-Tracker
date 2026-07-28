@@ -52,7 +52,7 @@ export default function PatternsScreen() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {patterns.map((p) => (
-          <div key={p.signature} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: 15 }}>
+          <div key={p.signature} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: 15 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 8 }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: tint(p.color), color: p.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
                 {p.mono}
@@ -130,7 +130,7 @@ export default function PatternsScreen() {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {state.customPatterns.map((p) => (
-          <div key={p.id} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div key={p.id} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '14px 15px', display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 34, height: 34, borderRadius: 10, background: colors.primaryTint, color: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
               {p.label.slice(0, 2).toUpperCase()}
             </div>
@@ -144,7 +144,7 @@ export default function PatternsScreen() {
         ))}
       </div>
 
-      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.textSecondary }}>Add your own</div>
         <input value={cpLabel} onChange={(e) => setCpLabel(e.target.value)} placeholder="e.g. Gym membership" style={cpInput} />
         <div style={{ display: 'flex', gap: 8 }}>

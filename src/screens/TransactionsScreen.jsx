@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { colors, fonts, radii, tint, type } from '../theme/tokens';
+import { colors, fonts, radii, tint, tracking, type } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
@@ -161,7 +161,7 @@ export default function TransactionsScreen() {
 
   return (
     <Screen gap={12}>
-      <div style={{ fontFamily: fonts.heading, fontSize: type.screen, fontWeight: 700, padding: '0 4px' }}>Transactions</div>
+      <div style={{ fontFamily: fonts.heading, fontSize: type.screen, fontWeight: 700, letterSpacing: tracking.screen, padding: '0 4px' }}>Transactions</div>
       <input
         value={draft}
         onChange={(e) => setDraft(e.target.value)}

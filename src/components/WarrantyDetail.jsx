@@ -288,7 +288,7 @@ function ClaimForm({ onSave, onCancel }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 75, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div onClick={onCancel} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.55)' }} />
-      <div style={{ position: 'relative', background: colors.bgApp, borderRadius: 20, padding: 20, width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 16px 44px rgba(0,0,0,0.28)' }}>
+      <div style={{ position: 'relative', background: colors.bgApp, borderRadius: 12, padding: 20, width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 16px 44px rgba(0,0,0,0.28)' }}>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 700 }}>Log a claim or service</div>
         <div style={{ display: 'flex', gap: 6, background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: 3 }}>
           {[{ k: 'claim', l: 'Warranty claim' }, { k: 'service', l: 'Service visit' }].map((o) => (

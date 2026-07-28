@@ -15,15 +15,19 @@ export default function TopBar() {
       <button
         onClick={() => { haptics.tap(); openMenu(); }}
         aria-label="Open menu"
+        // Chrome, so it carries the material: a translucent button with no blur
+        // would show the content behind it sharply, which reads as a bug rather
+        // than as glass. It's a single element, so the cost is negligible.
+        className="bt-material"
         style={{
           // 44px, not the 40 it was: this is the most-tapped control in the app
           // and it floats over content, so an undersized target here is felt.
           width: 44,
           height: 44,
           borderRadius: '50%',
-          background: colors.cardSurface,
+          background: colors.chromeSurface,
           color: colors.ink,
-          border: `1px solid ${colors.cardBorder}`,
+          border: `var(--hairline) solid ${colors.cardBorder}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

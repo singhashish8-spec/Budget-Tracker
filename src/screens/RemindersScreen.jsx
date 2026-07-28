@@ -112,7 +112,7 @@ export default function RemindersScreen() {
         {rows.map((b) => {
           const paid = b.raw.paid_for === monthKey;
           return (
-            <div key={b.id} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', flexDirection: 'column', gap: 12, opacity: paid ? 0.55 : 1 }}>
+            <div key={b.id} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '14px 15px', display: 'flex', flexDirection: 'column', gap: 12, opacity: paid ? 0.55 : 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 38, height: 38, borderRadius: 12, background: colors.warningTint, color: colors.warning, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                   {b.label.slice(0, 2).toUpperCase()}
@@ -193,7 +193,7 @@ export default function RemindersScreen() {
         )}
       </div>
 
-      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '16px', display: 'flex', flexDirection: 'column', gap: 9 }}>
+      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '16px', display: 'flex', flexDirection: 'column', gap: 9 }}>
         <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.textSecondary }}>Add a bill</div>
         <SegPicker options={KINDS} value={kind} onChange={setKind} />
         <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={kind === 'emi' ? 'e.g. Car loan' : kind === 'subscription' ? 'e.g. Netflix' : 'e.g. Electricity'} style={inputStyle} />

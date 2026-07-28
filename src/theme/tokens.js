@@ -39,6 +39,11 @@ export const colors = {
   warningBorder: 'var(--c-warningBorder)',
 
   cardSurface: 'var(--c-cardSurface)',
+  // Tab bar and sheets. Identical to cardSurface in every theme except Frosted,
+  // where iOS makes chrome denser than a floating card. Surfaces painting this
+  // are the only ones that carry the (expensive) backdrop blur — see the
+  // .bt-material note in index.css.
+  chromeSurface: 'var(--c-chromeSurface)',
   cardBorder: 'var(--c-cardBorder)',
   divider: 'var(--c-divider)',
   track: 'var(--c-track)',
@@ -70,11 +75,26 @@ export const fonts = {
   body: "'IBM Plex Sans', sans-serif",
 };
 
+// Corner radii follow iOS: an inset-grouped list container is 10pt, a presented
+// sheet ~14pt. The app previously used 20/18, which is an Android/Material
+// figure and is the main reason the surfaces read as "not iOS" even when the
+// blur is right — iOS corners are noticeably tighter than people remember.
 export const radii = {
-  card: 20,
-  cardTight: 18,
-  chip: 14,
+  card: 12,
+  cardTight: 10,
+  chip: 10,
+  sheet: 14,
   pill: 100,
+};
+
+// iOS layout constants, in points (1pt == 1 CSS px here).
+export const metrics = {
+  row: 44, // the minimum tappable row height in every Apple HIG list
+  tabBar: 49, // standard UITabBar height, before the home-indicator inset
+  navBar: 44, // standard UINavigationBar height
+  // Where a list separator starts: the row's leading padding plus the leading
+  // accessory and its gap. iOS never runs a separator to the leading edge.
+  separatorInset: 16 + 29 + 12,
 };
 
 export const spacing = {
@@ -94,8 +114,18 @@ export const type = {
   body: 13.5, // default body / secondary text
   callout: 14.5, // row titles, primary body
   title: 17, // card headings
-  screen: 24, // screen title
+  screen: 30, // screen title — iOS large titles are 34pt; 30 suits a wider face
   display: 36, // the one hero figure
+};
+
+// Large text needs negative tracking to read as iOS. SF Pro Display tightens
+// automatically above ~20pt; Space Grotesk doesn't, so without this the big
+// headings sit noticeably looser than the iPhone equivalent — one of those
+// differences everyone feels and nobody can name.
+export const tracking = {
+  display: '-0.02em',
+  screen: '-0.02em',
+  title: '-0.01em',
 };
 
 // Elevation. The app was entirely flat (1px border, no shadow) which read as

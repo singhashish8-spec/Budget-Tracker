@@ -182,7 +182,7 @@ function DatabaseErrorScreen({ message }) {
           Still stuck?
         </button>
       ) : (
-        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 16, padding: '16px 18px', maxWidth: 340 }}>
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 12, padding: '16px 18px', maxWidth: 340 }}>
           <div style={{ fontSize: type.footnote, color: colors.dangerDark, lineHeight: 1.5 }}>
             Starting fresh <strong>deletes the data on this phone</strong>. Only do this if trying again keeps failing. If an automatic backup exists, the app will offer it back on the next launch.
           </div>

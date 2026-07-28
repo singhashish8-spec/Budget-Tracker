@@ -1,4 +1,4 @@
-import { colors } from '../theme/tokens';
+import { colors, radii } from '../theme/tokens';
 
 // The one-handed bottom sheet used by every popup in the app. Three regions:
 //   • a FROZEN header that never scrolls (read-only context — always visible),
@@ -11,11 +11,19 @@ export default function Sheet({ onClose, header, children, footer, maxHeight = '
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.45)' }} />
+      {/* bt-material: one of the few surfaces that actually carries the blur.
+          bt-sheet: the drop shadow, which lives in CSS rather than inline —
+          an inline boxShadow would beat the stylesheet and wipe out the glass
+          specular highlight on the very surface that most needs it. */}
       <div
+        className="bt-material bt-sheet"
         style={{
-          position: 'relative', background: colors.bgApp, borderRadius: '24px 24px 0 0',
+          // Chrome, not the page background. On iOS a presented sheet sits on a
+          // denser material than a floating card does.
+          position: 'relative', background: colors.chromeSurface,
+          borderRadius: `${radii.sheet}px ${radii.sheet}px 0 0`,
           maxHeight, display: 'flex', flexDirection: 'column', minHeight: 0,
-          animation: 'sheetup 0.24s cubic-bezier(0.2,0.75,0.3,1)', boxShadow: '0 -10px 34px rgba(0,0,0,0.20)',
+          animation: 'sheetup 0.34s var(--ease-ios)',
         }}
       >
         {/* Grabber */}
@@ -25,7 +33,7 @@ export default function Sheet({ onClose, header, children, footer, maxHeight = '
 
         {/* Frozen header — read-only context, always visible while the body scrolls. */}
         {header != null && (
-          <div style={{ flexShrink: 0, padding: '8px 16px 12px', borderBottom: `1px solid ${colors.divider}` }}>{header}</div>
+          <div style={{ flexShrink: 0, padding: '8px 16px 12px', borderBottom: `var(--hairline) solid ${colors.divider}` }}>{header}</div>
         )}
 
         {/* Scrollable body. */}
@@ -33,7 +41,7 @@ export default function Sheet({ onClose, header, children, footer, maxHeight = '
 
         {/* Pinned footer — the primary tap targets, in the thumb-zone. */}
         {footer != null && (
-          <div style={{ flexShrink: 0, padding: '12px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)', borderTop: `1px solid ${colors.divider}`, background: colors.bgApp }}>{footer}</div>
+          <div style={{ flexShrink: 0, padding: '12px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)', borderTop: `var(--hairline) solid ${colors.divider}`, background: colors.chromeSurface }}>{footer}</div>
         )}
       </div>
     </div>

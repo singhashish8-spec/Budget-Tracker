@@ -13,7 +13,7 @@ export default function ConfirmDialog({ title, message, confirmLabel = 'Delete',
         role="alertdialog"
         aria-modal="true"
         style={{
-          position: 'relative', background: colors.bgApp, borderRadius: 20, padding: '20px 20px 16px',
+          position: 'relative', background: colors.bgApp, borderRadius: 12, padding: '20px 20px 16px',
           maxWidth: 360, width: '100%', boxShadow: '0 16px 44px rgba(0,0,0,0.28)',
           display: 'flex', flexDirection: 'column', gap: 8,
         }}

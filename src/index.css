@@ -108,6 +108,29 @@
    on every screen, including the ones not yet migrated to the UI primitives. */
 :root {
   --c-cardShadow: 0 1px 2px rgba(16, 20, 24, 0.04), 0 4px 12px rgba(16, 20, 24, 0.05);
+
+  /* A true hairline. iOS separators are one device pixel, not one CSS pixel —
+     on a 3x phone that's a third of a CSS px, which is why iOS lines look so
+     much finer than a default 1px border. */
+  --hairline: 0.5px;
+
+  /* Apple's curves. The first is UIKit's sheet presentation timing — it starts
+     fast and decelerates hard, which is what makes iOS sheets feel weighted
+     rather than merely animated. The second is the standard ease for small
+     state changes. Both are used app-wide, not only in the Frosted theme. */
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-ios-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* Inert outside the Frosted theme; declared here so the material hook and the
+     specular highlight always resolve to something. */
+  --ios-material: none;
+  --ios-specular: transparent;
+  /* Chrome (tab bar, sheets) matches the card surface everywhere except
+     Frosted, where iOS makes chrome noticeably denser than a floating card. */
+  --c-chromeSurface: var(--c-cardSurface);
+}
+@media (min-resolution: 3x) {
+  :root { --hairline: 0.34px; }
 }
 @media (prefers-color-scheme: dark) {
   /* Shadows are nearly invisible on dark neutrals and mostly just muddy the
@@ -231,33 +254,99 @@
    attached with an attribute hook that matches any element whose inline style
    paints the card-surface token, so it also needs no component edits. Standard
    mode never sets [data-surface], so this whole block is inert by default. */
+/* Light material + Apple's own label and separator values. These exact alphas
+   matter: iOS secondary text is a 60%-alpha near-black rather than a solid
+   grey, so it takes on whatever is behind it. Substituting a flat grey is one
+   of the most common reasons an iOS impression falls flat. */
 :root[data-surface='glass'] {
-  --c-cardSurface: rgba(255, 255, 255, 0.50);
-  --c-cardBorder: rgba(255, 255, 255, 0.72);
-  --c-divider: rgba(30, 40, 50, 0.09);
+  --ios-material: blur(30px) saturate(180%);
+  --ios-specular: rgba(255, 255, 255, 0.55);
+  --c-cardSurface: rgba(255, 255, 255, 0.68);
+  --c-cardBorder: rgba(255, 255, 255, 0.55);
+  --c-divider: rgba(60, 60, 67, 0.29); /* iOS separator */
+  --c-ink: #000000; /* label */
+  --c-textSecondary: rgba(60, 60, 67, 0.60); /* secondaryLabel */
+  --c-textTertiary: rgba(60, 60, 67, 0.30); /* tertiaryLabel */
+  --c-track: rgba(120, 120, 128, 0.20); /* fill */
+  --c-chromeSurface: rgba(255, 255, 255, 0.82);
+  --c-cardShadow: none;
 }
+/* Dark material. iOS does not simply invert — the dark material is a very dark
+   neutral at similar opacity, and its labels warm slightly (235,235,245). */
 @media (prefers-color-scheme: dark) {
   :root[data-surface='glass']:not([data-theme='light']) {
-    --c-cardSurface: rgba(28, 33, 38, 0.46);
-    --c-cardBorder: rgba(255, 255, 255, 0.12);
-    --c-divider: rgba(255, 255, 255, 0.08);
+    --ios-specular: rgba(255, 255, 255, 0.16);
+    --c-cardSurface: rgba(30, 30, 32, 0.72);
+    --c-cardBorder: rgba(255, 255, 255, 0.10);
+    --c-divider: rgba(84, 84, 88, 0.65);
+    --c-ink: #FFFFFF;
+    --c-textSecondary: rgba(235, 235, 245, 0.60);
+    --c-textTertiary: rgba(235, 235, 245, 0.30);
+    --c-track: rgba(120, 120, 128, 0.32);
+    --c-chromeSurface: rgba(30, 30, 32, 0.86);
   }
 }
 :root[data-surface='glass'][data-theme='dark'] {
-  --c-cardSurface: rgba(28, 33, 38, 0.46);
-  --c-cardBorder: rgba(255, 255, 255, 0.12);
-  --c-divider: rgba(255, 255, 255, 0.08);
+  --ios-specular: rgba(255, 255, 255, 0.16);
+  --c-cardSurface: rgba(30, 30, 32, 0.72);
+  --c-cardBorder: rgba(255, 255, 255, 0.10);
+  --c-divider: rgba(84, 84, 88, 0.65);
+  --c-ink: #FFFFFF;
+  --c-textSecondary: rgba(235, 235, 245, 0.60);
+  --c-textTertiary: rgba(235, 235, 245, 0.30);
+  --c-track: rgba(120, 120, 128, 0.32);
+    --c-chromeSurface: rgba(30, 30, 32, 0.86);
 }
 :root[data-surface='glass'][data-theme='light'] {
-  --c-cardSurface: rgba(255, 255, 255, 0.50);
-  --c-cardBorder: rgba(255, 255, 255, 0.72);
-  --c-divider: rgba(30, 40, 50, 0.09);
+  --ios-specular: rgba(255, 255, 255, 0.55);
+  --c-cardSurface: rgba(255, 255, 255, 0.68);
+  --c-cardBorder: rgba(255, 255, 255, 0.55);
+  --c-divider: rgba(60, 60, 67, 0.29);
+  --c-ink: #000000;
+  --c-textSecondary: rgba(60, 60, 67, 0.60);
+  --c-textTertiary: rgba(60, 60, 67, 0.30);
+  --c-track: rgba(120, 120, 128, 0.20);
+  --c-chromeSurface: rgba(255, 255, 255, 0.82);
 }
-/* The blur hook. Only active in glass mode; matches elements that paint the
-   card-surface token. Moderate radius for WebView performance. */
-:root[data-surface='glass'] [style*="--c-cardSurface"] {
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  backdrop-filter: blur(20px) saturate(150%);
+/* The material. iOS's regular material is far heavier than the blur(20px)
+   saturate(150%) this used to use — that reads as "slightly hazy", not frosted.
+   The saturation boost is the part people don't notice consciously but always
+   miss when it's absent: iOS pushes colour behind the glass so the frost picks
+   up a tint of whatever it covers instead of going grey.
+
+   The inset hairline along the top edge is the other half of the illusion. Real
+   glass catches light on its top lip, and without it a translucent panel just
+   looks like a low-opacity rectangle.
+
+   The blur is deliberately NOT on every card. It used to be, via the generic
+   card-surface hook, which meant a Transactions screen with sixty day-groups
+   mounted sixty separate backdrop-filter layers — each one re-sampling the
+   pixels behind it every scroll frame. That is the classic way to make a
+   WebView stutter on a mid-range Android phone, and it isn't what iOS does
+   either: iOS puts material on a handful of large chrome surfaces (nav bar, tab
+   bar, sheet) and leaves list cells as plain fills. So the expensive property
+   is opt-in via .bt-material, and only chrome and sheets ask for it. */
+:root[data-surface='glass'] [style*="--c-cardSurface"],
+:root[data-surface='glass'] .bt-material {
+  /* Cheap — a box-shadow costs nothing like a blur, so every glass surface can
+     have the top-lip highlight that stops it reading as a flat rectangle. */
+  box-shadow:
+    inset 0 var(--hairline) 0 0 var(--ios-specular),
+    0 1px 10px rgba(0, 0, 0, 0.05);
+}
+:root[data-surface='glass'] .bt-material {
+  -webkit-backdrop-filter: var(--ios-material);
+  backdrop-filter: var(--ios-material);
+}
+
+/* Sheets keep their own lift. Declared here rather than inline because an
+   inline boxShadow would beat the specular-highlight rule above and the sheet
+   is the one surface that most needs it. */
+.bt-sheet { box-shadow: 0 -10px 34px rgba(0, 0, 0, 0.20); }
+:root[data-surface='glass'] .bt-sheet {
+  box-shadow:
+    inset 0 var(--hairline) 0 0 var(--ios-specular),
+    0 -10px 34px rgba(0, 0, 0, 0.28);
 }
 /* Frost needs depth behind it, so the app shell gets a soft wash of the user's
    ACCENT colour (color-mix on the accent tokens). Because it's the accent,
@@ -347,7 +436,7 @@ button:focus-visible,
 @keyframes slideInRight { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
 
-.screen-enter[data-anim='deep'] { animation: slideInRight 0.28s cubic-bezier(0.2, 0.75, 0.3, 1); }
+.screen-enter[data-anim='deep'] { animation: slideInRight 0.28s var(--ease-ios); }
 .screen-enter[data-anim='tab'] { animation: fadeUp 0.22s ease-out; }
 
 /* Tap feedback on every control. */
@@ -394,7 +483,7 @@ button:active { transform: scale(0.97); }
 /* ── Expand / collapse (Collapse component) ──────────────────────────────────
    grid-template-rows 0fr↔1fr animates to natural height with no JS measuring.
    Stilled when the user or OS asks for reduced motion. */
-.bt-collapse { transition: grid-template-rows 0.26s cubic-bezier(0.2, 0.75, 0.3, 1); }
+.bt-collapse { transition: grid-template-rows 0.26s var(--ease-ios); }
 @media (prefers-reduced-motion: reduce) { .bt-collapse { transition: none; } }
 :root[data-motion='off'] .bt-collapse,
 :root[data-motion='reduced'] .bt-collapse { transition: none; }
@@ -402,6 +491,29 @@ button:active { transform: scale(0.97); }
 .bt-chev { transition: transform 0.22s ease; }
 :root[data-motion='off'] .bt-chev { transition: none; }
 .bt-chev[data-open='1'] { transform: rotate(180deg); }
+
+/* ── Lists ───────────────────────────────────────────────────────────────────
+   iOS never runs a separator to the leading edge of a row: it starts where the
+   row's TEXT starts, so the line reads as dividing content rather than slicing
+   the card in half. Rows also carry a press fill instead of a scale, because a
+   full-width row scaling looks wrong — only small controls squash on iOS.
+
+   Drawn with a pseudo-element rather than a border so it can be a true hairline
+   and so it never affects layout height. Override the inset per list by setting
+   --bt-separator-inset (e.g. 16px for a list with no leading icon). */
+.bt-list > * + * { position: relative; }
+.bt-list > * + *::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--bt-separator-inset, 57px);
+  right: 0;
+  height: var(--hairline);
+  background: var(--c-divider);
+  pointer-events: none;
+}
+.bt-list > *:active { background: var(--c-track); }
+:root[data-motion='off'] .bt-list > *:active { background: transparent; }
 
 /* ── Horizontal chip strips ──────────────────────────────────────────────────
    A row of filter chips is always going to be wider than a phone. It has to
@@ -438,7 +550,7 @@ button:active { transform: scale(0.97); }
    its value. Filling the bar is the clearest signal the app has that a number
    moved, so it's worth animating — and doing it here means the motion setting
    stills every bar in the app at once. */
-.bt-bar-fill { transition: width 0.55s cubic-bezier(0.2, 0.75, 0.3, 1); }
+.bt-bar-fill { transition: width 0.55s var(--ease-ios); }
 @media (prefers-reduced-motion: reduce) { .bt-bar-fill { transition: none; } }
 :root[data-motion='reduced'] .bt-bar-fill,
 :root[data-motion='off'] .bt-bar-fill { transition: none; }

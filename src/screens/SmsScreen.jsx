@@ -40,7 +40,7 @@ export default function SmsScreen() {
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>SMS auto-tracking</div>
       </div>
 
-      <div style={{ background: on ? colors.successTint : colors.dangerTint, border: `1px solid ${on ? colors.successBorder : colors.dangerBorder}`, borderRadius: 16, padding: '13px 15px', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ background: on ? colors.successTint : colors.dangerTint, border: `1px solid ${on ? colors.successBorder : colors.dangerBorder}`, borderRadius: 12, padding: '13px 15px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 10, height: 10, borderRadius: '50%', background: on ? colors.primary : colors.danger, flexShrink: 0 }} />
         <div>
           <div style={{ fontSize: 14, fontWeight: 600, color: on ? colors.primary : colors.danger }}>{on ? 'On — reads bank & UPI SMS' : 'Off'}</div>
@@ -68,7 +68,7 @@ export default function SmsScreen() {
       </div>
 
       {state.smsUnmatched.length > 0 && (
-        <div style={{ background: colors.cardSurface, border: `1px solid ${colors.warningBorder}`, borderRadius: 20, padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: colors.cardSurface, border: `1px solid ${colors.warningBorder}`, borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
           <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.warningDark, paddingBottom: 4 }}>
             Not recognised ({state.smsUnmatched.length})
           </div>
@@ -88,7 +88,7 @@ export default function SmsScreen() {
         </div>
       )}
 
-      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
         <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.textSecondary, paddingBottom: 6 }}>Recently read</div>
         {state.smsLog.map((m) => {
           const t = state.txns.find((x) => x.id === m.txn_id);

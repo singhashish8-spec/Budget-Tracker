@@ -159,7 +159,7 @@ export default function CategorySheet() {
       {/* Edit form — collapses in above the picker when you tap Edit. */}
       <Collapse open={editing}>
         {draft && (
-          <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: 14, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: 14, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', gap: 8 }}>
               {[{ key: 'expense', label: 'Spent' }, { key: 'income', label: 'Received' }].map((o) => (
                 <button

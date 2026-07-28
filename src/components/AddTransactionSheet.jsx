@@ -96,7 +96,7 @@ export default function AddTransactionSheet() {
           </button>
         ))}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: '13px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '13px 16px' }}>
         <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 26, fontWeight: 700, color: income ? colors.primary : colors.ink }}>₹</span>
         <input
           value={amount}

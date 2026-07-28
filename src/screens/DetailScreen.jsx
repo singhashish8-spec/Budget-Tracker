@@ -35,7 +35,7 @@ export default function DetailScreen() {
   return (
     <Shell title={d.title} mono={d.mono} color={d.color} onBack={goBack}>
       {/* Headline: what this category cost this cycle, vs last */}
-      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.onPrimary }}>
+      <div style={{ background: colors.surfaceDark, borderRadius: 12, padding: '18px 16px', color: colors.onPrimary }}>
         <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>Spent {d.cycleLabel}</div>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 34, fontWeight: 700, margin: '5px 0 8px' }}><Amount>{d.thisTotalF}</Amount></div>
         <div style={{ fontSize: 13, color: colors.accentGreen3 }}>
@@ -90,7 +90,7 @@ function PatternDetail({ signature }) {
 
   return (
     <Shell title={d.title} mono={d.mono} color={d.color} onBack={goBack}>
-      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.onPrimary }}>
+      <div style={{ background: colors.surfaceDark, borderRadius: 12, padding: '18px 16px', color: colors.onPrimary }}>
         <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>Recurring · {d.categoryLabel}</div>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 34, fontWeight: 700, margin: '5px 0 8px' }}>Seen {d.count}×</div>
         <div style={{ fontSize: 13, color: colors.accentGreen3 }}><Amount>{d.totalF}</Amount> total · <Amount>{d.avgF}</Amount> on average</div>
@@ -245,7 +245,7 @@ function Shell({ title, mono, color, onBack, children }) {
 
 function Card({ title, children }) {
   return (
-    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600 }}>{title}</div>
       {children}
     </div>

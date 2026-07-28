@@ -108,7 +108,7 @@ export default function CsvImportScreen() {
           <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onPickFile} style={{ display: 'none' }} />
           <button
             onClick={() => fileRef.current?.click()}
-            style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 20, padding: '22px 18px', textAlign: 'left', cursor: 'pointer', border: 'none' }}
+            style={{ background: colors.primary, color: colors.onPrimary, borderRadius: 12, padding: '22px 18px', textAlign: 'left', cursor: 'pointer', border: 'none' }}
           >
             <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 600 }}>Choose a CSV file</div>
             <div style={{ fontSize: 13.5, color: colors.accentGreen3, marginTop: 3 }}>Exported from your bank or card's net-banking site</div>
@@ -124,7 +124,7 @@ export default function CsvImportScreen() {
 
       {rows && (
         <>
-          <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: '13px 15px', fontSize: 13.5 }}>
+          <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '13px 15px', fontSize: 13.5 }}>
             <div style={{ fontWeight: 600, marginBottom: 6 }}>{fileName} · {rows.length} row{rows.length === 1 ? '' : 's'} found</div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ borderCollapse: 'collapse', fontSize: 11.5, width: '100%' }}>
@@ -143,7 +143,7 @@ export default function CsvImportScreen() {
             </div>
           </div>
 
-          <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
               <input type="checkbox" checked={mapping.hasHeader} onChange={(e) => setMapping((m) => ({ ...m, hasHeader: e.target.checked }))} />
               First row is a header (skip it)
@@ -218,19 +218,19 @@ function CsvReviewStep({ imported, source, categories, editingId, setEditingId, 
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700 }}>Review import</div>
       </div>
 
-      <div style={{ background: colors.successTint, border: `1px solid ${colors.successBorder}`, borderRadius: 16, padding: '13px 15px', fontSize: 14 }}>
+      <div style={{ background: colors.successTint, border: `1px solid ${colors.successBorder}`, borderRadius: 12, padding: '13px 15px', fontSize: 14 }}>
         <span style={{ fontWeight: 600, color: colors.primary }}>{imported.length} transactions found</span>
         <span style={{ color: colors.successText }}> in {source || 'your file'}</span>
       </div>
 
       {needCount > 0 && (
-        <div style={{ background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 16, padding: '13px 15px', fontSize: 14 }}>
+        <div style={{ background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 12, padding: '13px 15px', fontSize: 14 }}>
           <span style={{ fontWeight: 600, color: colors.danger }}>{needCount} need your help</span>
           <span style={{ color: '#B96A5B' }}> — tap the red ones to pick a category</span>
         </div>
       )}
 
-      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '8px 16px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '8px 16px', display: 'flex', flexDirection: 'column' }}>
         {imported.map((t) => {
           const cat = categories.find((c) => c.id === t.cat);
           const uncat = !t.cat;

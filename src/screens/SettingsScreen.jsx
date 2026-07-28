@@ -106,7 +106,7 @@ export default function SettingsScreen() {
 
       {/* Top-level menu */}
       {!section && (
-        <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, overflow: 'hidden' }}>
+        <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, overflow: 'hidden' }}>
           {SECTIONS.map((s, i) => (
             <button
               key={s.key}
@@ -542,7 +542,7 @@ function SkinSwatch({ skin }) {
   );
 }
 
-const card = { background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 };
+const card = { background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: 16 };
 
 const segWrap = { display: 'flex', gap: 6, background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: 3 };
 const segBtn = (on) => ({ flex: 1, padding: '9px 6px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: on ? colors.primary : 'transparent', color: on ? colors.onPrimary : colors.textSecondary });
@@ -609,7 +609,7 @@ function ResetDialog({ onConfirm, onCancel, onBackup }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div onClick={working ? undefined : onCancel} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.6)' }} />
-      <div style={{ position: 'relative', background: colors.bgApp, borderRadius: 20, padding: 22, width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 16px 44px rgba(0,0,0,0.3)' }}>
+      <div style={{ position: 'relative', background: colors.bgApp, borderRadius: 12, padding: 22, width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 16px 44px rgba(0,0,0,0.3)' }}>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, color: colors.danger }}>Erase everything?</div>
         <div style={{ fontSize: 13.5, color: colors.textSecondary, lineHeight: 1.5 }}>
           This deletes all your data on this phone and the automatic snapshots that would normally bring it back. There is no undo.

@@ -59,7 +59,7 @@ export default function EnvelopesScreen() {
       </div>
 
       {/* The headline number: money that has arrived but hasn't been given a job. */}
-      <div style={{ background: colors.cardSurface, border: `1px solid ${pool.unassigned === 0 ? colors.successBorder : colors.cardBorder}`, borderRadius: 20, padding: '18px 16px', textAlign: 'center' }}>
+      <div style={{ background: colors.cardSurface, border: `1px solid ${pool.unassigned === 0 ? colors.successBorder : colors.cardBorder}`, borderRadius: 12, padding: '18px 16px', textAlign: 'center' }}>
         <div style={{ fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: colors.textSecondary, fontWeight: 600 }}>To be assigned</div>
         <Amount style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 32, fontWeight: 700, color: poolColor, display: 'block', margin: '4px 0 6px' }}>
           {fmt(pool.unassigned)}
@@ -79,7 +79,7 @@ export default function EnvelopesScreen() {
       </div>
 
       {overspent.length > 0 && (
-        <div style={{ background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 16, padding: '12px 14px' }}>
+        <div style={{ background: colors.dangerTint, border: `1px solid ${colors.dangerBorder}`, borderRadius: 12, padding: '12px 14px' }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: colors.dangerDark, marginBottom: 3 }}>
             {overspent.length} envelope{overspent.length === 1 ? '' : 's'} overspent
           </div>
@@ -95,7 +95,7 @@ export default function EnvelopesScreen() {
             ? Math.min(100, Math.round((r.spent / (r.assigned + r.carried)) * 100))
             : r.spent > 0 ? 100 : 0;
           return (
-            <button key={r.catId} onClick={() => setEditing(r)} style={{ textAlign: 'left', width: '100%', background: colors.cardSurface, border: `1px solid ${r.overspent ? colors.dangerBorder : colors.cardBorder}`, borderRadius: 18, padding: '13px 15px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 9 }}>
+            <button key={r.catId} onClick={() => setEditing(r)} style={{ textAlign: 'left', width: '100%', background: colors.cardSurface, border: `1px solid ${r.overspent ? colors.dangerBorder : colors.cardBorder}`, borderRadius: 12, padding: '13px 15px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 9 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 30, height: 30, borderRadius: 9, background: `${r.color}1F`, color: r.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
                   {r.mono}
@@ -125,7 +125,7 @@ export default function EnvelopesScreen() {
       </div>
 
       {unused.length > 0 && (
-        <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '16px' }}>
+        <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '16px' }}>
           <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.textSecondary, marginBottom: 10 }}>Add an envelope</div>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
             {unused.map((c) => (
@@ -185,7 +185,7 @@ function AssignSheet({ row, monthLabel, unassigned, onClose, onSave }) {
           For {monthLabel}. You have <strong style={{ color: unassigned >= 0 ? colors.primary : colors.danger }}>{fmt(unassigned)}</strong> still to assign.
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: '13px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '13px 16px' }}>
           <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 700 }}>₹</span>
           <input
             value={value}

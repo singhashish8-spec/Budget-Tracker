@@ -68,7 +68,7 @@ export default function WarrantyScreen() {
       </div>
 
       {state.pendingShare?.length > 0 && (
-        <div style={{ background: colors.primaryTint, border: `1px solid ${colors.primary}`, borderRadius: 16, padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ background: colors.primaryTint, border: `1px solid ${colors.primary}`, borderRadius: 12, padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: colors.primary }}>
             {state.pendingShare.length} file{state.pendingShare.length === 1 ? '' : 's'} shared in
           </div>
@@ -113,7 +113,7 @@ export default function WarrantyScreen() {
                 haptics.select();
                 setViewingId(w.id);
               }}
-              style={{ textAlign: 'left', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px', display: 'flex', flexDirection: 'column', gap: 10, cursor: 'pointer', width: '100%' }}
+              style={{ textAlign: 'left', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '14px 15px', display: 'flex', flexDirection: 'column', gap: 10, cursor: 'pointer', width: '100%' }}
             >
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%' }}>
               {(thumbs[w.id] || w.photo) ? (

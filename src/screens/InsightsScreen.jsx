@@ -67,7 +67,7 @@ export default function InsightsScreen() {
       <HubLink label="Savings goals" sub={state.goals.length ? `${fmt(goalsSaved)} saved` : 'Set one'} onClick={() => go('goals')} />
       <TaxCard regime={state.taxRegime} invested={state.tax80cInvested} onRegime={setTaxRegime} onInvested={setTax80cInvested} />
 
-      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px' }}>
+      <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '18px 16px' }}>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600, marginBottom: 12 }}>Export report</div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={doExportReport} style={{ flex: 1, textAlign: 'center', padding: 12, borderRadius: 100, background: colors.primary, color: colors.onPrimary, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
@@ -99,7 +99,7 @@ function ProjectionCard({ p }) {
   if (!p.hasData) return null;
 
   return (
-    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px' }}>
+    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '18px 16px' }}>
       <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600, marginBottom: 4 }}>Where you're heading</div>
       <div style={{ fontSize: 12.5, color: colors.textSecondary, marginBottom: 12 }}>
         {growing
@@ -142,7 +142,7 @@ function ProjectionCard({ p }) {
 // business bills — the input credit a freelancer claims back.
 function BusinessCard({ biz, onOpen }) {
   return (
-    <button onClick={onOpen} style={{ textAlign: 'left', width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px', cursor: 'pointer' }}>
+    <button onClick={onOpen} style={{ textAlign: 'left', width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '18px 16px', cursor: 'pointer' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600 }}>Business this cycle</div>
         <span style={{ fontSize: 12, color: colors.textTertiary }}>{biz.count} entries ›</span>
@@ -172,7 +172,7 @@ function Stat({ label, value, color }) {
 
 function HubLink({ label, sub, onClick }) {
   return (
-    <button onClick={onClick} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}>
+    <button onClick={onClick} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}>
       <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600 }}>{label}</div>
       <div style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>{sub} ›</div>
     </button>
@@ -210,7 +210,7 @@ function NetWorthCard({ assets, liab, items, onAdd, onDelete }) {
   };
 
   return (
-    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px' }}>
+    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '18px 16px' }}>
       <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.textSecondary, fontWeight: 600 }}>Net worth</div>
       <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 32, fontWeight: 700, margin: '4px 0 12px', color: colors.primary }}><Amount>{fmt(assets - liab)}</Amount></div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
@@ -310,7 +310,7 @@ function TaxCard({ regime, invested, onRegime, onInvested }) {
   const pct = isOld ? Math.min(100, Math.round((invested / TAX_80C_LIMIT) * 100)) : 0;
 
   return (
-    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px' }}>
+    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '18px 16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600 }}>Tax saver · 80C</div>
       </div>

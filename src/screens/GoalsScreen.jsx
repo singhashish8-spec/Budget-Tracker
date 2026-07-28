@@ -33,7 +33,7 @@ export default function GoalsScreen() {
       </div>
 
       {summary.count > 0 && (
-        <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '18px 16px', color: colors.onPrimary }}>
+        <div style={{ background: colors.surfaceDark, borderRadius: 12, padding: '18px 16px', color: colors.onPrimary }}>
           <div style={{ fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: colors.accentGreen3, fontWeight: 600 }}>Saved across all goals</div>
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 30, fontWeight: 700, margin: '5px 0 12px' }}>
             <Amount>{summary.totalSavedF}</Amount> <span style={{ fontSize: 15, color: colors.accentGreen3 }}>/ <Amount>{summary.totalTargetF}</Amount></span>
@@ -80,7 +80,7 @@ function GoalCard({ r, onContribute, onEdit, onDelete }) {
   }
 
   return (
-    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 9 }}>
+    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 9 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 15 }}>
         <span style={{ fontWeight: 600 }}>{r.label}</span>
         <span>
@@ -138,7 +138,7 @@ function GoalEditor({ r, onSave, onCancel, onDelete }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 9, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 9, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: 16 }}>
       <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Goal name" style={inputStyle} />
       <div style={{ display: 'flex', gap: 8 }}>
         <input value={saved} onChange={(e) => setSaved(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="Saved ₹" style={{ ...inputStyle, flex: 1 }} />
@@ -200,7 +200,7 @@ function AddGoal({ onAdd, txns }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 9, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 9, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: 16 }}>
       <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Goa trip, new phone, rainy day" style={inputStyle} />
       <input value={target} onChange={(e) => setTarget(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="Target ₹" style={inputStyle} />
       <div>

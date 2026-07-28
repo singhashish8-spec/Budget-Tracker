@@ -76,7 +76,7 @@ function EventCard({ r, onEdit, onDelete, categories }) {
   const statusLabel = r.status === 'upcoming' ? 'Upcoming' : r.status === 'past' ? 'Ended' : 'Happening now';
 
   return (
-    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 9 }}>
+    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 9 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 34, height: 34, borderRadius: 11, background: tint(r.color), color: r.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
           {r.mono}
@@ -131,7 +131,7 @@ function EventEditor({ r, categories, onSave, onCancel, onDelete }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 9, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 9, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: 16 }}>
       <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Diwali 2026" style={inputStyle} />
       <div style={{ display: 'flex', gap: 8 }}>
         <input type="date" value={start} onChange={(e) => setStart(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
@@ -179,7 +179,7 @@ function AddEventBudget({ onAdd, categories }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 9, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 9, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: 16 }}>
       <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Diwali 2026, Priya's wedding" style={inputStyle} />
       <div>
         <div style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 5 }}>Date range</div>

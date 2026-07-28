@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { colors, fonts, radii, type } from '../theme/tokens';
+import { colors, fonts, radii, tracking, type } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { currentMonthKey, currentMonthLabel, ordinal, daysUntilPayday, payCycleWindow, txnWhen } from '../utils/date';
 import { useApp } from '../state/AppContext';
@@ -10,7 +10,7 @@ import QuickAddBar from '../components/QuickAddBar';
 import DuplicateBanner from '../components/DuplicateBanner';
 import Amount from '../components/Amount';
 import Collapse from '../components/Collapse';
-import { Card, Screen, SectionHeader, ListRow, ProgressBar, Mono, EmptyState, CountUp, Icon } from '../components/ui';
+import { Card, Screen, SectionHeader, List, ListRow, ProgressBar, Mono, EmptyState, CountUp, Icon } from '../components/ui';
 
 export default function HomeScreen() {
   const { state, go, goReview, openCategorySheet, openDetail, togglePrivacy } = useApp();
@@ -125,10 +125,10 @@ export default function HomeScreen() {
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 42,
             padding: 'calc(env(safe-area-inset-top, 0px) + 9px) 74px 9px 20px',
-            background: colors.bgApp, borderBottom: `1px solid ${colors.divider}`,
+            background: colors.bgApp, borderBottom: `var(--hairline) solid ${colors.divider}`,
             transform: condensed ? 'translateY(0)' : 'translateY(-101%)',
             opacity: condensed ? 1 : 0,
-            transition: 'transform 0.26s cubic-bezier(0.2,0.75,0.3,1), opacity 0.2s ease',
+            transition: 'transform 0.26s var(--ease-ios), opacity 0.2s ease',
             pointerEvents: condensed ? 'auto' : 'none',
           }}
         >
@@ -140,7 +140,7 @@ export default function HomeScreen() {
 
       <div style={{ padding: '0 4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div style={{ position: 'relative' }}>
-          <div style={{ fontFamily: fonts.heading, fontSize: type.screen, fontWeight: 700 }}>Home</div>
+          <div style={{ fontFamily: fonts.heading, fontSize: type.screen, fontWeight: 700, letterSpacing: tracking.screen }}>Home</div>
           {/* Period selector — switch the month the whole dashboard shows. */}
           <button
             onClick={() => { haptics.select(); setPickerOpen((o) => !o); }}
@@ -285,7 +285,7 @@ export default function HomeScreen() {
         <CountUp
           value={spend}
           format={fmt}
-          style={{ display: 'block', fontFamily: fonts.heading, fontSize: type.display, fontWeight: 700, margin: '6px 0 14px' }}
+          style={{ display: 'block', fontFamily: fonts.heading, fontSize: type.display, fontWeight: 700, letterSpacing: tracking.display, margin: '6px 0 14px' }}
         />
         <ProgressBar pct={spendPct} height={6} color={colors.accentGreen1} track="rgba(247,244,238,0.15)" />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
@@ -378,6 +378,7 @@ export default function HomeScreen() {
       {upcomingBills.length > 0 && (
         <Card style={{ gap: 4 }}>
           <SectionHeader title="Upcoming bills" action="View all" onAction={() => go('reminders')} style={{ marginBottom: 8 }} />
+          <List>
           {upcomingBills.map((r) => (
             <ListRow
               key={r.id}
@@ -388,12 +389,14 @@ export default function HomeScreen() {
               trailing={<Amount style={{ fontSize: type.callout, fontWeight: 600 }}>{fmt(r.amount)}</Amount>}
             />
           ))}
+          </List>
         </Card>
       )}
 
       <Card style={{ gap: 2 }}>
         <SectionHeader title="Recent" action="See all" onAction={() => go('transactions')} style={{ marginBottom: 8 }} />
         {recent.length === 0 && <EmptyState text="No transactions yet — tap + to add one" />}
+        <List>
         {recent.map((t) => {
           const cat = categories.find((c) => c.id === t.cat);
           const uncat = !t.cat;
@@ -415,6 +418,7 @@ export default function HomeScreen() {
             />
           );
         })}
+        </List>
       </Card>
     </Screen>
   );

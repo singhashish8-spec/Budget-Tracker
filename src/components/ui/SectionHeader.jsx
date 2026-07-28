@@ -1,4 +1,4 @@
-import { colors, fonts, type } from '../../theme/tokens';
+import { colors, fonts, tracking, type } from '../../theme/tokens';
 import * as haptics from '../../services/haptics';
 
 // A card's title row, optionally with an action on the right ("View all",
@@ -15,7 +15,7 @@ export default function SectionHeader({ title, action, onAction, style }) {
         ...style,
       }}
     >
-      <div style={{ fontFamily: fonts.heading, fontSize: type.title, fontWeight: 600 }}>{title}</div>
+      <div style={{ fontFamily: fonts.heading, fontSize: type.title, fontWeight: 600, letterSpacing: tracking.title }}>{title}</div>
       {action != null && (
         onAction
           ? (

@@ -1,5 +1,15 @@
-import { colors, type } from '../../theme/tokens';
+import { colors, metrics, type } from '../../theme/tokens';
 import * as haptics from '../../services/haptics';
+
+// The disclosure chevron iOS puts on any row that pushes a new screen. Drawn
+// here rather than imported so a row never depends on the icon set.
+function Chevron() {
+  return (
+    <svg width="8" height="13" viewBox="0 0 8 13" aria-hidden="true" style={{ flexShrink: 0, color: colors.textTertiary }}>
+      <path d="M1.5 1.5 6.5 6.5l-5 5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 // The row that carries most of the app's content: a leading chip, a title with
 // secondary meta under it, and something (usually an amount) on the trailing
@@ -12,6 +22,10 @@ export default function ListRow({
   trailing,
   subtitleColor = colors.textSecondary,
   subtitleWeight = 400,
+  // Set on rows that navigate somewhere. iOS shows a disclosure chevron on
+  // exactly those, which is how you can tell a push from an in-place action
+  // without tapping it.
+  chevron = false,
   onClick,
   style,
   ...rest
@@ -29,10 +43,16 @@ export default function ListRow({
         alignItems: 'center',
         gap: 11,
         padding: '8px 0',
+        // 44pt is Apple's minimum tappable height and the metric every iOS list
+        // is built on. Rows here were free-height and often came out under it.
+        minHeight: metrics.row,
         width: '100%',
         textAlign: 'left',
         cursor: onClick ? 'pointer' : 'default',
-        background: 'transparent',
+        // No inline `background` here. It used to be 'transparent', and an
+        // inline style beats a stylesheet — which silently killed the iOS press
+        // fill that `.bt-list > *:active` paints. Buttons already reset to no
+        // background globally, and a div is transparent by default.
         color: colors.ink,
         ...style,
       }}
@@ -58,6 +78,7 @@ export default function ListRow({
         )}
       </div>
       {trailing != null && <div style={{ flexShrink: 0 }}>{trailing}</div>}
+      {chevron && <Chevron />}
     </Tag>
   );
 }

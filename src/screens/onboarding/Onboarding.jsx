@@ -57,7 +57,7 @@ function StepSignIn() {
           Link what you use. We'll read your bills and statements, sort every expense, and flag anything we can't recognise.
         </div>
       </div>
-      <div style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 1.5, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: '13px 14px' }}>
+      <div style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 1.5, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '13px 14px' }}>
         Your data is encrypted and stays on this device. You can back it up to Google Drive anytime from Settings.
       </div>
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -87,7 +87,7 @@ function StepTrack() {
             <button
               key={a.key}
               onClick={() => toggleAccount(a.key)}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 16, padding: '13px 14px', cursor: 'pointer', textAlign: 'left', width: '100%' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '13px 14px', cursor: 'pointer', textAlign: 'left', width: '100%' }}
             >
               <div style={{ width: 38, height: 38, borderRadius: 12, background: tint(a.color), color: a.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
                 {a.mono}

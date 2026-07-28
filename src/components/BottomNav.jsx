@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { colors } from '../theme/tokens';
+import { colors, metrics } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 import * as haptics from '../services/haptics';
 import { alertCount } from '../state/selectors';
@@ -22,18 +22,25 @@ export default function BottomNav() {
 
   return (
     <div
+      className="bt-material"
       style={{
         position: 'fixed',
         left: 0,
         right: 0,
         bottom: 0,
         zIndex: 30,
-        background: colors.cardSurface,
-        backdropFilter: 'blur(12px)',
-        borderTop: `1px solid ${colors.cardBorder}`,
+        background: colors.chromeSurface,
+        // No inline backdropFilter. It used to hardcode blur(12px), and because
+        // an inline style beats a stylesheet that made the tab bar blur LESS
+        // than the cards floating above it — backwards, and the opposite of iOS
+        // where the chrome is the most strongly materialised surface. The blur
+        // now comes from the .bt-material class above.
+        borderTop: `var(--hairline) solid ${colors.divider}`,
         display: 'flex',
         alignItems: 'center',
-        padding: '8px 8px calc(env(safe-area-inset-bottom, 0px) + 14px)',
+        // UITabBar is 49pt of content sitting on top of the home-indicator inset.
+        minHeight: metrics.tabBar,
+        padding: '6px 8px calc(env(safe-area-inset-bottom, 0px) + 10px)',
       }}
     >
       {TABS.map((tab) =>
@@ -106,7 +113,7 @@ export default function BottomNav() {
       {choosing && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 55, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
           <div onClick={() => setChoosing(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.4)' }} />
-          <div style={{ position: 'relative', background: colors.bgApp, borderRadius: '24px 24px 0 0', padding: '20px 16px calc(env(safe-area-inset-bottom, 0px) + 24px)', animation: 'sheetup 0.22s ease-out' }}>
+          <div style={{ position: 'relative', background: colors.bgApp, borderRadius: '14px 14px 0 0', padding: '20px 16px calc(env(safe-area-inset-bottom, 0px) + 24px)', animation: 'sheetup 0.22s ease-out' }}>
             <div style={{ width: 40, height: 4, borderRadius: 100, background: colors.track, margin: '0 auto 16px' }} />
             <button
               onClick={() => {
@@ -143,6 +150,6 @@ const choiceStyle = {
   cursor: 'pointer',
   background: colors.cardSurface,
   border: `1px solid ${colors.cardBorder}`,
-  borderRadius: 16,
+  borderRadius: 12,
   padding: '14px 16px',
 };

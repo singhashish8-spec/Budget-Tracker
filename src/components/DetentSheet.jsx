@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { colors } from '../theme/tokens';
+import { colors, radii } from '../theme/tokens';
 import * as haptics from '../services/haptics';
 
 // An iOS-style bottom sheet with two resting heights ("detents"):
@@ -131,10 +131,12 @@ export default function DetentSheet({ onClose, header, children, footer, motion 
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        className="bt-material bt-sheet"
         style={{
           position: 'relative',
-          background: colors.bgApp,
-          borderRadius: '24px 24px 0 0',
+          // Chrome, not page background — see the note in Sheet.jsx.
+          background: colors.chromeSurface,
+          borderRadius: `${radii.sheet}px ${radii.sheet}px 0 0`,
           height,
           display: 'flex',
           flexDirection: 'column',
@@ -144,8 +146,9 @@ export default function DetentSheet({ onClose, header, children, footer, motion 
           // No transition while the finger is down — the sheet must track it 1:1.
           transition: dragging || !animated
             ? 'none'
-            : 'transform 0.28s cubic-bezier(0.2,0.75,0.3,1), height 0.28s cubic-bezier(0.2,0.75,0.3,1), opacity 0.22s ease',
-          boxShadow: '0 -10px 34px rgba(0,0,0,0.20)',
+            : 'transform 0.38s var(--ease-ios), height 0.38s var(--ease-ios), opacity 0.24s ease',
+          // Shadow lives in .bt-sheet (CSS) so it can't override the glass
+          // specular highlight the way an inline boxShadow would.
           willChange: 'transform',
         }}
       >
@@ -161,7 +164,7 @@ export default function DetentSheet({ onClose, header, children, footer, motion 
         {header != null && (
           <div
             onTouchStart={onHandleTouchStart}
-            style={{ flexShrink: 0, padding: '4px 16px 12px', borderBottom: `1px solid ${colors.divider}`, touchAction: 'none' }}
+            style={{ flexShrink: 0, padding: '4px 16px 12px', borderBottom: `var(--hairline) solid ${colors.divider}`, touchAction: 'none' }}
           >
             {header}
           </div>
@@ -172,7 +175,7 @@ export default function DetentSheet({ onClose, header, children, footer, motion 
         </div>
 
         {footer != null && (
-          <div style={{ flexShrink: 0, padding: '12px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)', borderTop: `1px solid ${colors.divider}`, background: colors.bgApp }}>
+          <div style={{ flexShrink: 0, padding: '12px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)', borderTop: `var(--hairline) solid ${colors.divider}`, background: colors.chromeSurface }}>
             {footer}
           </div>
         )}

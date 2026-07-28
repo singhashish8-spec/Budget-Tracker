@@ -87,7 +87,7 @@ export default function BudgetsScreen() {
         <div style={{ fontSize: 13, color: colors.textSecondary }}>{monthLabel}</div>
       </div>
 
-      <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: 18, color: colors.onPrimary }}>
+      <div style={{ background: colors.surfaceDark, borderRadius: 12, padding: 18, color: colors.onPrimary }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
           <div style={{ fontSize: 13, color: colors.accentGreen3 }}>Overall</div>
           <div style={{ fontSize: 14 }}>
@@ -113,7 +113,7 @@ export default function BudgetsScreen() {
           const isOpen = expandedBudget === b.cat;
           const d = categoryDetail(txns, categories, b.cat, { salaryDay: state.salaryDay });
           return (
-            <div key={b.cat} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 18, padding: '14px 15px' }}>
+            <div key={b.cat} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '14px 15px' }}>
               <button
                 onClick={() => setExpandedBudget(isOpen ? null : b.cat)}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer' }}
@@ -170,7 +170,7 @@ export default function BudgetsScreen() {
 
       <button
         onClick={() => set({ budgetSheetOpen: true })}
-        style={{ border: `1.5px dashed ${colors.track}`, borderRadius: 18, padding: 14, textAlign: 'center', fontSize: 14, fontWeight: 600, color: colors.textSecondary, cursor: 'pointer' }}
+        style={{ border: `1.5px dashed ${colors.track}`, borderRadius: 12, padding: 14, textAlign: 'center', fontSize: 14, fontWeight: 600, color: colors.textSecondary, cursor: 'pointer' }}
       >
         + Set a new budget
       </button>

@@ -48,7 +48,7 @@ export default function HamburgerDrawer() {
               gap: 12,
               background: colors.cardSurface,
               border: `1px solid ${colors.cardBorder}`,
-              borderRadius: 16,
+              borderRadius: 12,
               padding: '13px 14px',
               cursor: 'pointer',
               textAlign: 'left',

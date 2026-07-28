@@ -23,7 +23,7 @@ function Row() {
 
 function Card({ children }) {
   return (
-    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 20, padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {children}
     </div>
   );
@@ -39,7 +39,7 @@ export default function SkeletonHome() {
         </div>
 
         {/* Hero */}
-        <div style={{ background: colors.surfaceDark, borderRadius: 20, padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 14, opacity: 0.6 }}>
+        <div style={{ background: colors.surfaceDark, borderRadius: 12, padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 14, opacity: 0.6 }}>
           <div className="skl" style={{ width: '40%', height: 11 }} />
           <div className="skl" style={{ width: '55%', height: 30 }} />
           <div className="skl" style={{ width: '100%', height: 6, borderRadius: 100 }} />

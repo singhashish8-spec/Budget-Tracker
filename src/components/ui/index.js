@@ -15,6 +15,7 @@ export { default as Card } from './Card';
 export { default as Screen } from './Screen';
 export { default as SectionHeader } from './SectionHeader';
 export { default as ListRow } from './ListRow';
+export { default as List } from './List';
 export { default as ProgressBar } from './ProgressBar';
 export { default as Chip } from './Chip';
 export { default as EmptyState } from './EmptyState';
