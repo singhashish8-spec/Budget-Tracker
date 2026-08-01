@@ -115,7 +115,9 @@ export const type = {
   callout: 14.5, // row titles, primary body
   title: 17, // card headings
   screen: 30, // screen title — iOS large titles are 34pt; 30 suits a wider face
-  display: 36, // the one hero figure
+  display: 48, // the one hero figure — Home's balance. Big enough to be the
+  // page's single anchor rather than one heading among several; the negative
+  // tracking below keeps it from reading loose at this size.
 };
 
 // Large text needs negative tracking to read as iOS. SF Pro Display tightens

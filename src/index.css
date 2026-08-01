@@ -247,6 +247,113 @@
   --c-cardShadow: none;
 }
 
+/* Clay — claymorphism. Puffy, tactile surfaces via a dual offset shadow (a
+   soft dark shadow on one side, a soft light one on the other) instead of a
+   border, plus a faint accent tint on the background and cards so the mood
+   follows whichever accent colour the user has picked — the same trick the
+   Frosted skin's app-shell wash uses. Shape (radius) is untouched: skins only
+   ever move colour and shadow, never layout, so every skin drops onto the
+   same markup with zero component changes. */
+:root[data-surface='clay'] {
+  --c-bgApp: color-mix(in srgb, var(--c-primary) 7%, #F2EEE6);
+  --c-bgDesk: color-mix(in srgb, var(--c-primary) 11%, #E9E3D6);
+  --c-ink: #2A2620;
+  --c-textSecondary: #7C7568;
+  --c-textTertiary: #A39C8C;
+  --c-cardSurface: color-mix(in srgb, var(--c-primary) 5%, #FBF9F4);
+  --c-cardBorder: transparent;
+  --c-divider: color-mix(in srgb, var(--c-primary) 9%, #E7E0D1);
+  --c-track: color-mix(in srgb, var(--c-primary) 13%, #DCD3C0);
+  --c-cardShadow:
+    7px 7px 15px color-mix(in srgb, var(--c-primary) 20%, rgba(30, 24, 10, 0.18)),
+    -6px -6px 13px rgba(255, 255, 255, 0.85);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-surface='clay']:not([data-theme='light']) {
+    --c-bgApp: color-mix(in srgb, var(--c-primary) 16%, #16130F);
+    --c-bgDesk: color-mix(in srgb, var(--c-primary) 12%, #0F0D0A);
+    --c-ink: #F1EBE0;
+    --c-textSecondary: #A79C8A;
+    --c-textTertiary: #6E6656;
+    --c-cardSurface: color-mix(in srgb, var(--c-primary) 12%, #1F1B15);
+    --c-cardBorder: transparent;
+    --c-divider: color-mix(in srgb, var(--c-primary) 16%, #2A2419);
+    --c-track: color-mix(in srgb, var(--c-primary) 20%, #3A3225);
+    --c-cardShadow:
+      7px 7px 16px rgba(0, 0, 0, 0.55),
+      -6px -6px 13px color-mix(in srgb, var(--c-primary) 22%, transparent);
+  }
+}
+:root[data-surface='clay'][data-theme='dark'] {
+  --c-bgApp: color-mix(in srgb, var(--c-primary) 16%, #16130F);
+  --c-bgDesk: color-mix(in srgb, var(--c-primary) 12%, #0F0D0A);
+  --c-ink: #F1EBE0;
+  --c-textSecondary: #A79C8A;
+  --c-textTertiary: #6E6656;
+  --c-cardSurface: color-mix(in srgb, var(--c-primary) 12%, #1F1B15);
+  --c-cardBorder: transparent;
+  --c-divider: color-mix(in srgb, var(--c-primary) 16%, #2A2419);
+  --c-track: color-mix(in srgb, var(--c-primary) 20%, #3A3225);
+  --c-cardShadow:
+    7px 7px 16px rgba(0, 0, 0, 0.55),
+    -6px -6px 13px color-mix(in srgb, var(--c-primary) 22%, transparent);
+}
+
+/* Soft — neomorphism. Cards use nearly the same fill as the page background
+   (no border at all) and let a dual soft shadow carry the shape instead —
+   the classic "pressed into the surface" neomorphic look.
+
+   Neomorphism's usual failure is text that goes nearly invisible because
+   the whole palette — surface AND ink — gets flattened into the same narrow
+   band of greys. That's deliberately NOT done here: only the SURFACE tokens
+   go low-contrast; --c-ink and --c-textSecondary stay at strong, standard
+   contrast against the background in both modes, so a row title or a rupee
+   figure never depends on the shadow to be legible. */
+:root[data-surface='soft'] {
+  --c-bgApp: #E9EDF1;
+  --c-bgDesk: #E2E7EC;
+  --c-ink: #20242B;
+  --c-textSecondary: #5B6472;
+  --c-textTertiary: #8B93A0;
+  --c-cardSurface: #E9EDF1;
+  --c-cardBorder: transparent;
+  --c-divider: rgba(32, 36, 43, 0.08);
+  --c-track: #D6DBE2;
+  --c-cardShadow:
+    6px 6px 13px rgba(163, 177, 198, 0.55),
+    -6px -6px 13px rgba(255, 255, 255, 0.9);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-surface='soft']:not([data-theme='light']) {
+    --c-bgApp: #22262B;
+    --c-bgDesk: #1D2024;
+    --c-ink: #F0F1F3;
+    --c-textSecondary: #A9AEB6;
+    --c-textTertiary: #6E737B;
+    --c-cardSurface: #22262B;
+    --c-cardBorder: transparent;
+    --c-divider: rgba(255, 255, 255, 0.06);
+    --c-track: #2B2F35;
+    --c-cardShadow:
+      6px 6px 14px rgba(0, 0, 0, 0.5),
+      -6px -6px 14px rgba(255, 255, 255, 0.04);
+  }
+}
+:root[data-surface='soft'][data-theme='dark'] {
+  --c-bgApp: #22262B;
+  --c-bgDesk: #1D2024;
+  --c-ink: #F0F1F3;
+  --c-textSecondary: #A9AEB6;
+  --c-textTertiary: #6E737B;
+  --c-cardSurface: #22262B;
+  --c-cardBorder: transparent;
+  --c-divider: rgba(255, 255, 255, 0.06);
+  --c-track: #2B2F35;
+  --c-cardShadow:
+    6px 6px 14px rgba(0, 0, 0, 0.5),
+    -6px -6px 14px rgba(255, 255, 255, 0.04);
+}
+
 /* ── Frosted-glass surface (opt-in: Settings → Appearance → Surface) ──────────
    A separate dial from light/dark + accent. Cards keep reading the same tokens,
    so swapping --c-cardSurface / --c-cardBorder for translucent values turns
@@ -377,6 +484,392 @@
     radial-gradient(78% 52% at 108% 8%, color-mix(in srgb, var(--c-accentGreen1) 20%, transparent), transparent 56%),
     radial-gradient(95% 62% at 62% 110%, color-mix(in srgb, var(--c-primary) 14%, transparent), transparent 62%);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DEPTH SKINS — Liquid Glass and Spatial
+   ═══════════════════════════════════════════════════════════════════════════
+
+   Two skins built on the Frosted foundation above, plus the shared machinery
+   both need. They are the app's most expensive looks by a wide margin, so
+   read the tiering rules first:
+
+   `data-depth` (services/depth.js) gates cost, and is set from Settings with a
+   sensible default picked by sniffing the device:
+
+     max       every effect — translucent CARDS with their own blur, edge
+               refraction, tilt-tracked specular, animated aurora
+     balanced  blur confined to chrome and sheets (the shipped Frosted rule),
+               static highlights, no sensors, no aurora animation
+     off       flat translucency, no blur anywhere, nothing moves
+
+   Everything below is written so that dropping a tier removes work rather than
+   changing layout: no tier alters a single box's size or position, so switching
+   between them can never reflow a screen.
+
+   The rule this file already learned the hard way — and which `max` deliberately
+   relaxes only for devices that measured well — is that each backdrop-filter is
+   a separate compositor layer re-sampling everything behind it every frame.
+   Sixty of them on Transactions is what made this app stutter once already. */
+
+/* ── Shared: the tilt signal ────────────────────────────────────────────────
+   Written by services/depth.js as two numbers in -1..1. Declared here so every
+   rule that reads them resolves to "centred" when the engine is off, on the
+   web, or before the first sensor event — no rule ever needs a fallback. */
+:root {
+  --tilt-x: 0;
+  --tilt-y: 0;
+  /* How far things travel at full tilt, pre-multiplied into plain lengths.
+     The multipliers live in these definitions rather than at the use sites
+     because `calc(50% + var(--nested-calc) * 2)` is valid but only resolves at
+     computed-value time — and if an engine disagrees, the whole declaration is
+     silently dropped. A finished length can't fail that way. */
+  --tilt-gloss-x: calc(var(--tilt-x) * 31px);
+  --tilt-gloss-y: calc(var(--tilt-y) * 14px);
+}
+
+/* ── Shared: film grain ─────────────────────────────────────────────────────
+   A fixed, pointer-transparent tile over the whole app. Perfectly smooth
+   gradients are the giveaway that glass is computed rather than photographed;
+   a little noise is what sells it. One fixed layer, never repainted. */
+:root:is([data-surface='liquid'], [data-surface='spatial']) body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root[data-depth='off'] body::after { display: none; }
+
+/* ── Shared: the aurora ─────────────────────────────────────────────────────
+   Frost needs something worth looking at behind it. Both skins make the app
+   shell itself nearly transparent and put a wash of the user's ACCENT colour on
+   a fixed layer behind everything, so the whole mood follows the accent they
+   picked.
+
+   It lives on `body::before` with a negative z-index rather than on the shell's
+   background-image (the approach Frosted uses) for one reason: this one MOVES
+   at max tier, and animating a `transform` on a single fixed, promoted layer is
+   GPU work, whereas animating `background-position` on the scrolling shell
+   forces a full-screen repaint every frame. Same picture, wildly different
+   cost. */
+:root:is([data-surface='liquid'], [data-surface='spatial']) body::before {
+  content: '';
+  position: fixed;
+  inset: -30%;
+  z-index: -1;
+  pointer-events: none;
+  will-change: transform;
+  background-color: var(--c-bgDesk);
+  background-image:
+    radial-gradient(38% 30% at 22% 18%, color-mix(in srgb, var(--c-primary) 62%, transparent), transparent 62%),
+    radial-gradient(34% 28% at 78% 26%, color-mix(in srgb, var(--c-accentGreen1) 55%, transparent), transparent 60%),
+    radial-gradient(42% 34% at 62% 78%, color-mix(in srgb, var(--c-primary) 45%, transparent), transparent 64%),
+    radial-gradient(30% 26% at 14% 76%, color-mix(in srgb, var(--c-accentGreen2) 42%, transparent), transparent 58%);
+}
+@keyframes bt-aurora {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  33%  { transform: translate3d(2.5%, -2%, 0) scale(1.08); }
+  66%  { transform: translate3d(-2%, 2.5%, 0) scale(1.04); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+:root[data-depth='max']:is([data-surface='liquid'], [data-surface='spatial']) body::before {
+  animation: bt-aurora 34s var(--ease-ios-standard) infinite;
+}
+
+/* ═══ LIQUID GLASS ══════════════════════════════════════════════════════════
+   Apple's iOS 26 material, as far as a WebView can honestly take it.
+   Frosted's translucency is the floor; what's added on top is the part people
+   actually recognise:
+
+     · refraction at the edges, not just blur behind the face (SVG displacement
+       — see components/GlassFilters.jsx for why it rides an overlay)
+     · a specular highlight that TRACKS THE DEVICE rather than sitting still,
+       which is the single strongest cue that a surface is physical
+     · a bright rim on every edge, brightest where the light is coming from,
+       instead of the one static top-lip hairline Frosted uses
+     · concentric radii — an outer corner equal to the inner corner plus the
+       padding between them, which is what makes nested Apple surfaces sit
+       correctly inside one another
+
+   Tokens are Apple's own label/separator alphas (translucent, so text picks up
+   whatever is behind it) rather than flat greys — same reasoning as Frosted. */
+:root[data-surface='liquid'] {
+  --ios-material: blur(34px) saturate(190%) brightness(1.06);
+  --ios-specular: rgba(255, 255, 255, 0.72);
+  --c-bgApp: rgba(255, 255, 255, 0.05);
+  --c-bgDesk: #E7ECF2;
+  --c-cardSurface: rgba(255, 255, 255, 0.50);
+  --c-cardBorder: rgba(255, 255, 255, 0.62);
+  --c-divider: rgba(60, 60, 67, 0.24);
+  --c-ink: #000000;
+  --c-textSecondary: rgba(60, 60, 67, 0.62);
+  --c-textTertiary: rgba(60, 60, 67, 0.32);
+  --c-track: rgba(120, 120, 128, 0.18);
+  --c-chromeSurface: rgba(255, 255, 255, 0.62);
+  --c-cardShadow: none;
+  /* The rim. Four insets: a bright top lip, a softer bottom bounce, and left/
+     right edges whose strength is driven by tilt so the lit side changes as the
+     phone turns. calc() on an inset spread is cheap — no layout, no new layer. */
+  --liquid-rim:
+    inset 0 var(--hairline) 0 0 var(--ios-specular),
+    inset 0 calc(var(--hairline) * -1) 0 0 rgba(255, 255, 255, 0.30),
+    inset var(--hairline) 0 0 0 rgba(255, 255, 255, calc(0.34 + var(--tilt-x) * 0.30)),
+    inset calc(var(--hairline) * -1) 0 0 0 rgba(255, 255, 255, calc(0.34 - var(--tilt-x) * 0.30));
+  --liquid-lift: 0 1px 2px rgba(16, 20, 24, 0.06), 0 10px 30px rgba(16, 20, 24, 0.10);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-surface='liquid']:not([data-theme='light']) {
+    --ios-specular: rgba(255, 255, 255, 0.20);
+    --c-bgDesk: #0A0C10;
+    --c-cardSurface: rgba(30, 30, 34, 0.52);
+    --c-cardBorder: rgba(255, 255, 255, 0.14);
+    --c-divider: rgba(84, 84, 88, 0.60);
+    --c-ink: #FFFFFF;
+    --c-textSecondary: rgba(235, 235, 245, 0.62);
+    --c-textTertiary: rgba(235, 235, 245, 0.32);
+    --c-track: rgba(120, 120, 128, 0.30);
+    --c-chromeSurface: rgba(28, 28, 32, 0.70);
+    --liquid-rim:
+      inset 0 var(--hairline) 0 0 var(--ios-specular),
+      inset 0 calc(var(--hairline) * -1) 0 0 rgba(255, 255, 255, 0.07),
+      inset var(--hairline) 0 0 0 rgba(255, 255, 255, calc(0.10 + var(--tilt-x) * 0.10)),
+      inset calc(var(--hairline) * -1) 0 0 0 rgba(255, 255, 255, calc(0.10 - var(--tilt-x) * 0.10));
+    --liquid-lift: 0 1px 2px rgba(0, 0, 0, 0.40), 0 12px 34px rgba(0, 0, 0, 0.46);
+  }
+}
+:root[data-surface='liquid'][data-theme='dark'] {
+  --ios-specular: rgba(255, 255, 255, 0.20);
+  --c-bgDesk: #0A0C10;
+  --c-cardSurface: rgba(30, 30, 34, 0.52);
+  --c-cardBorder: rgba(255, 255, 255, 0.14);
+  --c-divider: rgba(84, 84, 88, 0.60);
+  --c-ink: #FFFFFF;
+  --c-textSecondary: rgba(235, 235, 245, 0.62);
+  --c-textTertiary: rgba(235, 235, 245, 0.32);
+  --c-track: rgba(120, 120, 128, 0.30);
+  --c-chromeSurface: rgba(28, 28, 32, 0.70);
+  --liquid-rim:
+    inset 0 var(--hairline) 0 0 var(--ios-specular),
+    inset 0 calc(var(--hairline) * -1) 0 0 rgba(255, 255, 255, 0.07),
+    inset var(--hairline) 0 0 0 rgba(255, 255, 255, calc(0.10 + var(--tilt-x) * 0.10)),
+    inset calc(var(--hairline) * -1) 0 0 0 rgba(255, 255, 255, calc(0.10 - var(--tilt-x) * 0.10));
+  --liquid-lift: 0 1px 2px rgba(0, 0, 0, 0.40), 0 12px 34px rgba(0, 0, 0, 0.46);
+}
+
+/* Every glass surface gets the rim + lift. Matches on the inline card-surface
+   style, exactly like the Frosted and elevation rules, so it reaches cards that
+   still hand-write their markup as well as ones going through <Card>. */
+:root[data-surface='liquid'] [style*="--c-cardSurface"],
+:root[data-surface='liquid'] .bt-material {
+  box-shadow: var(--liquid-rim), var(--liquid-lift);
+}
+
+/* Chrome and sheets always carry the material. */
+:root[data-surface='liquid'] .bt-material {
+  -webkit-backdrop-filter: var(--ios-material);
+  backdrop-filter: var(--ios-material);
+}
+:root[data-surface='liquid'] .bt-sheet {
+  box-shadow: var(--liquid-rim), 0 -12px 40px rgba(0, 0, 0, 0.30);
+}
+
+/* max tier: CARDS get their own blur too. This is the expensive line in the
+   whole file — the one the sixty-day-group incident was about — so it is gated
+   behind both the top tier and a device that measured well enough to be given
+   it. A smaller radius than chrome keeps the per-layer cost down. */
+:root[data-surface='liquid'][data-depth='max'] [style*="--c-cardSurface"] {
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  backdrop-filter: blur(18px) saturate(170%);
+}
+
+/* The moving highlight. A wide, soft radial that slides with the device and
+   sits ON TOP of the surface — pointer-events off so it can never eat a tap.
+   Only on chrome and sheets: these are positioned elements already, so adding a
+   pseudo-element is safe, whereas cards are plain static divs where forcing a
+   containing block could trap a screen's absolutely-positioned child. */
+:root[data-surface='liquid'] .bt-material::before,
+:root[data-surface='spatial'] .bt-material::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 90% at calc(50% + var(--tilt-gloss-x)) calc(0% + var(--tilt-gloss-y)),
+    rgba(255, 255, 255, 0.34),
+    rgba(255, 255, 255, 0.06) 42%,
+    transparent 68%
+  );
+}
+/* Refraction rides the highlight layer, so the warp distorts light rather than
+   text. max only — an SVG filter is a real per-frame cost. */
+:root[data-surface='liquid'][data-depth='max'] .bt-material::before {
+  filter: url(#bt-liquid-warp-soft);
+}
+:root[data-depth='off'] .bt-material::before { display: none; }
+
+/* Concentric radii. iOS nests a 10pt inner corner inside a 16pt outer one so
+   the gap between them stays visually constant; matching radii at different
+   sizes is what makes a naive nested card look subtly wrong. */
+:root[data-surface='liquid'] .bt-sheet { border-radius: 22px 22px 0 0; }
+
+/* ═══ SPATIAL UI ════════════════════════════════════════════════════════════
+   Content on layered planes in a perspective scene, the way a headset OS
+   arranges panels in a room. Everything here is a transform, which is the
+   cheapest thing to animate and the only way this is affordable at all.
+
+     · one shared perspective on the scroll container
+     · cards pushed forward on Z, so they sit ABOVE the aurora rather than on it
+     · the whole plane counter-rotates to the device tilt, so moving the phone
+       looks like moving around a fixed scene rather than moving the scene
+     · depth-of-field: the further back a layer, the softer it is
+
+   Uses the same translucent token family as Liquid Glass — a spatial panel that
+   isn't see-through is just a card with a shadow. */
+:root[data-surface='spatial'] {
+  --ios-material: blur(26px) saturate(175%);
+  --ios-specular: rgba(255, 255, 255, 0.62);
+  --c-bgApp: rgba(255, 255, 255, 0.04);
+  --c-bgDesk: #DFE6EE;
+  --c-cardSurface: rgba(255, 255, 255, 0.46);
+  --c-cardBorder: rgba(255, 255, 255, 0.55);
+  --c-divider: rgba(60, 60, 67, 0.22);
+  --c-ink: #0B0D10;
+  --c-textSecondary: rgba(60, 60, 67, 0.62);
+  --c-textTertiary: rgba(60, 60, 67, 0.32);
+  --c-track: rgba(120, 120, 128, 0.18);
+  --c-chromeSurface: rgba(255, 255, 255, 0.58);
+  --c-cardShadow: none;
+  /* Depth reads as shadow distance: the further a panel floats off its
+     backdrop, the longer and softer the shadow it casts. */
+  --spatial-cast: 0 2px 6px rgba(12, 18, 28, 0.10), 0 18px 44px rgba(12, 18, 28, 0.16);
+  --spatial-rim:
+    inset 0 var(--hairline) 0 0 var(--ios-specular),
+    inset 0 calc(var(--hairline) * -1) 0 0 rgba(255, 255, 255, 0.22);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-surface='spatial']:not([data-theme='light']) {
+    --ios-specular: rgba(255, 255, 255, 0.18);
+    --c-bgDesk: #070A0E;
+    --c-cardSurface: rgba(26, 28, 34, 0.50);
+    --c-cardBorder: rgba(255, 255, 255, 0.12);
+    --c-divider: rgba(84, 84, 88, 0.58);
+    --c-ink: #FFFFFF;
+    --c-textSecondary: rgba(235, 235, 245, 0.62);
+    --c-textTertiary: rgba(235, 235, 245, 0.32);
+    --c-track: rgba(120, 120, 128, 0.30);
+    --c-chromeSurface: rgba(24, 26, 32, 0.68);
+    --spatial-cast: 0 2px 8px rgba(0, 0, 0, 0.45), 0 20px 50px rgba(0, 0, 0, 0.55);
+    --spatial-rim:
+      inset 0 var(--hairline) 0 0 var(--ios-specular),
+      inset 0 calc(var(--hairline) * -1) 0 0 rgba(255, 255, 255, 0.06);
+  }
+}
+:root[data-surface='spatial'][data-theme='dark'] {
+  --ios-specular: rgba(255, 255, 255, 0.18);
+  --c-bgDesk: #070A0E;
+  --c-cardSurface: rgba(26, 28, 34, 0.50);
+  --c-cardBorder: rgba(255, 255, 255, 0.12);
+  --c-divider: rgba(84, 84, 88, 0.58);
+  --c-ink: #FFFFFF;
+  --c-textSecondary: rgba(235, 235, 245, 0.62);
+  --c-textTertiary: rgba(235, 235, 245, 0.32);
+  --c-track: rgba(120, 120, 128, 0.30);
+  --c-chromeSurface: rgba(24, 26, 32, 0.68);
+  --spatial-cast: 0 2px 8px rgba(0, 0, 0, 0.45), 0 20px 50px rgba(0, 0, 0, 0.55);
+  --spatial-rim:
+    inset 0 var(--hairline) 0 0 var(--ios-specular),
+    inset 0 calc(var(--hairline) * -1) 0 0 rgba(255, 255, 255, 0.06);
+}
+
+:root[data-surface='spatial'] [style*="--c-cardSurface"],
+:root[data-surface='spatial'] .bt-material {
+  box-shadow: var(--spatial-rim), var(--spatial-cast);
+}
+:root[data-surface='spatial'] .bt-material {
+  -webkit-backdrop-filter: var(--ios-material);
+  backdrop-filter: var(--ios-material);
+}
+:root[data-surface='spatial'] .bt-sheet {
+  box-shadow: var(--spatial-rim), 0 -14px 46px rgba(0, 0, 0, 0.34);
+}
+
+/* The scene. Perspective on the scroll container turns every child transform
+   into real 3D rather than a flat scale. The value is large on purpose: a tight
+   perspective on a phone-width column looks like a fisheye lens. */
+:root[data-surface='spatial'][data-depth='max'] .app-shell {
+  perspective: 1400px;
+  perspective-origin: 50% 40%;
+}
+
+/* Cards float toward the viewer and counter-rotate to the tilt, so the scene
+   appears to stay put while the phone moves around it. One uniform transform
+   for every card: the browser can share the same matrix rather than solving a
+   different one per element, and nothing here reflows.
+
+   Deliberately NOT applied at balanced/off: promoting every card to its own 3D
+   layer is exactly the kind of cost that has to stay behind the top tier. */
+:root[data-surface='spatial'][data-depth='max'] [style*="--c-cardSurface"] {
+  transform:
+    translateZ(18px)
+    rotateY(calc(var(--tilt-x) * -2.2deg))
+    rotateX(calc(var(--tilt-y) * 1.6deg));
+  transform-style: preserve-3d;
+  transition: transform 0.5s var(--ease-ios);
+}
+/* Chrome sits on its own, nearer plane — it's the layer closest to the user in
+   any spatial OS, and it should never appear to sink into the content. */
+:root[data-surface='spatial'][data-depth='max'] .bt-material {
+  transform: translateZ(40px);
+}
+
+/* Depth-of-field. The aurora is the furthest plane in the scene, so it is the
+   one thing that should read as out of focus — this is what stops the layers
+   looking like flat stickers at different sizes. */
+:root[data-surface='spatial'][data-depth='max'] body::before {
+  filter: blur(24px);
+}
+
+/* ── Tier and preference overrides ──────────────────────────────────────────
+   One place where every expensive property is switched back off, so a tier
+   drop is a genuine reduction in work rather than a different set of effects.
+   Source order does the work — these sit after the skin blocks above, so no
+   specificity arms race is needed.
+
+   Every rule here is scoped to the skins that actually set the property it
+   resets. That matters more than it looks: a blanket
+   `[style*="--c-cardSurface"] { transform: none !important }` would reach into
+   any component that legitimately animates a card by inline transform, and
+   `!important` beats inline styles. Resetting only what a depth skin set keeps
+   this incapable of breaking anything outside these three skins. */
+:root:is([data-surface='glass'], [data-surface='liquid'], [data-surface='spatial'])[data-depth='off'] .bt-material,
+:root:is([data-surface='glass'], [data-surface='liquid'], [data-surface='spatial'])[data-depth='off'] [style*="--c-cardSurface"] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root[data-depth='off'] body::before { animation: none; filter: none; }
+:root[data-surface='spatial'][data-depth='off'] [style*="--c-cardSurface"],
+:root[data-surface='spatial'][data-depth='off'] .bt-material { transform: none; }
+
+/* balanced: keep chrome blur, drop the per-card blur and the 3D scene. */
+:root:is([data-surface='glass'], [data-surface='liquid'], [data-surface='spatial'])[data-depth='balanced'] [style*="--c-cardSurface"] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root[data-surface='spatial'][data-depth='balanced'] [style*="--c-cardSurface"] { transform: none; }
+
+/* The motion setting and the OS preference both outrank the depth tier: a user
+   who asked for stillness gets stillness, however capable their phone is. The
+   glass stays glass — only the things that MOVE stop. */
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none !important; }
+  :root[data-surface='spatial'] [style*="--c-cardSurface"] { transition: none; }
+}
+:root[data-motion='off'] body::before,
+:root[data-motion='reduced'] body::before { animation: none; }
+:root[data-motion='off'][data-surface='spatial'] [style*="--c-cardSurface"] { transition: none; }
 
 html, body, #root {
   margin: 0;
