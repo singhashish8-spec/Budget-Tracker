@@ -12,10 +12,24 @@ export default function ConfirmDialog({ title, message, confirmLabel = 'Delete',
       <div
         role="alertdialog"
         aria-modal="true"
+        // bt-material opts this into the same elevation/blur/rim treatment every
+        // other overlay (Sheet, DetentSheet, TopBar) already gets per skin.
+        // colors.cardSurface — not colors.bgApp — is what makes that work: on
+        // Liquid Glass and Spatial, bgApp is defined at ~4-5% opacity (it's meant
+        // to be the near-invisible wash behind translucent cards), so a dialog
+        // painted with it renders as text floating over the scrim with no
+        // visible surface at all — precisely the wrong skin for the one dialog
+        // that exists to make a destructive action hard to miss.
+        className="bt-material"
         style={{
-          position: 'relative', background: colors.bgApp, borderRadius: 12, padding: '20px 20px 16px',
-          maxWidth: 360, width: '100%', boxShadow: '0 16px 44px rgba(0,0,0,0.28)',
+          position: 'relative', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`,
+          borderRadius: 12, padding: '20px 20px 16px',
+          maxWidth: 360, width: '100%',
           display: 'flex', flexDirection: 'column', gap: 8,
+          // Every other overlay in the app animates in (Sheet, DetentSheet, the
+          // hamburger drawer); this was the one exception, popping in on a
+          // single hard cut.
+          animation: 'dialogIn 0.22s var(--ease-ios)',
         }}
       >
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 700 }}>{title}</div>
