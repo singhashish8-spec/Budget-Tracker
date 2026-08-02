@@ -814,10 +814,23 @@
 /* The scene. Perspective on the scroll container turns every child transform
    into real 3D rather than a flat scale. The value is large on purpose: a tight
    perspective on a phone-width column looks like a fisheye lens. */
-:root[data-surface='spatial'][data-depth='max'] .app-shell {
-  perspective: 1400px;
-  perspective-origin: 50% 40%;
-}
+/* The scene's perspective is applied PER CARD, via the perspective() transform
+   function, and deliberately NOT as the `perspective` property on the shell.
+
+   The property version made the app unusable. `perspective` on an element makes
+   it a containing block for every `position: fixed` descendant — exactly like
+   `transform` does. `.app-shell` is taller than the viewport once a screen has
+   content, so the tab bar's `bottom: 0` stopped meaning "bottom of the screen"
+   and started meaning "bottom of the shell": measured at 3033px on a 915px
+   viewport. The tab bar and the top-bar menu button were thrown thousands of
+   pixels below the visible area, leaving no way to change screens or even reach
+   Settings to turn the skin off.
+
+   The perspective() FUNCTION applies the same projection to the element's own
+   transform and creates no containing block, so fixed chrome is untouched. The
+   trade is that each card gets its own vanishing point rather than sharing one
+   scene — at these rotation angles (~2°) that difference is not visible, and it
+   is not worth trading for a skin that can lock the user out of the app. */
 
 /* Cards float toward the viewer and counter-rotate to the tilt, so the scene
    appears to stay put while the phone moves around it. One uniform transform
@@ -828,21 +841,23 @@
    layer is exactly the kind of cost that has to stay behind the top tier. */
 :root[data-surface='spatial'][data-depth='max'] [style*="--c-cardSurface"] {
   transform:
+    perspective(1400px)
     translateZ(18px)
     rotateY(calc(var(--tilt-x) * -2.2deg))
     rotateX(calc(var(--tilt-y) * 1.6deg));
-  transform-style: preserve-3d;
   /* No transition on purpose. The tilt value changes every frame, so a
      transition here would be continuously retargeted — the browser restarts the
      interpolation each frame and the card visibly lags behind the phone. The
      smoothing that makes this feel good already happens in JS (services/
      depth.js eases the raw sensor), so the CSS should follow it exactly. */
 }
-/* Chrome sits on its own, nearer plane — it's the layer closest to the user in
-   any spatial OS, and it should never appear to sink into the content. */
-:root[data-surface='spatial'][data-depth='max'] .bt-material {
-  transform: translateZ(40px);
-}
+/* Chrome is deliberately NOT transformed. It used to take translateZ(40px) to
+   sit on a nearer plane, which only meant anything inside the shared scene the
+   shell's `perspective` created — and that scene is what broke fixed
+   positioning. Transforming the tab bar and top bar also scaled and displaced
+   them (the tab bar measurably drifted ~15px down even before content made the
+   shell scroll). Chrome is already the frontmost layer by z-index; it does not
+   need a Z offset, and the depth read comes from its shadow and blur instead. */
 
 /* Depth-of-field. The aurora is the furthest plane in the scene, so it is the
    one thing that should read as out of focus — this is what stops the layers
