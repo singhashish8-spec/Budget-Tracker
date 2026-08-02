@@ -13,7 +13,7 @@ import Collapse from '../components/Collapse';
 import { Card, Screen, SectionHeader, List, ListRow, ProgressBar, Mono, EmptyState, CountUp, Icon } from '../components/ui';
 
 export default function HomeScreen() {
-  const { state, go, goReview, openCategorySheet, openDetail, togglePrivacy } = useApp();
+  const { state, go, goReview, openCategorySheet, openDetail, togglePrivacy, scanSms } = useApp();
   const { txns, categories } = state;
   // Spending resets on payday, not on the 1st — so the headline figure matches
   // the money you actually have to work with this cycle.
@@ -114,7 +114,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <Screen>
+    <Screen onRefresh={() => scanSms({ silent: false })}>
       {/* Condensed header lives at the document root (portal) so it's genuinely
           fixed to the viewport — never clipped by the scroll container. It sits
           below the floating action icons (zIndex 42 < 45), left-aligned with room

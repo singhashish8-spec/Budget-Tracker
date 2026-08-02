@@ -1,17 +1,22 @@
+import { forwardRef } from 'react';
 import { colors, radii, type } from '../../theme/tokens';
 import * as haptics from '../../services/haptics';
 
 // A pill: filter segments, status badges, selectable options. Selecting one is
 // a choice changing, so it ticks (haptics.select) rather than firing the
 // heavier primary-action tap.
-export default function Chip({
+//
+// Forwards its ref to the underlying element — a sliding-selection row (see
+// Transactions' filter segment) needs each chip's real DOM rect to know where
+// to animate a shared highlight to, and that only works with a real ref.
+const Chip = forwardRef(function Chip({
   label,
   selected = false,
   tone, // { bg, fg, border } — for status badges that aren't selectable
   onClick,
   style,
   ...rest
-}) {
+}, ref) {
   const Tag = onClick ? 'button' : 'div';
   const palette = tone || {
     bg: selected ? colors.primaryTint : 'transparent',
@@ -21,6 +26,7 @@ export default function Chip({
 
   return (
     <Tag
+      ref={ref}
       onClick={onClick ? () => { haptics.select(); onClick(); } : undefined}
       aria-pressed={onClick ? selected : undefined}
       style={{
@@ -43,4 +49,6 @@ export default function Chip({
       {label}
     </Tag>
   );
-}
+});
+
+export default Chip;

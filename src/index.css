@@ -1032,6 +1032,24 @@ button:active { transform: scale(0.97); transition: transform 0.09s cubic-bezier
 @media (prefers-reduced-motion: reduce) { .bt-collapse { transition: none; } }
 :root[data-motion='off'] .bt-collapse,
 :root[data-motion='reduced'] .bt-collapse { transition: none; }
+
+/* ── Pull-to-refresh (Screen component) ───────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .bt-pull-indicator { transition: none !important; }
+  .bt-pull-spin { animation: none !important; transition: none !important; }
+}
+:root[data-motion='off'] .bt-pull-indicator,
+:root[data-motion='reduced'] .bt-pull-indicator { transition: none !important; }
+:root[data-motion='off'] .bt-pull-spin,
+:root[data-motion='reduced'] .bt-pull-spin { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .bt-pull-content { transition: none !important; } }
+:root[data-motion='off'] .bt-pull-content,
+:root[data-motion='reduced'] .bt-pull-content { transition: none !important; }
+
+/* ── Segmented control sliding selection (Transactions filter chips) ─────── */
+@media (prefers-reduced-motion: reduce) { .bt-seg-pill { transition: none !important; } }
+:root[data-motion='off'] .bt-seg-pill,
+:root[data-motion='reduced'] .bt-seg-pill { transition: none !important; }
 /* A chevron that points down and rotates up when open (set data-open on it). */
 .bt-chev { transition: transform 0.22s ease; }
 :root[data-motion='off'] .bt-chev { transition: none; }
