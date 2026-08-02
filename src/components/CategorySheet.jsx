@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { colors, tint } from '../theme/tokens';
+import { colors, tint, CATEGORIES } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
 import { listSmsForTxn } from '../db/repo';
@@ -9,6 +9,15 @@ import Sheet from './Sheet';
 import Collapse from './Collapse';
 
 const METHOD_LABELS = { cash: 'paid in cash', upi: 'paid by UPI', card: 'paid by card', bank: 'bank transfer' };
+
+// Every built-in category got a hand-picked colour — it's what makes a spend
+// chart scannable at a glance. A category you create yourself used to always
+// get the same hardcoded grey with no way to change it, so every custom
+// category looked identical forever. Reusing the built-ins' own palette means
+// a user's category can look as intentional as the app's own, and it can never
+// drift out of sync with them.
+const CUSTOM_CAT_PALETTE = CATEGORIES.map((c) => c.color);
+const DEFAULT_CUSTOM_COLOR = CUSTOM_CAT_PALETTE[CUSTOM_CAT_PALETTE.length - 1]; // '#8A8577' — the old hardcoded default, kept as the default swatch
 
 const METHODS = [
   { key: 'cash', label: 'Cash' },
@@ -26,6 +35,7 @@ function dateInputValue(ms) {
 export default function CategorySheet() {
   const { state, closeCategorySheet, setTxnCategory, addCategory, setTransactionNote, ignoreSmsTransaction, deleteTransaction, splitMergedSms, editTransaction } = useApp();
   const [newCat, setNewCat] = useState('');
+  const [newCatColor, setNewCatColor] = useState(DEFAULT_CUSTOM_COLOR);
   const [note, setNote] = useState('');
   const [smsRows, setSmsRows] = useState([]);
   const [editing, setEditing] = useState(false);
@@ -84,7 +94,7 @@ export default function CategorySheet() {
 
   const submitNewCat = async () => {
     if (!newCat.trim()) return;
-    await addCategory(newCat);
+    await addCategory(newCat, newCatColor);
     setNewCat('');
   };
 
@@ -246,6 +256,23 @@ export default function CategorySheet() {
           ))}
       </div>
 
+      {newCat.trim() && (
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 10, padding: '0 2px' }}>
+          {CUSTOM_CAT_PALETTE.map((hex) => (
+            <button
+              key={hex}
+              onClick={() => { haptics.select(); setNewCatColor(hex); }}
+              aria-label={`Colour ${hex}`}
+              aria-pressed={newCatColor === hex}
+              style={{
+                width: 24, height: 24, borderRadius: '50%', background: hex, cursor: 'pointer', flexShrink: 0,
+                border: newCatColor === hex ? `2px solid ${colors.ink}` : '2px solid transparent',
+                boxShadow: newCatColor === hex ? `0 0 0 2px ${colors.cardSurface}` : 'none',
+              }}
+            />
+          ))}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <input
           value={newCat}
