@@ -41,6 +41,10 @@ export const SURFACES = [
   { key: 'glass', label: 'Frosted glass', hint: 'Translucent, accent-tinted depth' },
   { key: 'neo', label: 'Neo', hint: 'High contrast, heavy borders' },
   { key: 'serene', label: 'Serene', hint: 'Soft, low contrast, roomy' },
+  { key: 'clay', label: 'Clay', hint: 'Puffy, tactile, accent-tinted' },
+  { key: 'soft', label: 'Soft', hint: 'Neomorphic — surfaces melt into the background' },
+  { key: 'liquid', label: 'Liquid Glass', hint: 'Refracting glass that catches the light as you tilt' },
+  { key: 'spatial', label: 'Spatial', hint: 'Floating panels on layered depth planes' },
 ];
 
 // Skins that define their own light/dark treatment and shouldn't be re-tinted
@@ -75,9 +79,12 @@ const DEFAULTS = { mode: 'system', accent: 'green', surface: 'standard' };
 // the first paint (a font-scale flash would be visible), with the database
 // staying authoritative once it loads. Mirrors the theme-cache pattern above.
 const DISPLAY_KEY = 'bt-display';
-const DISPLAY_DEFAULTS = { motion: 'on', fontScale: 'default', privacy: false };
+// depth defaults to the SAFE tier, never the best-looking one. The real value
+// is picked once on first run by sniffing the device (services/depth.js) and
+// stored; until then, and on any device we can't read, the app stays cheap.
+const DISPLAY_DEFAULTS = { motion: 'on', fontScale: 'default', privacy: false, depth: 'balanced' };
 
-export function applyDisplay({ motion, fontScale, privacy } = {}) {
+export function applyDisplay({ motion, fontScale, privacy, depth } = {}) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   const next = { ...loadCachedDisplay() };
@@ -95,6 +102,14 @@ export function applyDisplay({ motion, fontScale, privacy } = {}) {
     if (privacy) root.setAttribute('data-private', '1');
     else root.removeAttribute('data-private');
     next.privacy = !!privacy;
+  }
+  // Effects tier for the glass/spatial skins. Cached alongside the other
+  // display preferences so it lands before the first paint — a screen that
+  // renders at max and then drops to balanced a moment later would flash every
+  // blur in the app off at once.
+  if (depth !== undefined) {
+    root.setAttribute('data-depth', depth);
+    next.depth = depth;
   }
 
   try { localStorage.setItem(DISPLAY_KEY, JSON.stringify(next)); } catch { /* private mode */ }

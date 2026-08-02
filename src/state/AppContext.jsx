@@ -7,6 +7,7 @@ import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransaction
 import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
 import { writeAutoBackup, readAutoBackup, clearAutoBackup } from '../services/autoBackup';
 import { applyTheme, applyDisplay } from '../services/theme';
+import { DEPTH_KEYS, detectDepthCapability, syncTilt, stopTilt } from '../services/depth';
 import { logError } from '../services/errorLog';
 import { setHapticLevel, success as hapticSuccess, error as hapticError } from '../services/haptics';
 import * as notify from '../services/notify';
@@ -77,8 +78,12 @@ const initialState = {
   currency: 'INR',
   themeMode: 'system', // 'system' | 'light' | 'dark'
   themeAccent: 'green',
-  themeSurface: 'standard', // 'standard' | 'glass'
+  themeSurface: 'standard', // any SURFACES key in services/theme.js
   motionPref: 'on', // 'on' (full) | 'reduced' | 'off'
+  // How much the glass/spatial skins are allowed to spend: 'max' | 'balanced' |
+  // 'off'. Chosen automatically from the device on first run, overridable in
+  // Settings. Inert for the flat skins, which cost the same at every tier.
+  depth: 'balanced',
   hapticLevel: 'full', // 'full' | 'light' | 'off'
   // Files handed in by another app's share sheet, waiting to be filed against
   // a product. Held here so the Warranties screen can pick them up.
@@ -183,6 +188,7 @@ export function AppProvider({ children }) {
           themeAccentStr,
           themeSurfaceStr,
           motionPrefStr,
+          depthStr,
           hapticLevelStr,
           privacyStr,
           rcsCaptureEnabledStr,
@@ -218,6 +224,10 @@ export function AppProvider({ children }) {
           repo.getSetting('themeAccent', 'green'),
           repo.getSetting('themeSurface', 'standard'),
           repo.getSetting('motionPref', 'on'),
+          // null (not '') on purpose — "never chosen" has to be
+          // distinguishable from a stored choice so the first run can
+          // auto-detect without overriding someone who picked deliberately.
+          repo.getSetting('depth', null),
           repo.getSetting('hapticLevel', 'full'),
           repo.getSetting('privacy', '0'),
           repo.getSetting('rcsCaptureEnabled', '0'),
@@ -225,6 +235,14 @@ export function AppProvider({ children }) {
         ]);
         const onboarded = onboardedFlag === '1';
         const appLock = appLockFlag === '1';
+        // First run on this device picks the effects tier by sniffing the
+        // hardware, then stores it so the guess is made once rather than
+        // re-litigated on every launch — and so a later manual choice sticks.
+        let resolvedDepth = depthStr;
+        if (!DEPTH_KEYS.includes(resolvedDepth)) {
+          resolvedDepth = detectDepthCapability();
+          repo.setSetting('depth', resolvedDepth).catch(() => { /* a guess isn't worth failing a boot over */ });
+        }
         set({
           categories,
           txns,
@@ -258,6 +276,7 @@ export function AppProvider({ children }) {
           themeAccent: themeAccentStr || 'green',
           themeSurface: themeSurfaceStr || 'standard',
           motionPref: motionPrefStr || 'on',
+          depth: resolvedDepth,
           hapticLevel: hapticLevelStr || 'full',
           privacy: privacyStr === '1',
           rcsCaptureEnabled: rcsCaptureEnabledStr === '1',
@@ -266,7 +285,7 @@ export function AppProvider({ children }) {
         });
         // Re-apply from the authoritative (DB) values in case the cache differed.
         applyTheme({ mode: themeModeStr || 'system', accent: themeAccentStr || 'green', surface: themeSurfaceStr || 'standard' });
-        applyDisplay({ motion: motionPrefStr || 'on', privacy: privacyStr === '1' });
+        applyDisplay({ motion: motionPrefStr || 'on', privacy: privacyStr === '1', depth: resolvedDepth });
         setHapticLevel(hapticLevelStr || 'full');
         // Screenshots and the recents preview follow hide-balances.
         setSecureScreen(privacyStr === '1');
@@ -445,6 +464,25 @@ export function AppProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Device-tilt engine for the glass/spatial skins. Only ever runs when the
+  // current skin actually consumes it, the top tier is selected, and motion is
+  // allowed — syncTilt owns all three checks so the conditions live in one
+  // place. Stopped entirely while the app is backgrounded: a gyroscope left
+  // streaming behind a locked screen is pure battery drain for no pixels.
+  useEffect(() => {
+    if (state.loading) return undefined;
+    const opts = { surface: state.themeSurface, depth: state.depth, motion: state.motionPref };
+    syncTilt(opts);
+    const handle = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) syncTilt(opts);
+      else stopTilt();
+    });
+    return () => {
+      stopTilt();
+      handle.then((h) => h.remove()).catch(() => {});
+    };
+  }, [state.loading, state.themeSurface, state.depth, state.motionPref]);
+
   // Files shared in from another app, and launcher shortcuts. Checked on every
   // resume as well as at launch, because the activity is singleTask: a share
   // arriving while the app is already open comes through onNewIntent, not a
@@ -601,6 +639,17 @@ export function AppProvider({ children }) {
       set({ motionPref: pref });
       repo.setSetting('motionPref', pref);
       applyDisplay({ motion: pref });
+    },
+    [set],
+  );
+
+  // Effects tier for the glass/spatial skins.
+  const setDepth = useCallback(
+    (level) => {
+      const next = DEPTH_KEYS.includes(level) ? level : 'balanced';
+      set({ depth: next });
+      repo.setSetting('depth', next);
+      applyDisplay({ depth: next });
     },
     [set],
   );
@@ -1608,6 +1657,7 @@ export function AppProvider({ children }) {
       setThemeAccent,
       setThemeSurface,
       setMotionPref,
+      setDepth,
       togglePrivacy,
       setSalaryDay,
       setImpulseThreshold,
@@ -1702,6 +1752,7 @@ export function AppProvider({ children }) {
       setThemeAccent,
       setThemeSurface,
       setMotionPref,
+      setDepth,
       togglePrivacy,
       setSalaryDay,
       setImpulseThreshold,

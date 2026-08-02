@@ -6,6 +6,7 @@ import { useApp } from '../state/AppContext';
 import { backupToDrive, restoreFromFile } from '../services/backup';
 import { exportAllAsZip } from '../services/zipExport';
 import { MODES, ACCENTS, SURFACES, MOTIONS } from '../services/theme';
+import { DEPTHS, surfaceUsesDepth } from '../services/depth';
 import { HAPTIC_LEVELS } from '../services/haptics';
 import * as haptics from '../services/haptics';
 import { notificationsSupported } from '../services/notify';
@@ -29,7 +30,7 @@ const SECTIONS = [
 ];
 
 export default function SettingsScreen() {
-  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setZeroBased, setHapticPref, askNotificationPermission, factoryReset, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref, toggleRcsCapture, toggleClipboardCapture, confirmCapture, dismissCapture } = useApp();
+  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setZeroBased, setHapticPref, askNotificationPermission, factoryReset, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref, setDepth, toggleRcsCapture, toggleClipboardCapture, confirmCapture, dismissCapture } = useApp();
   const [section, setSection] = useState(null);
   const restoreRef = useRef(null);
   // { phase, ... } where phase = idle | web | checking | uptodate | available |
@@ -186,6 +187,33 @@ export default function SettingsScreen() {
               );
             })}
           </div>
+
+          {/* Only meaningful for the skins that actually spend anything on
+              depth — Paper and Carbon cost the same at every tier, so offering
+              the dial there would be a control that does nothing. */}
+          {surfaceUsesDepth(state.themeSurface) && (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, margin: '18px 0 4px' }}>Effects</div>
+              <div style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 8 }}>
+                Blur, refraction and depth are the most demanding things this app draws. Set once for your phone — Max looks best, Balanced keeps everything smooth on older hardware.
+              </div>
+              <div style={segWrap}>
+                {DEPTHS.map((d) => (
+                  <button
+                    key={d.key}
+                    onClick={() => { haptics.select(); setDepth(d.key); }}
+                    aria-pressed={state.depth === d.key}
+                    style={segBtn(state.depth === d.key)}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: colors.textTertiary, marginTop: 6 }}>
+                {DEPTHS.find((d) => d.key === state.depth)?.hint}
+              </div>
+            </>
+          )}
 
           <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, margin: '18px 0 4px' }}>Haptics</div>
           <div style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 8 }}>
@@ -540,6 +568,13 @@ const SKIN_PREVIEW = {
   glass: { page: '#E8EDF2', surface: 'rgba(255,255,255,0.55)', border: 'rgba(255,255,255,0.85)', borderWidth: 1, shadow: '0 2px 8px rgba(16,20,24,0.10)' },
   neo: { page: '#FFFDF7', surface: '#FFFFFF', border: '#0A0A0A', borderWidth: 2, shadow: '2px 2px 0 rgba(10,10,10,0.9)' },
   serene: { page: '#F4F5F7', surface: '#FFFFFF', border: '#EDEFF2', borderWidth: 1, shadow: '0 3px 9px rgba(42,47,54,0.13)' },
+  clay: { page: '#F2EEE6', surface: '#FBF9F4', border: 'transparent', borderWidth: 0, shadow: '3px 3px 6px rgba(30,24,10,0.22), -2px -2px 5px rgba(255,255,255,0.85)' },
+  soft: { page: '#E9EDF1', surface: '#E9EDF1', border: 'transparent', borderWidth: 0, shadow: '3px 3px 6px rgba(163,177,198,0.55), -2px -2px 5px rgba(255,255,255,0.9)' },
+  // The two depth skins are the only previews that need a gradient page behind
+  // the panel — a translucent surface over a flat swatch just looks like a
+  // paler flat surface, which is the opposite of the point.
+  liquid: { page: 'linear-gradient(135deg,#8FB3E0 0%,#C7A6E8 55%,#F0B7C4 100%)', surface: 'rgba(255,255,255,0.50)', border: 'rgba(255,255,255,0.75)', borderWidth: 1, shadow: '0 3px 9px rgba(16,20,24,0.18)' },
+  spatial: { page: 'linear-gradient(135deg,#7E93C8 0%,#A9BEDD 45%,#D8C3E4 100%)', surface: 'rgba(255,255,255,0.46)', border: 'rgba(255,255,255,0.68)', borderWidth: 1, shadow: '0 6px 14px rgba(12,18,28,0.30)' },
 };
 
 function SkinSwatch({ skin }) {

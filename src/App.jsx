@@ -26,6 +26,7 @@ import Toast from './components/Toast';
 import LockScreen from './components/LockScreen';
 import HamburgerDrawer from './components/HamburgerDrawer';
 import SkeletonHome from './components/SkeletonHome';
+import GlassFilters from './components/GlassFilters';
 
 const TAB_SCREENS = ['home', 'transactions', 'budgets', 'insights'];
 // Screens reached by drilling in animate differently from the top-level tabs:
@@ -81,6 +82,10 @@ function Shell() {
         {state.screen === 'sms' && <SmsScreen />}
         {state.screen === 'settings' && <SettingsScreen />}
       </div>
+
+      {/* Filter definitions for the Liquid Glass refraction. Renders nothing
+          visible and costs nothing until a skin references it by id. */}
+      <GlassFilters />
 
       <TopBar />
       {TAB_SCREENS.includes(state.screen) && <BottomNav />}
