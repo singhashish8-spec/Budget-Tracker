@@ -8,6 +8,7 @@ import { smsSignature, parseSms, extractAmount, extractMerchant } from '../servi
 import { writeAutoBackup, readAutoBackup, clearAutoBackup } from '../services/autoBackup';
 import { applyTheme, applyDisplay } from '../services/theme';
 import { DEPTH_KEYS, detectDepthCapability, syncTilt, stopTilt } from '../services/depth';
+import { logError } from '../services/errorLog';
 import { setHapticLevel, success as hapticSuccess, error as hapticError } from '../services/haptics';
 import * as notify from '../services/notify';
 import { consumePendingShare, consumeShortcut, setSecureScreen } from '../services/appIntegration';
@@ -323,9 +324,13 @@ export function AppProvider({ children }) {
                   await repo.setSetting('onboarded', '1');
                   window.location.reload();
                   return;
-                } catch {
+                } catch (err) {
                   // Fall back to the manual prompt, which lets the user retry
-                  // or start fresh instead of staring at a spinner.
+                  // or start fresh instead of staring at a spinner. Logged
+                  // because this is the automatic-recovery path: the user sees
+                  // a prompt, not an error, so without a record there is no
+                  // evidence anywhere that the restore failed or why.
+                  logError('bootstrap.autoRestore', err, `snapshotRows=${found.count}`);
                   set({ processing: false, procTitle: '', procSub: '', recoverable: found });
                   return;
                 }
@@ -359,9 +364,13 @@ export function AppProvider({ children }) {
                   repo.importBackup(found.data),
                   new Promise((_, reject) => setTimeout(() => reject(new Error('restore-timeout')), RESTORE_TIMEOUT_MS)),
                 ]);
-              } catch {
+              } catch (restoreErr) {
                 // A partial restore still beats a dead screen: keep whatever
-                // landed and let the app open rather than hanging here.
+                // landed and let the app open rather than hanging here. The
+                // user is shown "Updating your data store" and then a working
+                // app, so a partial result is otherwise indistinguishable from
+                // a complete one.
+                logError('bootstrap.dbRebuildRestore', restoreErr, `snapshotRows=${found.count}`);
                 set({ processing: false, procTitle: '', procSub: '' });
               }
               await repo.setSetting('onboarded', '1');
@@ -370,10 +379,15 @@ export function AppProvider({ children }) {
               return;
             }
           }
-        } catch {
+        } catch (recoveryErr) {
+          logError('bootstrap.recovery', recoveryErr);
           /* recovery failed — fall through to the manual recovery screen */
         }
         if (!recovered) {
+          // The database wouldn't open and nothing could be recovered — the
+          // worst state the app has. Recorded first, because this is exactly
+          // the failure a log living inside the database could never capture.
+          logError('bootstrap.dbOpen', err);
           set({ loading: false, loadError: err?.message || 'Could not open the local database' });
         }
       }
@@ -767,11 +781,18 @@ export function AppProvider({ children }) {
     if (!found) return;
     set({ processing: true, procTitle: 'Restoring your data', procSub: 'One moment…' });
     try {
-      await repo.importBackup(found.data);
+      const counts = await repo.importBackup(found.data);
       await repo.setSetting('onboarded', '1');
       await reloadData();
       set({ onboarded: true, screen: 'home', recoverable: null, processing: false });
-      showToast('Your data is back');
+      // "Your data is back" was said regardless of what actually came back. If
+      // documents were dropped, say so — a partial restore that announces
+      // success is how someone finds out months later that the bill is gone.
+      if (counts?.documentsSkipped > 0) {
+        showToast(`Your data is back, but ${counts.documentsSkipped} document${counts.documentsSkipped === 1 ? '' : 's'} couldn’t be restored`, 'error');
+      } else {
+        showToast('Your data is back');
+      }
     } catch (err) {
       set({ processing: false });
       showToast(err?.message || 'Couldn’t restore that backup', 'error');
