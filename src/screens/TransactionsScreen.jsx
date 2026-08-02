@@ -342,12 +342,19 @@ function TxnRow({
 
   const onPointerDown = (e) => {
     drag.current = { active: true, startX: e.clientX, startTX: dragX, moved: false };
-    contentRef.current?.setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e) => {
     if (!drag.current.active) return;
     const dx = e.clientX - drag.current.startX;
-    if (Math.abs(dx) > SWIPE_INTENT_PX) drag.current.moved = true;
+    if (!drag.current.moved && Math.abs(dx) > SWIPE_INTENT_PX) {
+      drag.current.moved = true;
+      // Capture only once this is confirmed to be a drag, not a plain tap.
+      // Capturing eagerly on every pointerdown (the previous behaviour)
+      // retargets the eventual pointerup/mouseup/click onto this element
+      // instead of the row's own button, which silently swallows every
+      // tap-to-expand — a real regression this exact bug caused.
+      contentRef.current?.setPointerCapture?.(e.pointerId);
+    }
     if (!drag.current.moved) return;
     setDragX(clamp(drag.current.startTX + dx));
   };
