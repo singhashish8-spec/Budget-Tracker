@@ -291,7 +291,6 @@ export default function TransactionsScreen() {
               text={search || filter !== 'all' ? 'No transactions match this search or filter.' : 'No transactions yet — tap + to add one.'}
               action={search || filter !== 'all' ? 'Clear filters' : undefined}
               onAction={search || filter !== 'all' ? () => { setDraft(''); set({ search: '', filter: 'all' }); } : undefined}
-              style={{ alignItems: 'center', textAlign: 'center' }}
             />
           </Card>
         )}
