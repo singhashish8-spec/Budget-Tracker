@@ -285,6 +285,7 @@ export default function HomeScreen() {
         <CountUp
           value={spend}
           format={fmt}
+          frameRate={state.frameRate}
           style={{ display: 'block', fontFamily: fonts.heading, fontSize: type.display, fontWeight: 700, letterSpacing: tracking.display, margin: '6px 0 14px' }}
         />
         <ProgressBar pct={spendPct} height={6} color={colors.accentGreen1} track="rgba(247,244,238,0.15)" />

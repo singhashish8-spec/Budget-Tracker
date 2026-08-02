@@ -216,7 +216,23 @@ export default function TransactionsScreen() {
         {groups.map((g) => {
           const collapsed = !!collapsedDays[g.key];
           return (
-            <Card key={g.key} tight padded={false} style={{ padding: '2px 16px' }}>
+            // content-visibility lets the browser skip style, layout and paint
+            // for any day group scrolled out of view — on a long history that
+            // is most of the screen's work, done for rows nobody is looking at.
+            // contain-intrinsic-size gives it a height to reserve while a group
+            // is skipped, so the scrollbar stays stable and scrolling doesn't
+            // jump as groups come into range. The estimate is the header plus
+            // ~64px per row; being approximate is fine, being absent is not.
+            <Card
+              key={g.key}
+              tight
+              padded={false}
+              style={{
+                padding: '2px 16px',
+                contentVisibility: 'auto',
+                containIntrinsicSize: `auto ${40 + (collapsed ? 0 : g.items.length * 64)}px`,
+              }}
+            >
               <button
                 onClick={() => { haptics.select(); setCollapsedDays((s) => ({ ...s, [g.key]: !s[g.key] })); }}
                 aria-expanded={!collapsed}
