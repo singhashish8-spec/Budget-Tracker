@@ -11,6 +11,8 @@ import * as haptics from '../services/haptics';
 import { notificationsSupported } from '../services/notify';
 import { dataUrlBytes, formatBytes } from '../utils/image';
 import { updatesSupported, fetchManifest, getCurrentVersion, downloadUpdate, applyUpdateAndReload } from '../services/liveUpdate';
+import { listErrors, clearErrors, formatErrors } from '../services/errorLog';
+import { Clipboard } from '@capacitor/clipboard';
 import { Icon } from '../components/ui';
 
 // Settings is a menu of categories, not a wall of controls: the top level lists
@@ -58,7 +60,15 @@ export default function SettingsScreen() {
     try {
       const counts = await restoreFromFile(file);
       await reloadData();
-      showToast(`Restored ${counts.transactions} transactions, ${counts.budgets} budgets, ${counts.reminders} reminders`);
+      // A dropped document is a bill the user can't get back. Reporting the
+      // successes and staying quiet about the losses is how a partial restore
+      // gets mistaken for a complete one — so a skip is called out, as a
+      // warning rather than a success.
+      if (counts.documentsSkipped > 0) {
+        showToast(`Restored ${counts.transactions} transactions — but ${counts.documentsSkipped} document${counts.documentsSkipped === 1 ? '' : 's'} couldn’t be restored`, 'error');
+      } else {
+        showToast(`Restored ${counts.transactions} transactions, ${counts.budgets} budgets, ${counts.reminders} reminders`);
+      }
     } catch (err) {
       showToast(err?.message || 'Couldn’t restore that file', 'error');
     }
@@ -356,6 +366,13 @@ export default function SettingsScreen() {
       )}
 
       {section === 'backup' && (
+        <div style={card}>
+          <div style={sectionLabel}>Diagnostics</div>
+          <DiagnosticsPanel showToast={showToast} />
+        </div>
+      )}
+
+      {section === 'backup' && (
         <div style={{ ...card, borderColor: colors.dangerBorder }}>
           <div style={{ ...sectionLabel, color: colors.danger }}>Reset app</div>
           <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 12, lineHeight: 1.5 }}>
@@ -555,6 +572,76 @@ const backBtnStyle = { width: 36, height: 36, borderRadius: '50%', background: c
 
 // Documents live inside the database so they survive a reinstall, which means
 // they also dominate the size of every backup. Worth being able to see.
+// The app deliberately hides most failures from the user — a backup location
+// refusing a write shouldn't interrupt anyone. This is where those failures
+// stop being invisible to whoever has to fix them. Everything shown here is
+// already on the device; nothing is sent anywhere.
+function DiagnosticsPanel({ showToast }) {
+  const [entries, setEntries] = useState(() => listErrors());
+  const [expanded, setExpanded] = useState(false);
+
+  const refresh = () => setEntries(listErrors());
+
+  const copy = async () => {
+    try {
+      await Clipboard.write({ string: formatErrors() });
+      showToast('Diagnostics copied');
+    } catch {
+      showToast('Couldn’t copy — the full log is in the ZIP export', 'error');
+    }
+  };
+
+  if (!entries.length) {
+    return (
+      <div style={{ fontSize: 13, color: colors.textTertiary, lineHeight: 1.5 }}>
+        Nothing has gone wrong on this phone. If something does — a backup that couldn’t be written, a document that wouldn’t restore — it’s recorded here rather than disappearing silently. It never leaves your phone.
+      </div>
+    );
+  }
+
+  const shown = expanded ? entries : entries.slice(0, 5);
+
+  return (
+    <>
+      <div style={{ fontSize: 13.5, color: colors.textSecondary, marginBottom: 10, lineHeight: 1.5 }}>
+        {entries.length} recorded {entries.length === 1 ? 'problem' : 'problems'}. These are handled quietly by the app, so most cost you nothing — but they’re kept so a real fault can be traced. Nothing here leaves your phone unless you share it.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+        {shown.map((e, i) => (
+          <div key={`${e.at}-${i}`} style={{ background: colors.bgApp, border: `1px solid ${colors.cardBorder}`, borderRadius: 10, padding: '9px 11px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 3 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: colors.ink, wordBreak: 'break-word' }}>
+                {e.scope}{e.count > 1 ? ` ×${e.count}` : ''}
+              </span>
+              <span style={{ fontSize: 11.5, color: colors.textTertiary, flexShrink: 0 }}>
+                {new Date(e.at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 1.45, wordBreak: 'break-word' }}>{e.message}</div>
+            {e.detail && <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 2 }}>{e.detail}</div>}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {entries.length > 5 && (
+          <button onClick={() => setExpanded(!expanded)} style={{ flex: '1 1 100px', border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, color: colors.ink, cursor: 'pointer' }}>
+            {expanded ? 'Show fewer' : `Show all ${entries.length}`}
+          </button>
+        )}
+        <button onClick={copy} style={{ flex: '1 1 100px', border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, color: colors.ink, cursor: 'pointer' }}>
+          Copy
+        </button>
+        <button
+          onClick={() => { clearErrors(); refresh(); showToast('Diagnostics cleared', 'none'); }}
+          style={{ flex: '1 1 100px', border: `1px solid ${colors.cardBorder}`, borderRadius: 100, padding: 10, fontSize: 13, fontWeight: 600, color: colors.textSecondary, cursor: 'pointer' }}
+        >
+          Clear
+        </button>
+      </div>
+    </>
+  );
+}
+
 function StorageSummary({ docs }) {
   const list = docs || [];
   const total = list.reduce((a, d) => a + dataUrlBytes(d.data), 0);

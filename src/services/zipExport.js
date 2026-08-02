@@ -2,6 +2,7 @@ import { zipSync, strToU8 } from 'fflate';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { gatherData } from './backup';
+import { formatErrors } from './errorLog';
 
 // Bundles everything exportable into one file via a browser-side zip
 // (fflate) rather than a server-side library (archiver is Node-only and
@@ -77,6 +78,10 @@ export async function exportAllAsZip() {
     [`transactions-${stamp}.csv`]: strToU8(csv),
     [`report-${stamp}.html`]: strToU8(html),
     [`backup-${stamp}.json`]: strToU8(json),
+    // The on-device error log. Carries no financial content by construction
+    // (see services/errorLog.js) — it exists so a problem can be handed over
+    // as text instead of a screenshot of a scrolling list.
+    [`diagnostics-${stamp}.txt`]: strToU8(formatErrors()),
   };
 
   // Every warranty document, grouped under documents/<product>/ so a
