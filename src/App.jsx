@@ -56,8 +56,11 @@ function Shell() {
     return <RecoveryScreen found={state.recoverable} />;
   }
 
+  // The shell's height (not min-height) and overflow:hidden live in index.css —
+  // see the .app-shell rule there for why. Setting either inline would win over
+  // the stylesheet's 100vh→100dvh fallback pair and defeat the point.
   return (
-    <div className="app-shell" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', backgroundColor: colors.bgApp, color: colors.ink }}>
+    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', position: 'relative', backgroundColor: colors.bgApp, color: colors.ink }}>
       {/* Keyed so each navigation remounts the wrapper and replays the enter
           animation; data-anim picks the direction (deep slide vs tab fade). */}
       <div
@@ -109,8 +112,10 @@ function RecoveryScreen({ found }) {
     n.goals?.length ? `${n.goals.length} goals` : null,
   ].filter(Boolean);
 
+  // Renders OUTSIDE .app-shell, and html/body are overflow:hidden, so this owns
+  // its own scrolling — otherwise tall content would be clipped unreachable.
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: colors.bgApp, padding: 32, textAlign: 'center', gap: 12 }}>
+    <div style={{ height: '100dvh', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: colors.bgApp, padding: 32, textAlign: 'center', gap: 12 }}>
       <div style={{ fontFamily: fonts.heading, fontSize: 20, fontWeight: 700 }}>We found your data</div>
       <div style={{ fontSize: 14, color: colors.textSecondary, maxWidth: 340, lineHeight: 1.55 }}>
         This phone has a saved copy{when ? ` from ${when}` : ''}. You can put it back instead of starting over.
@@ -161,8 +166,10 @@ function DatabaseErrorScreen({ message }) {
     }
   };
 
+  // Renders OUTSIDE .app-shell, and html/body are overflow:hidden, so this owns
+  // its own scrolling — otherwise tall content would be clipped unreachable.
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: colors.bgApp, padding: 32, textAlign: 'center', gap: 12 }}>
+    <div style={{ height: '100dvh', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: colors.bgApp, padding: 32, textAlign: 'center', gap: 12 }}>
       <div style={{ fontFamily: fonts.heading, fontSize: 18, fontWeight: 700 }}>
         {looksTransient ? 'Couldn’t load your data' : 'Couldn’t open your data'}
       </div>

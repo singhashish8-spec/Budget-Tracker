@@ -12,7 +12,7 @@
 > a fixed bug, a new feature), add an entry to this file in the same session,
 > before moving on. This file is only useful if it stays true.
 >
-> Last updated: **2026-08-03**, at web bundle **1.5.8** / native APK
+> Last updated: **2026-08-03**, at web bundle **1.5.9** / native APK
 > **v1.4 (build 7)**, database schema **v13**.
 
 ---
@@ -335,7 +335,8 @@ session's direct, first-hand work and carry more detail.
 | 1.5.5 | Swipe-to-act transaction rows (swipe left to categorise/delete), pull-to-refresh (drag down to re-scan SMS), and a properly-measured sliding segmented control for the transaction filters | [#54](https://github.com/singhashish8-spec/Budget-Tracker/pull/54) |
 | 1.5.6 | **Urgent bug fix:** tap-to-expand was silently broken on every transaction row — a regression introduced by 1.5.5 itself. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed). Shipped as a standalone hotfix within hours of 1.5.5, ahead of the batch below | [#57](https://github.com/singhashish8-spec/Budget-Tracker/pull/57) |
 | 1.5.7 | Fifth UI-audit batch: concentric corner radii (`nest()` token helper), illustrated empty states (category-monogram badge), a FAB→sheet shared-shape morph using the previously-unused `#bt-goo` filter, and a long-press quick-action menu on transaction rows | [#56](https://github.com/singhashish8-spec/Budget-Tracker/pull/56) |
-| **1.5.8** *(current)* | **Bug fixes, both regressions from 1.5.7's long-press/quick-menu batch:** (1) the long-press timer only watched horizontal movement, so a vertical scroll on a transaction row could pop the quick-action menu mid-scroll and its full-viewport overlay would eat further touches — reported as "scroll not working"; (2) a row that was both swiped open and tapped open at once had its Categorize/Delete buttons stretched down over the expanded detail panel instead of just the header, because the actions layer's `bottom: 0` was anchored to the whole row's box, which grows when expanded. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
+| 1.5.8 | **Bug fixes, both regressions from 1.5.7's long-press/quick-menu batch:** (1) the long-press timer only watched horizontal movement, so a vertical scroll on a transaction row could pop the quick-action menu mid-scroll and its full-viewport overlay would eat further touches — reported as "scroll not working"; (2) a row that was both swiped open and tapped open at once had its Categorize/Delete buttons stretched down over the expanded detail panel instead of just the header, because the actions layer's `bottom: 0` was anchored to the whole row's box, which grows when expanded. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
+| **1.5.9** *(current)* | **Critical bug fix — app-wide scroll was structurally broken.** `.app-shell` used `min-height: 100vh` instead of a fixed height, so it grew to its content's height and every screen's `overflow-y: auto` container grew with it — `scrollHeight === clientHeight`, meaning no screen could ever scroll internally. The app only ever appeared to scroll by overflowing to the document. This also permanently satisfied Screen.jsx's pull-to-refresh "am I at the top?" check (`scrollTop` is always 0 on a container that can't scroll), so every downward swipe on Home/Transactions was captured as a refresh pull instead of a scroll. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
 
 ### Native (APK) release history
 
@@ -582,6 +583,64 @@ old structure's actions layer stretched to the combined header+expanded
 height and geometrically overlapped the expanded content's box; new
 structure's actions layer matched the header's height exactly, with no
 overlap.
+
+### The `min-height` that made every screen in the app unscrollable
+
+**Symptom:** reported as "my app is all stuck... it is not scrolling on any
+page." Not one screen — all of them.
+
+**Root cause:** `.app-shell` (the flex column every screen renders inside) was
+styled `min-height: 100vh`. That is "at least as tall as the viewport", not
+"exactly as tall as the viewport" — so the shell grew to whatever its content
+needed. A `flex: 1` child inside a parent that grows without bound also grows
+without bound, so each screen's scroll container (`components/ui/Screen.jsx`,
+and the equivalent hand-rolled `flex: 1 + overflow-y: auto` divs in the seven
+screens that don't use it) sized itself to its own content. Measured on a
+915px viewport: shell 1103px tall, scroll container `clientHeight` 1103 and
+`scrollHeight` 1103 — **`scrollHeight === clientHeight`, so `overflow-y: auto`
+had nothing to scroll.** The app's entire intended scroll architecture was
+inert.
+
+It *appeared* to scroll anyway because the overflow escaped upward to the
+document, which scrolled instead. That accident is why this went unnoticed for
+so long — and why it degrades so badly: the fixed-position TopBar and BottomNav
+don't move with a document scroll, and Android WebView handles document-level
+overscroll very differently from an in-container scroll.
+
+The same accident broke pull-to-refresh in a way that directly produced the
+"stuck" feeling. `Screen.jsx` decides whether a downward drag is a refresh pull
+or a normal scroll by asking `el.scrollTop > 0` — "am I already scrolled down?"
+On a container that can never scroll, `scrollTop` is **permanently 0**, so that
+check passed on every single drag. Every downward swipe anywhere on Home or
+Transactions was therefore claimed as a pull-to-refresh — `preventDefault()`
+plus `setPointerCapture` — instead of scrolling. Scrolling down (finger up)
+still moved the document; scrolling back up did nothing at all.
+
+**Fix:** the shell is now `height: 100dvh` (with a `100vh` fallback for
+WebViews predating `dvh`) plus `overflow: hidden`, moved out of the inline
+style and into `index.css` so the fallback pair works. `html, body, #root` also
+get `overflow: hidden`, since nothing above the shell should ever scroll. Three
+descendants that hardcoded `min-height: 100vh` (Onboarding, CsvImportScreen,
+SkeletonHome) were changed to `min-height: 0` / dropped, because a 100vh child
+inside a 100dvh shell overhangs and gets clipped wherever the dynamic viewport
+is shorter than the large viewport. The two screens that render *outside* the
+shell (RecoveryScreen, DatabaseErrorScreen) got their own `height: 100dvh;
+overflow-y: auto`, since the document can no longer scroll for them.
+
+**Verified with:** the real app booted in headless Chromium at a 412×915 mobile
+viewport, driven through onboarding into the main tabs, measuring actual
+`clientHeight`/`scrollHeight`/`scrollTop` per screen — before: shell 1103px,
+`canScroll: false` on every screen; after: shell 915px, `canScroll: true`
+wherever content overflows, and `document.scrollHeight === clientHeight` (the
+document no longer scrolls at all). Then two real gesture tests: a wheel scroll
+moved `scrollTop` 0 → 188, and a CDP touch swipe downward from a scrolled
+position returned it to 0 instead of being captured as a refresh pull.
+
+**Lesson worth keeping:** `min-height: 100vh` on an app shell whose children
+rely on `overflow: auto` is a silent, total defeat of in-container scrolling.
+If a layout nests a scroll container inside a flex column, every ancestor in
+that chain needs a *bounded* height (and `min-height: 0` where it's a flex
+child), or the innermost `overflow: auto` is decoration.
 
 ---
 

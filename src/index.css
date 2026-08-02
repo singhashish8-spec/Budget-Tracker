@@ -909,6 +909,34 @@ html, body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
+  /* Nothing above the shell is allowed to scroll. Every screen owns its own
+     scroll container (components/ui/Screen.jsx, or an equivalent flex:1 +
+     overflow-y:auto div); the document itself must stay pinned so the fixed
+     TopBar/BottomNav never drift and the safe-area padding stays put. */
+  overflow: hidden;
+}
+
+/* The shell must be EXACTLY viewport-tall, not "at least" viewport-tall.
+   This used to be an inline `min-height: 100vh`, which let the shell grow to
+   its content's height (measured at 1103px on a 915px viewport). A flex child
+   with `flex: 1` inside a parent that grows unbounded also grows unbounded, so
+   every screen's `overflow-y: auto` container sized itself to its own content
+   and `scrollHeight === clientHeight` — the container could never scroll. The
+   app only appeared to scroll because the overflow escaped to the document.
+
+   That accidental document-scroll is also what broke Screen.jsx's
+   pull-to-refresh: its "am I at the top?" guard reads `el.scrollTop`, which on
+   a container that can't scroll is permanently 0, so every downward drag on
+   Home/Transactions was claimed as a refresh pull (preventDefault + pointer
+   capture) instead of a scroll.
+
+   100dvh first-choice with a 100vh fallback for WebViews predating dvh: dvh
+   tracks the dynamic viewport so a browser URL bar showing/hiding doesn't
+   leave the shell overhanging. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 body {
