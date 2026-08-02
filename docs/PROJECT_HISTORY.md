@@ -12,7 +12,7 @@
 > a fixed bug, a new feature), add an entry to this file in the same session,
 > before moving on. This file is only useful if it stays true.
 >
-> Last updated: **2026-08-02**, at web bundle **1.5.5** / native APK
+> Last updated: **2026-08-02**, at web bundle **1.5.7** / native APK
 > **v1.4 (build 7)**, database schema **v13**.
 
 ---
@@ -332,7 +332,9 @@ session's direct, first-hand work and carry more detail.
 | 1.5.2 | **Bug fix:** Spatial skin's `perspective` CSS property was accidentally making the app shell a `position:fixed` containing block, throwing the tab bar/menu off-screen and locking users out of navigation entirely once they enabled it | [#51](https://github.com/singhashish8-spec/Budget-Tracker/pull/51) |
 | 1.5.3 | **Bug fix:** the confirm-delete dialog was invisible on Liquid Glass/Spatial (near-transparent background), which also exposed a CSS specificity bug that had been silently killing every card's rim-light highlight on those two skins since 1.5.0 | [#52](https://github.com/singhashish8-spec/Budget-Tracker/pull/52) |
 | 1.5.4 | Interaction-polish batch — 8 findings from a UI/UX audit: asymmetric press feedback, switch knobs using `transform`, search-field clear button, shared `ProgressBar` on Goals, tone-coloured toasts, custom category colour picker, animated onboarding transitions, tab-bar icons + sliding indicator | [#53](https://github.com/singhashish8-spec/Budget-Tracker/pull/53) |
-| **1.5.5** *(current)* | Swipe-to-act transaction rows (swipe left to categorise/delete), pull-to-refresh (drag down to re-scan SMS), and a properly-measured sliding segmented control for the transaction filters | [#54](https://github.com/singhashish8-spec/Budget-Tracker/pull/54) |
+| 1.5.5 | Swipe-to-act transaction rows (swipe left to categorise/delete), pull-to-refresh (drag down to re-scan SMS), and a properly-measured sliding segmented control for the transaction filters | [#54](https://github.com/singhashish8-spec/Budget-Tracker/pull/54) |
+| 1.5.6 | **Urgent bug fix:** tap-to-expand was silently broken on every transaction row — a regression introduced by 1.5.5 itself. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed). Shipped as a standalone hotfix within hours of 1.5.5, ahead of the batch below | [#57](https://github.com/singhashish8-spec/Budget-Tracker/pull/57) |
+| **1.5.7** *(current)* | Fifth UI-audit batch: concentric corner radii (`nest()` token helper), illustrated empty states (category-monogram badge), a FAB→sheet shared-shape morph using the previously-unused `#bt-goo` filter, and a long-press quick-action menu on transaction rows | [#56](https://github.com/singhashish8-spec/Budget-Tracker/pull/56) |
 
 ### Native (APK) release history
 
@@ -465,29 +467,65 @@ is what surfaced the CSS specificity bug above — the dialog looked *right*
 once it had a real surface, but its rim-light still wasn't showing, which is
 what led to comparing computed styles across every skin.
 
+### The `setPointerCapture` bug that silently broke every plain tap on Transactions
+
+**Symptom:** tapping a transaction row to expand it stopped working entirely
+— on every row, for every user — starting the moment 1.5.5 (swipe-to-act
+rows) went live. Swiping still worked; only the plain tap path was dead.
+
+**Root cause:** `TxnRow`'s `onPointerDown` called
+`contentRef.current.setPointerCapture(e.pointerId)` **unconditionally, on
+every pointerdown** — including a plain tap with no drag at all. Per the
+Pointer Events spec, once a pointer is captured by an element, that
+pointer's subsequent `pointerup` — and the compatibility `mouseup`/`click`
+events browsers synthesize alongside it — get **retargeted to the capturing
+element**, not wherever the finger actually released. The capturing element
+here was the row's outer content `<div>`; the tap-to-expand `onClick`
+handler lived on the `<button>` nested *inside* that div. Since `click`
+events only bubble *up* from their target through ancestors — never back
+down into descendants — a click retargeted to the div could never reach the
+button's handler. Every tap silently did nothing.
+
+**How it was found:** while headlessly verifying an unrelated, in-progress
+long-press feature on the same row, a scripted "quick tap" test kept
+reporting zero calls to the row's expand callback. Direct DOM event tracing
+(logging every `pointerup`/`mouseup`/`click` and its `event.target`) showed
+all three landing on the wrapping `<div>` instead of the `<button>` —
+confirming the retargeting rather than, say, a stale test selector.
+
+**Fix:** only call `setPointerCapture` once a drag is actually confirmed —
+inside `onPointerMove`, at the exact moment the finger has moved past the
+swipe-intent threshold — instead of eagerly on every pointerdown. A plain
+tap, which never crosses that threshold, never captures the pointer at all,
+so its click reaches the button normally. `Screen.jsx`'s pull-to-refresh
+gesture already used this correct, defer-until-confirmed pattern, which is
+exactly why it didn't have the same bug.
+
+**Why this one shipped despite build+lint+headless-verification all being
+clean on the PR that introduced it:** the swipe verification at the time
+tested that *dragging* worked; it never re-tested that a *plain tap with no
+drag* still worked afterward, because pointer capture's effect on
+un-related, seemingly-unrelated event paths (a completely different
+button's click handler) isn't something a reviewer would think to
+re-check without already suspecting it. The lesson carried into this
+document's [Rules of the road](#9-rules-of-the-road--conventions-for-changing-this-codebase):
+whenever a change touches `setPointerCapture`/pointer event handling on a
+row or surface that *also* has its own plain click/tap behaviour, explicitly
+re-test the plain-tap path too, not just the new gesture.
+
 ---
 
 ## 7. Where things stand right now
 
-- **Live web version:** 1.5.5 (confirmed published — `latest.json` on `main`
+- **Live web version:** 1.5.7 (confirmed published — `latest.json` on `main`
   reports it).
-- **Live native APK:** v1.4 (build 7) — everything from 1.4.1 through 1.5.5
+- **Live native APK:** v1.4 (build 7) — everything from 1.4.1 through 1.5.7
   has been safely OTA-only; no `android/` or `capacitor.config.json` changes
   have shipped since build 7 was cut.
 - **Database schema:** v13, unchanged since the 1.3.3 release.
-- **In progress this session:** a fourth UI-polish batch (working branch
-  `claude/morph-empty-radii`, uncommitted), covering four more findings from
-  the same UI/UX audit that produced 1.5.4/1.5.5:
-  - Concentric corner radii (a small token-level helper so nested rounded
-    surfaces stay visually consistent, instead of correct-by-luck).
-  - Illustrated empty states (reusing the app's two-letter category-monogram
-    visual language instead of a bare line of grey text).
-  - A shared-shape "morph" from the **+** button into the sheet it opens
-    (currently the button just vanishes and an unrelated sheet slides up —
-    an already-built-but-unused gooey-blob SVG filter, `#bt-goo` in
-    `GlassFilters.jsx`, is meant to be the finishing touch here).
-  - A long-press quick-action menu on transaction rows (there is currently
-    no press-and-hold handling anywhere in the app at all).
+- **The original 18-item UI/UX audit is now fully worked through** across
+  five shipped batches (1.5.3–1.5.7), with one item deliberately dropped
+  (edge-swipe-back — see below) rather than left pending.
 
 ---
 
@@ -503,17 +541,21 @@ what led to comparing computed styles across every skin.
 
 ### Deferred / dropped UI audit findings
 
-From the original 18-item UI/UX audit (see 1.5.4/1.5.5 above for the ones
-already shipped):
+The original 18-item UI/UX audit has been fully worked through, across
+1.5.3 (dialog/elevation fix), 1.5.4 (8-item polish batch), 1.5.5 (swipe,
+pull-to-refresh, segmented control), and 1.5.7 (radii, empty states, FAB
+morph, long-press). Only one item was not shipped, and that's by deliberate
+choice, not an oversight:
 
-- **Edge-swipe-back gesture** — deliberately **dropped**, not just
-  postponed: Android's own predictive-back gesture is already enabled
+- **Edge-swipe-back gesture** — deliberately **dropped**: Android's own
+  predictive-back gesture is already enabled
   (`android:enableOnBackInvokedCallback="true"`, `targetSdkVersion 36` in
   `android/variables.gradle`), which already covers this at the system
   level. Building a custom version risked double-handling the same gesture
   and conflicting with the bottom-sheet's own touch handling.
-- The four items listed as "in progress this session" above (§7) — FAB
-  morph, empty states, concentric radii, long-press menu — not yet shipped.
+
+If further rounds of UI/UX audit turn up new findings, log them here the
+same way before starting work on them.
 
 ### Known gaps carried over from `docs/repository-study.md` (still true)
 
@@ -573,6 +615,14 @@ already shipped):
   anything visual/interactive, an actual headless-browser (Playwright)
   check against the real component — not just a hand-written demo that
   looks similar — wherever feasible.
+- **Touching `setPointerCapture`? Re-test the plain-tap path, not just the
+  new gesture.** Capturing eagerly (e.g. on every `pointerdown`, before
+  drag intent is confirmed) retargets that pointer's `pointerup`/`mouseup`/
+  `click` to the capturing element — silently breaking any *other* click
+  handler on a descendant of it. This exact bug shipped and went live once
+  already (1.5.5 → hotfixed in 1.5.6) precisely because only the new drag
+  gesture was re-verified, not the pre-existing tap it sat on top of. Only
+  capture once real movement past the intent threshold is confirmed.
 - **One feature branch per logical batch, off the latest `main`.** Don't
   pile unrelated work into one PR.
 
