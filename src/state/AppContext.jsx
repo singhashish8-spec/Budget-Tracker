@@ -5,6 +5,13 @@ import { resetDatabase } from '../db/sqlite';
 import { checkLockAvailable, unlock as biometricUnlock } from '../services/appLock';
 import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransactions } from '../services/smsReader';
 import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
+// Shown on an auto-imported recurring debit so the automatic category is
+// explained rather than just appearing. Keyed by smsParse's `kind`.
+const RECURRING_NOTE = {
+  emi: 'Auto-detected: EMI / loan instalment',
+  sip: 'Auto-detected: SIP / investment debit',
+  subscription: 'Auto-detected: subscription renewal',
+};
 import { writeAutoBackup, readAutoBackup, clearAutoBackup } from '../services/autoBackup';
 import { applyTheme, applyDisplay } from '../services/theme';
 import { DEPTH_KEYS, detectDepthCapability, syncTilt, stopTilt, setTiltFrameRate } from '../services/depth';
@@ -1308,8 +1315,14 @@ export function AppProvider({ children }) {
           importedBodies.add(bodyKey);
           const dayLabel = new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
           // Auto-file if the user has taught us this merchant; BNPL still needs
-          // confirming, so never auto-categorise those.
-          const autoCat = t.bnpl ? null : ruleMap[(t.merchant || '').trim().toLowerCase()] ?? null;
+          // confirming, so never auto-categorise those. Failing a user rule, the
+          // parser's own recurring classification (EMI / SIP / subscription
+          // auto-debits — see smsParse.detectRecurring) files it, so a monthly
+          // instalment lands in EMI & Loans instead of "needs review" every
+          // single month. A user rule always outranks it.
+          const autoCat = t.bnpl
+            ? null
+            : ruleMap[(t.merchant || '').trim().toLowerCase()] ?? t.autoCat ?? null;
           const id = await repo.addTransaction({
             merchant: t.merchant,
             account: t.address || 'SMS · auto-tracked',
@@ -1318,7 +1331,9 @@ export function AppProvider({ children }) {
             cat: autoCat,
             type: t.type,
             source: 'sms',
-            note: t.bnpl ? `Pay-later (${t.bnpl}) — confirm what this was` : null,
+            note: t.bnpl
+              ? `Pay-later (${t.bnpl}) — confirm what this was`
+              : RECURRING_NOTE[t.kind] ?? null,
             smsAddress: t.address || null,
             smsDate: t.date || null,
           });
