@@ -291,7 +291,6 @@ export default function TransactionsScreen() {
               text={search || filter !== 'all' ? 'No transactions match this search or filter.' : 'No transactions yet — tap + to add one.'}
               action={search || filter !== 'all' ? 'Clear filters' : undefined}
               onAction={search || filter !== 'all' ? () => { setDraft(''); set({ search: '', filter: 'all' }); } : undefined}
-              style={{ alignItems: 'center', textAlign: 'center' }}
             />
           </Card>
         )}
@@ -308,8 +307,13 @@ const SWIPE_OPEN_X = -(SWIPE_ACTION_W * 2);
 const SWIPE_COMMIT_X = SWIPE_OPEN_X * 0.4;
 // A real drag has to move at least this many px before it counts as one —
 // under this, a shaky tap could rob the row's own onClick (which drives the
-// tap-to-expand panel) of the click it should have gotten.
+// tap-to-expand panel) of the click it should have gotten. The same
+// tolerance also cancels a long-press: a finger drifting this far is
+// swiping, not holding.
 const SWIPE_INTENT_PX = 8;
+// How long a still finger has to stay down before it counts as a long-press
+// rather than the start of a tap or swipe — iOS's own context-menu threshold.
+const LONG_PRESS_MS = 450;
 
 // A transaction row that can be swiped left to reveal Categorize/Delete, on
 // top of its existing tap-to-expand behaviour (untouched below). Split out as
@@ -324,8 +328,14 @@ function TxnRow({
   const income = t.type === 'income';
 
   const contentRef = useRef(null);
-  const drag = useRef({ active: false, startX: 0, startTX: 0, moved: false });
+  const drag = useRef({ active: false, startX: 0, startTX: 0, moved: false, longPress: false });
   const [dragX, setDragX] = useState(0);
+  // Where a long-press was released — a compact quick-action menu grows from
+  // that point. null when no menu is showing.
+  const [menuAt, setMenuAt] = useState(null);
+  const pressTimer = useRef(null);
+  const clearPressTimer = () => { clearTimeout(pressTimer.current); pressTimer.current = null; };
+  useEffect(() => clearPressTimer, []);
 
   // A row whose actions were left open by a previous render (another row just
   // opened, closing this one) eases shut instead of snapping — same motion a
@@ -342,26 +352,42 @@ function TxnRow({
   };
 
   const onPointerDown = (e) => {
-    drag.current = { active: true, startX: e.clientX, startTX: dragX, moved: false };
+    drag.current = { active: true, startX: e.clientX, startTX: dragX, moved: false, longPress: false };
+    // The gesture itself always works — motionOff only stills the menu's
+    // entrance animation (via the .bt-quick-menu CSS rule), same as every
+    // other motion-gated affordance in this app. Disabling the long-press
+    // path entirely would remove a whole interaction, not just an animation.
+    const { clientX, clientY } = e;
+    clearPressTimer();
+    pressTimer.current = setTimeout(() => {
+      // Only fires if the finger is still down and hasn't moved enough to
+      // read as a swipe — onPointerMove below cancels this timer otherwise.
+      drag.current.longPress = true;
+      drag.current.moved = true; // suppress the row's own tap-to-expand onClick
+      haptics.tap();
+      setMenuAt({ x: clientX, y: clientY });
+    }, LONG_PRESS_MS);
   };
   const onPointerMove = (e) => {
     if (!drag.current.active) return;
     const dx = e.clientX - drag.current.startX;
     if (!drag.current.moved && Math.abs(dx) > SWIPE_INTENT_PX) {
       drag.current.moved = true;
-      // Capture only once this is confirmed to be a drag, not a plain tap.
-      // Capturing eagerly on every pointerdown (the previous behaviour)
-      // retargets the eventual pointerup/mouseup/click onto this element
-      // instead of the row's own button, which silently swallows every
-      // tap-to-expand — a real regression this exact bug caused.
+      clearPressTimer();
+      // Capture only once this is confirmed to be a drag, not a plain tap or
+      // a long-press. Capturing eagerly on every pointerdown retargets the
+      // eventual pointerup/mouseup/click onto this element instead of the
+      // row's own button, which silently swallows every tap-to-expand.
       contentRef.current?.setPointerCapture?.(e.pointerId);
     }
-    if (!drag.current.moved) return;
+    if (drag.current.longPress || !drag.current.moved) return;
     setDragX(clamp(drag.current.startTX + dx));
   };
   const onPointerUp = () => {
+    clearPressTimer();
     if (!drag.current.active) return;
     drag.current.active = false;
+    if (drag.current.longPress) return; // menu is up; its own buttons handle the rest
     if (!drag.current.moved) return; // a plain tap — let onClick handle it
     if (dragX < SWIPE_COMMIT_X) {
       setDragX(SWIPE_OPEN_X);
@@ -472,9 +498,70 @@ function TxnRow({
           </div>
         </div>
       </Collapse>
+
+      {/* Long-press quick actions: the same Categorize/Split/Delete already
+          reachable by swiping or expanding, just reachable one gesture
+          faster from wherever the thumb already is — no swipe distance, no
+          scrolling to a button inside the expanded panel. Grows from the
+          exact point the finger held (see onPointerDown above). */}
+      {menuAt && (
+        <>
+          <div onClick={() => setMenuAt(null)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+          <div
+            role="menu"
+            className="bt-quick-menu"
+            style={{
+              position: 'fixed',
+              zIndex: 61,
+              width: MENU_W,
+              background: colors.cardSurface,
+              border: `1px solid ${colors.cardBorder}`,
+              borderRadius: radii.cardTight,
+              boxShadow: '0 12px 30px rgba(16,20,24,0.24)',
+              overflow: 'hidden',
+              ...menuPos(menuAt),
+            }}
+          >
+            <button onClick={() => { setMenuAt(null); onOpenSheet(); }} style={menuItemStyle}>Categorize</button>
+            <div style={{ height: 1, background: colors.divider }} />
+            <button onClick={() => { setMenuAt(null); onSplit(); }} style={menuItemStyle}>Split 50/50</button>
+            <div style={{ height: 1, background: colors.divider }} />
+            <button onClick={() => { setMenuAt(null); onDelete(); }} style={{ ...menuItemStyle, color: colors.dangerDark }}>Delete</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
+
+// How wide the long-press quick-action menu is, and the geometry that keeps
+// it on-screen and growing from the point that was actually held, whichever
+// side of the row that turns out to be.
+const MENU_W = 176;
+function menuPos({ x, y }) {
+  const vw = typeof window === 'undefined' ? 400 : window.innerWidth;
+  const vh = typeof window === 'undefined' ? 800 : window.innerHeight;
+  const left = Math.min(Math.max(x - MENU_W / 2, 8), vw - MENU_W - 8);
+  // Grows upward from the touch point by default (there's usually more room
+  // below a row than above it in a scrolling list); flips below when the
+  // press was near the very top of the screen.
+  const growDown = y < 160;
+  return growDown
+    ? { left, top: y + 14, transformOrigin: 'top center' }
+    : { left, bottom: vh - y + 14, transformOrigin: 'bottom center' };
+}
+
+const menuItemStyle = {
+  display: 'block',
+  width: '100%',
+  textAlign: 'left',
+  cursor: 'pointer',
+  padding: '12px 14px',
+  fontSize: 14,
+  fontWeight: 600,
+  color: colors.ink,
+  background: 'transparent',
+};
 
 // Which day a transaction belongs to, for the collapsible date groups. Prefers
 // the real occurred/SMS time; falls back to the display date string when a row

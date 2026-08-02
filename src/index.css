@@ -1050,6 +1050,24 @@ button:active { transform: scale(0.97); transition: transform 0.09s cubic-bezier
 @media (prefers-reduced-motion: reduce) { .bt-seg-pill { transition: none !important; } }
 :root[data-motion='off'] .bt-seg-pill,
 :root[data-motion='reduced'] .bt-seg-pill { transition: none !important; }
+
+/* ── FAB -> sheet morph (BottomNav) ──────────────────────────────────────────
+   #bt-goo (GlassFilters.jsx) softens the circle-to-rounded-rect corner
+   interpolation while the shape is actively changing, so it reads as
+   melting rather than snapping. Applied only for the brief transition
+   window (see GOO_MS in BottomNav.jsx), never held on statically — this
+   filter is not cheap to keep running every frame once the shape has
+   settled. Never rendered at all when motion is off, so no reduced-motion
+   override is needed here. */
+.bt-fab-morph { filter: url(#bt-goo); }
+
+/* ── Long-press quick-action menu (transaction rows) ──────────────────────── */
+@keyframes popIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+.bt-quick-menu { animation: popIn 0.16s var(--ease-ios); }
+@media (prefers-reduced-motion: reduce) { .bt-quick-menu { animation: none; } }
+:root[data-motion='off'] .bt-quick-menu,
+:root[data-motion='reduced'] .bt-quick-menu { animation: none; }
+
 /* A chevron that points down and rotates up when open (set data-open on it). */
 .bt-chev { transition: transform 0.22s ease; }
 :root[data-motion='off'] .bt-chev { transition: none; }

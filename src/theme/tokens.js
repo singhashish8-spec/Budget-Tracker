@@ -87,6 +87,15 @@ export const radii = {
   pill: 100,
 };
 
+// Concentric-corner rule: when a rounded surface sits inset inside another
+// rounded surface by `gap` px of padding, its own radius should be the
+// outer radius minus that gap — that's what makes the two curves read as
+// parallel/machined instead of just "both kind of round." Nothing enforced
+// this before; a container's radius and its child's were always picked
+// independently, which is correct by luck rather than by rule. Floors at 4
+// so a deeply-nested surface never goes visually square.
+export const nest = (outerRadius, gap = 16) => Math.max(4, outerRadius - gap);
+
 // iOS layout constants, in points (1pt == 1 CSS px here).
 export const metrics = {
   row: 44, // the minimum tappable row height in every Apple HIG list
