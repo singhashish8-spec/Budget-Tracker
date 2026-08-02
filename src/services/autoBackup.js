@@ -1,5 +1,6 @@
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { gatherData } from './backup';
+import { logError } from './errorLog';
 
 // A snapshot of everything, rewritten automatically whenever the data changes,
 // so a wiped database can be recovered without the user having remembered to
@@ -48,11 +49,19 @@ export async function writeAutoBackup() {
       result.at = Date.now();
       if (t.cloud) result.cloud = true;
       if (t.durable) result.durable = true;
-    } catch {
+    } catch (err) {
       // This location refused us (permissions / scoped storage). The others
-      // are independent, so keep going rather than giving up entirely.
+      // are independent, so keep going rather than giving up entirely — but
+      // record it: a snapshot silently failing to write is the difference
+      // between "protected" and "believes they're protected", and the user has
+      // no way to tell those apart from the UI.
+      logError('autoBackup.write', err, `directory=${t.directory}`);
     }
   }
+  // Every location refused. Settings shows "last backup" from the previous
+  // successful run, so without this there is nothing anywhere saying the safety
+  // net stopped working.
+  if (!result.ok) logError('autoBackup.write', new Error('No backup location accepted the snapshot'), `targets=${TARGETS.length}`);
   return result;
 }
 

@@ -1,5 +1,6 @@
 import { getDb, persist } from './sqlite';
 import { newId } from '../utils/id';
+import { logError } from '../services/errorLog';
 
 // Thin data-access layer over the SQLite tables. Screens/state never touch
 // getDb()/raw SQL directly — everything funnels through here so the storage
@@ -744,6 +745,9 @@ export async function deleteCsvProfile(name) {
 export async function importBackup(data) {
   const db = await getDb();
   const counts = { categories: 0, transactions: 0, budgets: 0, reminders: 0, goals: 0, netWorthItems: 0, eventBudgets: 0, csvProfiles: 0 };
+  // Kept so the document loop can report a representative cause once at the
+  // end rather than logging an entry per failed row.
+  let lastDocumentError = null;
 
   for (const c of data.categories ?? []) {
     await db.run(
@@ -754,16 +758,25 @@ export async function importBackup(data) {
   }
   for (const t of data.transactions ?? []) {
     await db.run(
-      `INSERT OR REPLACE INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at, warranty_months)
+      `INSERT OR REPLACE INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at, warranty_months, business, gst_rate)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [t.id, t.merchant, t.account ?? null, t.date, Math.round(Math.abs(t.amount)), t.category_id ?? t.cat ?? null, t.type === 'income' ? 'income' : 'expense', t.source ?? 'manual', t.created_at ?? Date.now(), t.note ?? null, t.sms_address ?? null, t.sms_date ?? null, t.method ?? null, t.occurred_at ?? null, t.warranty_months ?? null, t.business ?? 0, t.gst_rate ?? null],
     );
     counts.transactions++;
   }
   for (const b of data.budgets ?? []) {
+    // Backup rows come from listBudgets()'s mapped shape (cat/limit/period/
+    // startsAt/endsAt), not raw column names — accept both so an older backup
+    // (raw columns) still restores.
     await db.run(
-      `INSERT OR REPLACE INTO budgets (category_id, monthly_limit) VALUES (?,?)`,
-      [b.category_id ?? b.cat, Math.round(b.monthly_limit ?? b.limit)],
+      `INSERT OR REPLACE INTO budgets (category_id, monthly_limit, period, starts_at, ends_at) VALUES (?,?,?,?,?)`,
+      [
+        b.category_id ?? b.cat,
+        Math.round(b.monthly_limit ?? b.limit),
+        b.period ?? null,
+        b.starts_at ?? b.startsAt ?? null,
+        b.ends_at ?? b.endsAt ?? null,
+      ],
     );
     counts.budgets++;
   }
@@ -844,6 +857,8 @@ export async function importBackup(data) {
   // Documents last: they are by far the largest rows, and a restore that
   // dropped every transaction because one photo failed would be the worst
   // possible trade. Each is isolated so a bad one costs only itself.
+  counts.documents = 0;
+  counts.documentsSkipped = 0;
   for (const d of data.warrantyDocuments ?? []) {
     if (!d.id || !d.data) continue;
     try {
@@ -851,9 +866,18 @@ export async function importBackup(data) {
       `INSERT OR REPLACE INTO warranty_documents (id, warranty_id, name, mime, data, created_at) VALUES (?,?,?,?,?,?)`,
       [d.id, d.warranty_id, d.name ?? 'Document', d.mime ?? 'image/jpeg', d.data, d.created_at ?? Date.now()],
       );
-    } catch {
-      counts.documentsSkipped = (counts.documentsSkipped || 0) + 1;
+      counts.documents++;
+    } catch (err) {
+      // A dropped document is a bill or warranty card the user can't get back.
+      // Isolating the failure is right; hiding it is not — this count is now
+      // reported by every restore path, and the failure is logged so there is a
+      // record of WHY beyond a number. No document content is logged.
+      counts.documentsSkipped++;
+      lastDocumentError = err;
     }
+  }
+  if (counts.documentsSkipped > 0) {
+    logError('importBackup.documents', lastDocumentError || new Error('Document could not be restored'), `${counts.documentsSkipped} of ${counts.documentsSkipped + counts.documents} skipped`);
   }
 
   // Restore settings (salary day, currency, theme, and crucially smsLastRead —
