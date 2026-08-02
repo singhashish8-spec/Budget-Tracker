@@ -12,7 +12,7 @@
 > a fixed bug, a new feature), add an entry to this file in the same session,
 > before moving on. This file is only useful if it stays true.
 >
-> Last updated: **2026-08-03**, at web bundle **1.5.9** / native APK
+> Last updated: **2026-08-03**, at web bundle **1.6.0** / native APK
 > **v1.4 (build 7)**, database schema **v13**.
 
 ---
@@ -336,7 +336,8 @@ session's direct, first-hand work and carry more detail.
 | 1.5.6 | **Urgent bug fix:** tap-to-expand was silently broken on every transaction row — a regression introduced by 1.5.5 itself. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed). Shipped as a standalone hotfix within hours of 1.5.5, ahead of the batch below | [#57](https://github.com/singhashish8-spec/Budget-Tracker/pull/57) |
 | 1.5.7 | Fifth UI-audit batch: concentric corner radii (`nest()` token helper), illustrated empty states (category-monogram badge), a FAB→sheet shared-shape morph using the previously-unused `#bt-goo` filter, and a long-press quick-action menu on transaction rows | [#56](https://github.com/singhashish8-spec/Budget-Tracker/pull/56) |
 | 1.5.8 | **Bug fixes, both regressions from 1.5.7's long-press/quick-menu batch:** (1) the long-press timer only watched horizontal movement, so a vertical scroll on a transaction row could pop the quick-action menu mid-scroll and its full-viewport overlay would eat further touches — reported as "scroll not working"; (2) a row that was both swiped open and tapped open at once had its Categorize/Delete buttons stretched down over the expanded detail panel instead of just the header, because the actions layer's `bottom: 0` was anchored to the whole row's box, which grows when expanded. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
-| **1.5.9** *(current)* | **Critical bug fix — app-wide scroll was structurally broken.** `.app-shell` used `min-height: 100vh` instead of a fixed height, so it grew to its content's height and every screen's `overflow-y: auto` container grew with it — `scrollHeight === clientHeight`, meaning no screen could ever scroll internally. The app only ever appeared to scroll by overflowing to the document. This also permanently satisfied Screen.jsx's pull-to-refresh "am I at the top?" check (`scrollTop` is always 0 on a container that can't scroll), so every downward swipe on Home/Transactions was captured as a refresh pull instead of a scroll. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
+| 1.5.9 | **Critical bug fix — app-wide scroll was structurally broken.** `.app-shell` used `min-height: 100vh` instead of a fixed height, so it grew to its content's height and every screen's `overflow-y: auto` container grew with it — `scrollHeight === clientHeight`, meaning no screen could ever scroll internally. The app only ever appeared to scroll by overflowing to the document. This also permanently satisfied Screen.jsx's pull-to-refresh "am I at the top?" check (`scrollTop` is always 0 on a container that can't scroll), so every downward swipe on Home/Transactions was captured as a refresh pull instead of a scroll. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
+| **1.6.0** *(current)* | **SMS engine rewrite — the app's core USP.** Three classes of failure fixed: (1) *false positives* — EMI/bill reminders, scheduled "will be debited" notices, offers, failed/declined payments, UPI collect requests and mandate registrations were all being imported as real spending; the parser now requires a **completed** money verb (one not preceded by a future modal or a negation), so "will be debited" no longer counts as "debited". (2) *wrong amounts* — the account balance was being picked as the transaction amount whenever it appeared first ("Avl Bal Rs.12,345 after debit of Rs.500" imported ₹12,345); amounts are now position-scored against balance context words. (3) *EMI/subscription blindness* — recurring auto-debits (EMI, NACH, SIP, mutual-fund, and ~25 known subscription merchants) are now classified and auto-filed into EMI & Loans / Investments / Subscriptions instead of landing in "needs review" every month. Ships with the project's **first automated tests** (33 cases, `npm test`). See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
 
 ### Native (APK) release history
 
@@ -642,6 +643,76 @@ If a layout nests a scroll container inside a flex column, every ancestor in
 that chain needs a *bounded* height (and `min-height: 0` where it's a flex
 child), or the innermost `overflow: auto` is decoration.
 
+### The SMS parser that could not tell a bill reminder from a bill payment
+
+**Symptom:** reported directly by the owner — "the app is not able to read many
+of my messages, and I receive a reminder message from banks and EMI companies
+and the app registers it as a transaction." Spending was being double-counted:
+once when the EMI reminder arrived, again when the EMI actually debited.
+
+**Root cause:** the parser asked only "does this message contain an amount AND a
+word like *debited*?" Indian banks send four kinds of message that all quote a
+rupee amount, and only one is a transaction:
+
+| Message | Is it money moving? |
+|---|---|
+| "Rs.450 debited ... at Swiggy" | yes |
+| "Rs.5,000 **will be** debited on 05-Aug" | no — it hasn't happened |
+| "EMI of Rs.5,000 **is due on** 05-Aug" | no — it's a reminder |
+| "Get a **pre-approved loan of** Rs.5,00,000" | no — it's an advert |
+
+The string `"will be debited"` contains `"debited"`, so a substring test can
+never separate rows 1 and 2 — the check has to look at what sits *immediately
+before* each verb, not merely whether the verb occurs.
+
+A second, quieter bug: the amount was simply the first currency figure in the
+message. Most templates put the transaction amount first and the balance second,
+so this usually worked — but on any template that leads with the balance
+("Avl Bal Rs.12,345.00 after debit of Rs.500.00") the app imported **the account
+balance** as the spend. Balances are large, so this silently poisoned every
+budget it touched.
+
+**Fix:** three changes to `src/services/smsParse.js`.
+
+1. **Completed-verb requirement.** Each debit/credit verb occurrence is checked
+   against the ~24 characters preceding it for a future modal (`will`, `shall`,
+   `to be`, `due to be`, …) or a negation (`not`, `failed to`, …). Only
+   occurrences that survive count. A message where *every* occurrence is
+   future-marked is not a transaction. On top of that, whole-message
+   disqualifiers reject OTPs, failed/declined payments, UPI collect requests
+   ("X has requested Rs.500"), and mandate/autopay *registration* (as distinct
+   from its later execution, which does say "debited").
+2. **Position-scored amounts.** Every currency figure is extracted with its
+   index and a flag for whether the ~30 characters before it contain balance
+   context (`bal`, `avl`, `available`, `limit`, `outstanding`, …). The first
+   *non-balance* figure wins. Suffix-form amounts ("2,500.00 INR") are now
+   recognised too.
+3. **Recurring classification.** EMI/NACH/instalment, SIP/mutual-fund/folio, and
+   subscription phrasing — plus a list of ~25 well-known recurring merchants
+   (Netflix, Spotify, Prime, Adobe, cult.fit, …) — map to a `kind` and an
+   `autoCat`, which `AppContext.scanSms` applies when the user has no rule of
+   their own for that merchant. A monthly instalment now files itself into
+   EMI & Loans instead of asking to be categorised every month. Income is never
+   auto-filed as an EMI or subscription, and BNPL still always asks.
+
+`rejectionReason(body)` is exported alongside, so a message that *isn't*
+imported can say why (`reminder`, `scheduled`, `promotional`, `failed`,
+`payment-request`, `mandate-setup`, `otp`, …) rather than vanishing.
+
+**Verified with:** the project's first automated test suite — 33 cases in
+`src/services/smsParse.test.js`, run by `npm test` (node:test, no new
+dependency), covering real bank/UPI/NBFC templates. Old vs. new on the same
+16-message corpus: the old parser got **3 wrong** (imported a scheduled Netflix
+debit and a credit-card bill reminder as real spending, and read a ₹12,345
+balance as a ₹500 spend); the new parser got **0 wrong**.
+
+**Why this is the highest-value place for the project's first tests:** the
+parser is pure (string in, object out), it is the app's single biggest USP, and
+its failures are silent — a wrongly-imported reminder looks exactly like a real
+transaction in the list. Regex changes are also famously prone to fixing one
+template while breaking three others, which is precisely what a corpus test
+catches and code review does not.
+
 ---
 
 ## 7. Where things stand right now
@@ -688,11 +759,13 @@ same way before starting work on them.
 
 ### Known gaps carried over from `docs/repository-study.md` (still true)
 
-- **No automated tests anywhere** in the project — no test files, no test
-  runner configured. `selectors.js`'s ~32 pure functions (budget-window
-  math, warranty expiry, duplicate detection, envelope rollover) are the
-  highest-value, lowest-friction place to start, since they take no I/O and
-  already accept an injectable `now`.
+- **Automated tests now exist, but only for the SMS parser.** `npm test`
+  (node:test, no extra dependency) runs 33 cases against
+  `src/services/smsParse.js`. Everything else is still untested —
+  `selectors.js`'s ~32 pure functions (budget-window math, warranty expiry,
+  duplicate detection, envelope rollover) remain the next highest-value,
+  lowest-friction target, since they take no I/O and already accept an
+  injectable `now`.
 - **No CI on pull requests** — both GitHub Actions workflows only run on a
   direct push to `main` or by manual trigger; nothing lints or builds a PR
   before it's merged.
@@ -740,7 +813,7 @@ same way before starting work on them.
   `data-motion="off"`/`"reduced"` plus the OS-level
   `prefers-reduced-motion` media query — check both when adding new motion.
 - **Verify before calling something done.** The established pattern in this
-  project: `npm run build` + `npm run lint` after every change, and for
+  project: `npm run build` + `npm run lint` + `npm test` after every change, and for
   anything visual/interactive, an actual headless-browser (Playwright)
   check against the real component — not just a hand-written demo that
   looks similar — wherever feasible.
