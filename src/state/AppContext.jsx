@@ -7,8 +7,9 @@ import { smsAvailable, ensureSmsPermission, hasSmsPermission, readNewTransaction
 import { smsSignature, parseSms, extractAmount, extractMerchant } from '../services/smsParse';
 import { writeAutoBackup, readAutoBackup, clearAutoBackup } from '../services/autoBackup';
 import { applyTheme, applyDisplay } from '../services/theme';
-import { DEPTH_KEYS, detectDepthCapability, syncTilt, stopTilt } from '../services/depth';
+import { DEPTH_KEYS, detectDepthCapability, syncTilt, stopTilt, setTiltFrameRate } from '../services/depth';
 import { logError } from '../services/errorLog';
+import { FRAME_RATE_KEYS, detectRefreshRate } from '../services/frameRate';
 import { setHapticLevel, success as hapticSuccess, error as hapticError } from '../services/haptics';
 import * as notify from '../services/notify';
 import { consumePendingShare, consumeShortcut, setSecureScreen } from '../services/appIntegration';
@@ -84,6 +85,10 @@ const initialState = {
   // 'off'. Chosen automatically from the device on first run, overridable in
   // Settings. Inert for the flat skins, which cost the same at every tier.
   depth: 'balanced',
+  // Cap for JS-driven animation (the count-up figure and the tilt highlight).
+  // 'auto' follows the display. Can only ever cap, never raise — see
+  // services/frameRate.js.
+  frameRate: 'auto',
   hapticLevel: 'full', // 'full' | 'light' | 'off'
   // Files handed in by another app's share sheet, waiting to be filed against
   // a product. Held here so the Warranties screen can pick them up.
@@ -189,6 +194,7 @@ export function AppProvider({ children }) {
           themeSurfaceStr,
           motionPrefStr,
           depthStr,
+          frameRateStr,
           hapticLevelStr,
           privacyStr,
           rcsCaptureEnabledStr,
@@ -228,6 +234,7 @@ export function AppProvider({ children }) {
           // distinguishable from a stored choice so the first run can
           // auto-detect without overriding someone who picked deliberately.
           repo.getSetting('depth', null),
+          repo.getSetting('frameRate', 'auto'),
           repo.getSetting('hapticLevel', 'full'),
           repo.getSetting('privacy', '0'),
           repo.getSetting('rcsCaptureEnabled', '0'),
@@ -277,6 +284,7 @@ export function AppProvider({ children }) {
           themeSurface: themeSurfaceStr || 'standard',
           motionPref: motionPrefStr || 'on',
           depth: resolvedDepth,
+          frameRate: FRAME_RATE_KEYS.includes(frameRateStr) ? frameRateStr : 'auto',
           hapticLevel: hapticLevelStr || 'full',
           privacy: privacyStr === '1',
           rcsCaptureEnabled: rcsCaptureEnabledStr === '1',
@@ -464,6 +472,20 @@ export function AppProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Measure the display's real refresh rate once, so Settings can show what the
+  // panel actually does and grey out the rates it can't reach. Deferred until
+  // after load: taking 24 animation frames during startup would be competing
+  // with the very work it's trying to measure.
+  useEffect(() => {
+    if (state.loading) return;
+    detectRefreshRate().catch(() => { /* measurement is best-effort */ });
+  }, [state.loading]);
+
+  // Keep the tilt loop's frame cap in step with the setting.
+  useEffect(() => {
+    setTiltFrameRate(state.frameRate);
+  }, [state.frameRate]);
+
   // Device-tilt engine for the glass/spatial skins. Only ever runs when the
   // current skin actually consumes it, the top tier is selected, and motion is
   // allowed — syncTilt owns all three checks so the conditions live in one
@@ -639,6 +661,18 @@ export function AppProvider({ children }) {
       set({ motionPref: pref });
       repo.setSetting('motionPref', pref);
       applyDisplay({ motion: pref });
+    },
+    [set],
+  );
+
+  // Cap for JS-driven animation. Never raises anything — a display cannot be
+  // made to refresh faster from a web bundle (see services/frameRate.js).
+  const setFrameRate = useCallback(
+    (key) => {
+      const next = FRAME_RATE_KEYS.includes(key) ? key : 'auto';
+      set({ frameRate: next });
+      repo.setSetting('frameRate', next);
+      setTiltFrameRate(next);
     },
     [set],
   );
@@ -1658,6 +1692,7 @@ export function AppProvider({ children }) {
       setThemeSurface,
       setMotionPref,
       setDepth,
+      setFrameRate,
       togglePrivacy,
       setSalaryDay,
       setImpulseThreshold,
@@ -1753,6 +1788,7 @@ export function AppProvider({ children }) {
       setThemeSurface,
       setMotionPref,
       setDepth,
+      setFrameRate,
       togglePrivacy,
       setSalaryDay,
       setImpulseThreshold,

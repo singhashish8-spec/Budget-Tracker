@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { makeFrameGate } from './frameRate';
 
 // The engine behind the three "depth" skins (Frosted, Liquid Glass, Spatial).
 //
@@ -87,16 +88,28 @@ function writeTilt(x, y) {
 // write inside rAF (rather than straight from the sensor callback, which can
 // fire far faster than the display refreshes) keeps this to at most one style
 // write per frame.
-function tick() {
+// The frame-rate cap, if the user set one. Rebuilt whenever the setting
+// changes so the running loop picks it up without restarting.
+let frameGate = () => true;
+export function setTiltFrameRate(key) {
+  frameGate = makeFrameGate(key);
+}
+
+function tick(now) {
   const dx = target.x - current.x;
   const dy = target.y - current.y;
   if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
     rafHandle = 0;
     return;
   }
-  current.x += dx * TILT_SMOOTHING;
-  current.y += dy * TILT_SMOOTHING;
-  writeTilt(current.x, current.y);
+  // Skipping a frame here skips a style write and everything downstream of it.
+  // The easing below is time-independent enough that a capped loop simply takes
+  // larger steps — the highlight still lands in the same place.
+  if (frameGate(now)) {
+    current.x += dx * TILT_SMOOTHING;
+    current.y += dy * TILT_SMOOTHING;
+    writeTilt(current.x, current.y);
+  }
   rafHandle = requestAnimationFrame(tick);
 }
 

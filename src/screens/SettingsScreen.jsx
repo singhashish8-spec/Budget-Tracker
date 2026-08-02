@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { colors } from '../theme/tokens';
 import { CURRENCIES } from '../utils/currency';
 import { salaryDayLabel } from '../utils/date';
@@ -7,6 +7,7 @@ import { backupToDrive, restoreFromFile } from '../services/backup';
 import { exportAllAsZip } from '../services/zipExport';
 import { MODES, ACCENTS, SURFACES, MOTIONS } from '../services/theme';
 import { DEPTHS, surfaceUsesDepth } from '../services/depth';
+import { FRAME_RATES, detectRefreshRate, knownRefreshRate, isRateAvailable } from '../services/frameRate';
 import { HAPTIC_LEVELS } from '../services/haptics';
 import * as haptics from '../services/haptics';
 import { notificationsSupported } from '../services/notify';
@@ -30,7 +31,7 @@ const SECTIONS = [
 ];
 
 export default function SettingsScreen() {
-  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setZeroBased, setHapticPref, askNotificationPermission, factoryReset, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref, setDepth, toggleRcsCapture, toggleClipboardCapture, confirmCapture, dismissCapture } = useApp();
+  const { state, go, goBack, showToast, setCurrency, setSalaryDay, setImpulseThreshold, setZeroBased, setHapticPref, askNotificationPermission, factoryReset, toggleAccount, toggleAppLock, reloadData, setThemeMode, setThemeAccent, setThemeSurface, setMotionPref, setDepth, setFrameRate, toggleRcsCapture, toggleClipboardCapture, confirmCapture, dismissCapture } = useApp();
   const [section, setSection] = useState(null);
   const restoreRef = useRef(null);
   // { phase, ... } where phase = idle | web | checking | uptodate | available |
@@ -214,6 +215,9 @@ export default function SettingsScreen() {
               </div>
             </>
           )}
+
+          <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, margin: '18px 0 4px' }}>Frame rate</div>
+          <FrameRatePanel value={state.frameRate} onChange={setFrameRate} />
 
           <div style={{ fontSize: 13, fontWeight: 600, color: colors.textSecondary, margin: '18px 0 4px' }}>Haptics</div>
           <div style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 8 }}>
@@ -611,6 +615,65 @@ const backBtnStyle = { width: 36, height: 36, borderRadius: '50%', background: c
 // refusing a write shouldn't interrupt anyone. This is where those failures
 // stop being invisible to whoever has to fix them. Everything shown here is
 // already on the device; nothing is sent anywhere.
+// Frame-rate cap for the app's JS-driven animation.
+//
+// The copy here is deliberately blunt about what this can't do. A web bundle
+// cannot make a display refresh faster — requestAnimationFrame runs at whatever
+// the panel does — so every rate above the measured refresh is shown but
+// disabled, with the reason on screen. Offering 240 on a 120Hz phone as if it
+// were a real choice would be a dial that does nothing, which is worse than not
+// offering it at all.
+function FrameRatePanel({ value, onChange }) {
+  const [displayHz, setDisplayHz] = useState(() => knownRefreshRate());
+
+  useEffect(() => {
+    let cancelled = false;
+    detectRefreshRate()
+      .then((hz) => { if (!cancelled) setDisplayHz(hz); })
+      .catch(() => { /* best effort — options simply stay enabled */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <>
+      <div style={{ fontSize: 12, color: colors.textTertiary, marginBottom: 8, lineHeight: 1.5 }}>
+        {displayHz
+          ? `This screen runs at ${displayHz}Hz.`
+          : 'Measuring this screen’s refresh rate…'}{' '}
+        Lowering the rate saves battery by drawing the counting figures and the glass highlight less often. It can’t raise anything — nothing can draw more frames than the screen shows.
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {FRAME_RATES.map((f) => {
+          const available = isRateAvailable(f.key, displayHz);
+          const on = value === f.key;
+          return (
+            <button
+              key={f.key}
+              disabled={!available}
+              onClick={() => { if (available) { haptics.select(); onChange(f.key); } }}
+              aria-pressed={on}
+              title={available ? undefined : `This screen is ${displayHz}Hz — it can’t show ${f.label} frames per second`}
+              style={{
+                flex: '1 1 60px', padding: '9px 6px', borderRadius: 100, fontSize: 13, fontWeight: 600,
+                cursor: available ? 'pointer' : 'not-allowed',
+                background: on ? colors.primary : 'transparent',
+                color: on ? colors.onPrimary : available ? colors.textSecondary : colors.textTertiary,
+                border: `1px solid ${on ? colors.primary : colors.cardBorder}`,
+                opacity: available ? 1 : 0.45,
+              }}
+            >
+              {f.label}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 8, lineHeight: 1.45 }}>
+        Applies to the counting figures and the tilt highlight. Screen transitions and progress bars are drawn by the system at the screen’s own rate and aren’t affected.
+      </div>
+    </>
+  );
+}
+
 function DiagnosticsPanel({ showToast }) {
   const [entries, setEntries] = useState(() => listErrors());
   const [expanded, setExpanded] = useState(false);

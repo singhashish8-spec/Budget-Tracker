@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Amount from '../Amount';
+import { makeFrameGate } from '../../services/frameRate';
 
 // A money figure that counts up to its value instead of hard-cutting to it.
 // Reserved for the few headline numbers (the Home hero, a screen's summary
@@ -28,16 +29,35 @@ function motionAllowed() {
 // "landing" rather than ticking mechanically.
 const easeOut = (t) => 1 - (1 - t) ** 3;
 
-export default function CountUp({ value, format, style, className }) {
+export default function CountUp({ value, format, style, className, frameRate = 'auto' }) {
   const target = Number.isFinite(value) ? value : 0;
-  const [shown, setShown] = useState(target);
-  // What's actually on screen right now. Tracked in a ref as well as state
+  // What's actually on screen right now. Tracked in a ref rather than state
   // because an interrupted animation has to resume from the figure the user can
   // SEE — reading the interrupted run's target instead would make the number
   // visibly jump forward before carrying on (two quick adds inside the 620ms
   // window is enough to trigger it).
   const shownRef = useRef(target);
   const rafRef = useRef(0);
+  const nodeRef = useRef(null);
+
+  // The figure is written straight to the DOM node instead of through state.
+  //
+  // The previous version called setState on every animation frame, so a 620ms
+  // count ran ~37 full React render-and-reconcile cycles just to change one text
+  // node — all of it competing for the main thread with whatever else was
+  // animating at the time. Writing textContent is the same pixels for none of
+  // that work, and it's safe here precisely because this value is transient: it
+  // is re-derived from `value` on every real render, so React never has stale
+  // state to disagree with.
+  const paint = (n) => {
+    if (nodeRef.current) nodeRef.current.textContent = format(Math.round(n));
+  };
+
+  // Paint the committed value on every render so React-driven updates (a new
+  // target, a currency change) are never left showing a stale figure.
+  useEffect(() => {
+    paint(shownRef.current);
+  });
 
   useEffect(() => {
     const from = shownRef.current;
@@ -45,26 +65,36 @@ export default function CountUp({ value, format, style, className }) {
 
     if (!motionAllowed() || Math.abs(target - from) < MIN_DELTA) {
       shownRef.current = target;
-      setShown(target);
+      paint(target);
       return undefined;
     }
 
+    // Honour the frame-rate cap: on a 120Hz panel held to 60, this halves the
+    // work with no visible difference to a number easing over 620ms.
+    const gate = makeFrameGate(frameRate);
     const start = performance.now();
     const step = (now) => {
       const t = Math.min(1, (now - start) / DURATION);
-      const v = t === 1 ? target : from + (target - from) * easeOut(t);
-      shownRef.current = v;
-      setShown(v);
+      // The final frame always paints, cap or no cap — stopping a count one
+      // frame early would leave a visibly wrong total on screen.
+      if (gate(now) || t === 1) {
+        const v = t === 1 ? target : from + (target - from) * easeOut(t);
+        shownRef.current = v;
+        paint(v);
+      }
       if (t < 1) rafRef.current = requestAnimationFrame(step);
     };
     rafRef.current = requestAnimationFrame(step);
 
     return () => cancelAnimationFrame(rafRef.current);
-  }, [target]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, frameRate]);
 
+  // Rendered with the initial figure so there is never an empty frame before
+  // the first effect runs; every update after that goes through `paint`.
   return (
-    <Amount style={style} className={className}>
-      {format(Math.round(shown))}
+    <Amount ref={nodeRef} style={style} className={className}>
+      {format(Math.round(shownRef.current))}
     </Amount>
   );
 }

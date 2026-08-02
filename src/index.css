@@ -615,8 +615,8 @@
   --liquid-rim:
     inset 0 var(--hairline) 0 0 var(--ios-specular),
     inset 0 calc(var(--hairline) * -1) 0 0 rgba(255, 255, 255, 0.30),
-    inset var(--hairline) 0 0 0 rgba(255, 255, 255, calc(0.34 + var(--tilt-x) * 0.30)),
-    inset calc(var(--hairline) * -1) 0 0 0 rgba(255, 255, 255, calc(0.34 - var(--tilt-x) * 0.30));
+    inset var(--hairline) 0 0 0 rgba(255, 255, 255, 0.34),
+    inset calc(var(--hairline) * -1) 0 0 0 rgba(255, 255, 255, 0.34);
   --liquid-lift: 0 1px 2px rgba(16, 20, 24, 0.06), 0 10px 30px rgba(16, 20, 24, 0.10);
 }
 @media (prefers-color-scheme: dark) {
@@ -634,8 +634,8 @@
     --liquid-rim:
       inset 0 var(--hairline) 0 0 var(--ios-specular),
       inset 0 calc(var(--hairline) * -1) 0 0 rgba(255, 255, 255, 0.07),
-      inset var(--hairline) 0 0 0 rgba(255, 255, 255, calc(0.10 + var(--tilt-x) * 0.10)),
-      inset calc(var(--hairline) * -1) 0 0 0 rgba(255, 255, 255, calc(0.10 - var(--tilt-x) * 0.10));
+      inset var(--hairline) 0 0 0 rgba(255, 255, 255, 0.10),
+      inset calc(var(--hairline) * -1) 0 0 0 rgba(255, 255, 255, 0.10);
     --liquid-lift: 0 1px 2px rgba(0, 0, 0, 0.40), 0 12px 34px rgba(0, 0, 0, 0.46);
   }
 }
@@ -653,8 +653,8 @@
   --liquid-rim:
     inset 0 var(--hairline) 0 0 var(--ios-specular),
     inset 0 calc(var(--hairline) * -1) 0 0 rgba(255, 255, 255, 0.07),
-    inset var(--hairline) 0 0 0 rgba(255, 255, 255, calc(0.10 + var(--tilt-x) * 0.10)),
-    inset calc(var(--hairline) * -1) 0 0 0 rgba(255, 255, 255, calc(0.10 - var(--tilt-x) * 0.10));
+    inset var(--hairline) 0 0 0 rgba(255, 255, 255, 0.10),
+    inset calc(var(--hairline) * -1) 0 0 0 rgba(255, 255, 255, 0.10);
   --liquid-lift: 0 1px 2px rgba(0, 0, 0, 0.40), 0 12px 34px rgba(0, 0, 0, 0.46);
 }
 
@@ -693,15 +693,30 @@
 :root[data-surface='spatial'] .bt-material::before {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
+  /* Oversized and clipped by the parent's overflow, so the layer can slide
+     without ever exposing an edge. */
+  inset: -60% -80%;
   pointer-events: none;
+  /* The gradient itself never changes — it is a fixed picture that gets MOVED.
+     The previous version animated the gradient's position inside `background`,
+     which is a paint property: every tilt frame repainted the whole element.
+     A translate on a static layer is composite-only, so after the first paint
+     the CPU never touches these pixels again. Same highlight, no repaint. */
   background: radial-gradient(
-    120% 90% at calc(50% + var(--tilt-gloss-x)) calc(0% + var(--tilt-gloss-y)),
+    closest-side,
     rgba(255, 255, 255, 0.34),
-    rgba(255, 255, 255, 0.06) 42%,
-    transparent 68%
+    rgba(255, 255, 255, 0.06) 45%,
+    transparent 72%
   );
+  transform: translate3d(var(--tilt-gloss-x), var(--tilt-gloss-y), 0);
+  will-change: transform;
+}
+/* The parent has to clip the oversized layer, and must establish a stacking
+   context so the gloss can't escape above content. */
+:root[data-surface='liquid'] .bt-material,
+:root[data-surface='spatial'] .bt-material {
+  overflow: hidden;
+  isolation: isolate;
 }
 /* Refraction rides the highlight layer, so the warp distorts light rather than
    text. max only — an SVG filter is a real per-frame cost. */
@@ -817,7 +832,11 @@
     rotateY(calc(var(--tilt-x) * -2.2deg))
     rotateX(calc(var(--tilt-y) * 1.6deg));
   transform-style: preserve-3d;
-  transition: transform 0.5s var(--ease-ios);
+  /* No transition on purpose. The tilt value changes every frame, so a
+     transition here would be continuously retargeted — the browser restarts the
+     interpolation each frame and the card visibly lags behind the phone. The
+     smoothing that makes this feel good already happens in JS (services/
+     depth.js eases the raw sensor), so the CSS should follow it exactly. */
 }
 /* Chrome sits on its own, nearer plane — it's the layer closest to the user in
    any spatial OS, and it should never appear to sink into the content. */
