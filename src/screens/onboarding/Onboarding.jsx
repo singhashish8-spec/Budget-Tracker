@@ -16,8 +16,11 @@ const ACCOUNT_TYPES = [
 
 export default function Onboarding() {
   const { state } = useApp();
+  // minHeight is 0, not 100vh: flex:1 already fills the viewport-height shell,
+  // and a hardcoded 100vh would overhang it (and get clipped) wherever the
+  // dynamic viewport is shorter than 100vh — see the .app-shell notes.
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 20px 32px', display: 'flex', flexDirection: 'column', gap: 20, minHeight: '100vh' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 20px 32px', display: 'flex', flexDirection: 'column', gap: 20, minHeight: 0 }}>
       {/* Each dot is the shared ProgressBar (the same fix Goals just got: a
           bare inline width snaps, this component's fill eases in, and already
           respects the motion setting), just narrow — three side by side reads
