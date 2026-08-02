@@ -328,7 +328,7 @@ function TxnRow({
   const income = t.type === 'income';
 
   const contentRef = useRef(null);
-  const drag = useRef({ active: false, startX: 0, startTX: 0, moved: false, longPress: false });
+  const drag = useRef({ active: false, startX: 0, startY: 0, startTX: 0, moved: false, longPress: false });
   const [dragX, setDragX] = useState(0);
   // Where a long-press was released — a compact quick-action menu grows from
   // that point. null when no menu is showing.
@@ -352,7 +352,7 @@ function TxnRow({
   };
 
   const onPointerDown = (e) => {
-    drag.current = { active: true, startX: e.clientX, startTX: dragX, moved: false, longPress: false };
+    drag.current = { active: true, startX: e.clientX, startY: e.clientY, startTX: dragX, moved: false, longPress: false };
     // The gesture itself always works — motionOff only stills the menu's
     // entrance animation (via the .bt-quick-menu CSS rule), same as every
     // other motion-gated affordance in this app. Disabling the long-press
@@ -371,14 +371,25 @@ function TxnRow({
   const onPointerMove = (e) => {
     if (!drag.current.active) return;
     const dx = e.clientX - drag.current.startX;
-    if (!drag.current.moved && Math.abs(dx) > SWIPE_INTENT_PX) {
-      drag.current.moved = true;
+    const dy = e.clientY - drag.current.startY;
+    // A still finger past the intent threshold in EITHER axis means this
+    // isn't a long-press anymore — including a vertical move, which is the
+    // page scrolling (touchAction: 'pan-y' hands that to the browser
+    // natively, so it never touches dx). Checking dx alone left the
+    // long-press timer armed through a straight-down scroll and popped the
+    // quick-action menu mid-scroll, whose full-viewport overlay then ate
+    // every further touch until dismissed.
+    if (!drag.current.moved && (Math.abs(dx) > SWIPE_INTENT_PX || Math.abs(dy) > SWIPE_INTENT_PX)) {
       clearPressTimer();
-      // Capture only once this is confirmed to be a drag, not a plain tap or
-      // a long-press. Capturing eagerly on every pointerdown retargets the
-      // eventual pointerup/mouseup/click onto this element instead of the
-      // row's own button, which silently swallows every tap-to-expand.
-      contentRef.current?.setPointerCapture?.(e.pointerId);
+      if (Math.abs(dx) > Math.abs(dy)) {
+        drag.current.moved = true;
+        // Capture only once this is confirmed to be a horizontal drag, not a
+        // plain tap, a long-press, or a vertical scroll. Capturing eagerly
+        // retargets the eventual pointerup/mouseup/click onto this element
+        // instead of the row's own button, which silently swallows every
+        // tap-to-expand.
+        contentRef.current?.setPointerCapture?.(e.pointerId);
+      }
     }
     if (drag.current.longPress || !drag.current.moved) return;
     setDragX(clamp(drag.current.startTX + dx));
@@ -400,69 +411,78 @@ function TxnRow({
 
   return (
     <div style={{ borderBottom: `1px solid ${colors.divider}`, position: 'relative', overflow: 'hidden' }}>
-      {/* Actions sit behind the content, revealed as it slides left — sized to
-          take over exactly as much of the row as they need, so a partial drag
-          previews proportionally rather than popping in at full width. */}
-      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: SWIPE_ACTION_W * 2, display: 'flex' }} aria-hidden={dragX === 0}>
-        <button
-          onClick={() => { setDragX(0); onSwipeClose(); onOpenSheet(); }}
-          style={{ width: SWIPE_ACTION_W, background: colors.primary, color: '#FFFFFF', border: 'none', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}
-        >
-          Categorize
-        </button>
-        <button
-          onClick={() => { setDragX(0); onSwipeClose(); onDelete(); }}
-          style={{ width: SWIPE_ACTION_W, background: colors.danger, color: '#FFFFFF', border: 'none', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}
-        >
-          Delete
-        </button>
-      </div>
+      {/* Own positioning context for the actions layer below, scoped to just
+          the header's own height. Sharing the outer row's position:relative
+          box directly used to make the actions layer's top:0/bottom:0 span
+          the OUTER box's full height — which grows to include the expanded
+          Collapse panel once isOpen is true — so a row that was swiped open
+          and then tapped open stretched Categorize/Delete down over the
+          expanded SMS/category/edit content instead of just the header. */}
+      <div style={{ position: 'relative' }}>
+        {/* Actions sit behind the content, revealed as it slides left — sized to
+            take over exactly as much of the row as they need, so a partial drag
+            previews proportionally rather than popping in at full width. */}
+        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: SWIPE_ACTION_W * 2, display: 'flex' }} aria-hidden={dragX === 0}>
+          <button
+            onClick={() => { setDragX(0); onSwipeClose(); onOpenSheet(); }}
+            style={{ width: SWIPE_ACTION_W, background: colors.primary, color: '#FFFFFF', border: 'none', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Categorize
+          </button>
+          <button
+            onClick={() => { setDragX(0); onSwipeClose(); onDelete(); }}
+            style={{ width: SWIPE_ACTION_W, background: colors.danger, color: '#FFFFFF', border: 'none', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Delete
+          </button>
+        </div>
 
-      <div
-        ref={contentRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        style={{
-          position: 'relative', background: colors.bgApp,
-          transform: `translateX(${dragX}px)`,
-          transition: drag.current.active ? 'none' : 'transform 0.3s var(--ease-ios)',
-          touchAction: 'pan-y',
-        }}
-      >
-        <button
-          onClick={() => {
-            // A drag that just released shouldn't also fire the tap-to-expand
-            // toggle — onPointerUp already used the gesture for something else.
-            if (drag.current.moved) { drag.current.moved = false; return; }
-            onToggleExpand();
+        <div
+          ref={contentRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          style={{
+            position: 'relative', background: colors.bgApp,
+            transform: `translateX(${dragX}px)`,
+            transition: drag.current.active ? 'none' : 'transform 0.3s var(--ease-ios)',
+            touchAction: 'pan-y',
           }}
-          aria-expanded={isOpen}
-          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 0', cursor: 'pointer', textAlign: 'left', width: '100%', color: colors.ink }}
         >
-          <div style={{ width: 38, height: 38, borderRadius: 12, background: uncat ? colors.dangerTint : tint(cat.color), color: uncat ? colors.danger : cat.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-            {uncat ? '?' : cat.mono}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant}</div>
-            <div style={{ fontSize: 12.5, color: colors.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {txnWhen(t)}{!uncat && cat ? ` · ${cat.label}` : ''}
+          <button
+            onClick={() => {
+              // A drag that just released shouldn't also fire the tap-to-expand
+              // toggle — onPointerUp already used the gesture for something else.
+              if (drag.current.moved) { drag.current.moved = false; return; }
+              onToggleExpand();
+            }}
+            aria-expanded={isOpen}
+            style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 0', cursor: 'pointer', textAlign: 'left', width: '100%', color: colors.ink }}
+          >
+            <div style={{ width: 38, height: 38, borderRadius: 12, background: uncat ? colors.dangerTint : tint(cat.color), color: uncat ? colors.danger : cat.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+              {uncat ? '?' : cat.mono}
             </div>
-            {uncat && (
-              <div style={{ fontSize: 12, color: colors.danger, fontWeight: 600 }}>Needs review — tap to categorise</div>
-            )}
-            {t.note && !isOpen && (
-              <div style={{ fontSize: 12, color: colors.textTertiary, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>“{t.note}”</div>
-            )}
-          </div>
-          <Amount style={{ fontSize: 14.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
-            {income ? '+' : '−'}{fmt(t.amount)}
-          </Amount>
-          <svg className="bt-chev" data-open={isOpen ? '1' : '0'} width="11" height="7" viewBox="0 0 11 7" style={{ flexShrink: 0, color: colors.textTertiary }}>
-            <path d="M1 1l4.5 4L10 1" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant}</div>
+              <div style={{ fontSize: 12.5, color: colors.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {txnWhen(t)}{!uncat && cat ? ` · ${cat.label}` : ''}
+              </div>
+              {uncat && (
+                <div style={{ fontSize: 12, color: colors.danger, fontWeight: 600 }}>Needs review — tap to categorise</div>
+              )}
+              {t.note && !isOpen && (
+                <div style={{ fontSize: 12, color: colors.textTertiary, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>“{t.note}”</div>
+              )}
+            </div>
+            <Amount style={{ fontSize: 14.5, fontWeight: 600, color: income ? colors.primary : colors.ink }}>
+              {income ? '+' : '−'}{fmt(t.amount)}
+            </Amount>
+            <svg className="bt-chev" data-open={isOpen ? '1' : '0'} width="11" height="7" viewBox="0 0 11 7" style={{ flexShrink: 0, color: colors.textTertiary }}>
+              <path d="M1 1l4.5 4L10 1" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {showMessages && hasMsg && !isOpen && (

@@ -12,7 +12,7 @@
 > a fixed bug, a new feature), add an entry to this file in the same session,
 > before moving on. This file is only useful if it stays true.
 >
-> Last updated: **2026-08-02**, at web bundle **1.5.7** / native APK
+> Last updated: **2026-08-03**, at web bundle **1.5.8** / native APK
 > **v1.4 (build 7)**, database schema **v13**.
 
 ---
@@ -334,7 +334,8 @@ session's direct, first-hand work and carry more detail.
 | 1.5.4 | Interaction-polish batch — 8 findings from a UI/UX audit: asymmetric press feedback, switch knobs using `transform`, search-field clear button, shared `ProgressBar` on Goals, tone-coloured toasts, custom category colour picker, animated onboarding transitions, tab-bar icons + sliding indicator | [#53](https://github.com/singhashish8-spec/Budget-Tracker/pull/53) |
 | 1.5.5 | Swipe-to-act transaction rows (swipe left to categorise/delete), pull-to-refresh (drag down to re-scan SMS), and a properly-measured sliding segmented control for the transaction filters | [#54](https://github.com/singhashish8-spec/Budget-Tracker/pull/54) |
 | 1.5.6 | **Urgent bug fix:** tap-to-expand was silently broken on every transaction row — a regression introduced by 1.5.5 itself. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed). Shipped as a standalone hotfix within hours of 1.5.5, ahead of the batch below | [#57](https://github.com/singhashish8-spec/Budget-Tracker/pull/57) |
-| **1.5.7** *(current)* | Fifth UI-audit batch: concentric corner radii (`nest()` token helper), illustrated empty states (category-monogram badge), a FAB→sheet shared-shape morph using the previously-unused `#bt-goo` filter, and a long-press quick-action menu on transaction rows | [#56](https://github.com/singhashish8-spec/Budget-Tracker/pull/56) |
+| 1.5.7 | Fifth UI-audit batch: concentric corner radii (`nest()` token helper), illustrated empty states (category-monogram badge), a FAB→sheet shared-shape morph using the previously-unused `#bt-goo` filter, and a long-press quick-action menu on transaction rows | [#56](https://github.com/singhashish8-spec/Budget-Tracker/pull/56) |
+| **1.5.8** *(current)* | **Bug fixes, both regressions from 1.5.7's long-press/quick-menu batch:** (1) the long-press timer only watched horizontal movement, so a vertical scroll on a transaction row could pop the quick-action menu mid-scroll and its full-viewport overlay would eat further touches — reported as "scroll not working"; (2) a row that was both swiped open and tapped open at once had its Categorize/Delete buttons stretched down over the expanded detail panel instead of just the header, because the actions layer's `bottom: 0` was anchored to the whole row's box, which grows when expanded. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
 
 ### Native (APK) release history
 
@@ -513,13 +514,82 @@ whenever a change touches `setPointerCapture`/pointer event handling on a
 row or surface that *also* has its own plain click/tap behaviour, explicitly
 re-test the plain-tap path too, not just the new gesture.
 
+### The long-press timer that only watched horizontal movement, so scrolling could pop the quick-action menu mid-scroll
+
+**Symptom:** reported as "the scroll is not working" — scrolling the
+Transactions list would, partway through, stop responding to further
+touches.
+
+**Root cause:** 1.5.7's long-press quick-action menu (`TxnRow` in
+`TransactionsScreen.jsx`) arms a 450ms timer on `pointerdown` and only
+cancels it in `onPointerMove` by checking horizontal movement (`dx`)
+against the swipe-intent threshold. The row's content has
+`touchAction: 'pan-y'`, so a vertical scroll is handled natively by the
+browser rather than by this JS — the finger moves mostly in `clientY`,
+barely in `clientX`. A straight-down (or slow) scroll on a row never
+crossed the *horizontal* threshold, so the timer kept running underneath
+an in-progress scroll and fired at 450ms regardless, opening the
+quick-action menu mid-scroll. Its full-viewport `position: fixed` overlay
+(`zIndex: 60`, added specifically to catch a tap-outside-to-dismiss) then
+sat on top of the list, swallowing further touches until manually
+dismissed — which read exactly like scrolling had broken.
+
+**Fix:** `onPointerMove` now also tracks vertical movement (`dy`, from a
+new `startY` captured on pointerdown) and cancels the long-press timer on
+real movement in *either* axis, not just horizontal. Whichever axis moved
+further decides what the gesture is: horizontal movement past the
+threshold still claims it as a swipe (unchanged behaviour, still gated
+behind capturing the pointer only once confirmed — see the bug above);
+vertical movement past the threshold cancels the long-press but leaves the
+gesture alone, so the browser's native `pan-y` scroll runs uninterrupted.
+
+**Verified with:** an isolated headless-browser harness replaying the same
+pointer-event lifecycle (`pointerdown` → 12× `pointermove` spread over
+600ms, straight down, 0px horizontal) against both the old and new logic —
+old logic reported the menu opening mid-"scroll", new logic did not.
+
+### The swipe-action layer stretching over an expanded row's detail panel
+
+**Symptom:** on a transaction row that was both swiped open (revealing
+Categorize/Delete) *and* tapped open (showing the expanded SMS
+message/category picker/Edit/Split buttons) at the same time, the
+Categorize/Delete buttons rendered stretched down over that expanded
+content instead of staying confined to the header — a real screenshot
+showed the purple "Categorize" and orange "Delete" bars overlapping the
+SMS text and category chips of the very same row.
+
+**Root cause:** the actions layer (`position: absolute; top: 0; right: 0;
+bottom: 0`) and the row's expanded `<Collapse>` panel were both direct
+children of the *same* `position: relative; overflow: hidden` outer
+wrapper. `bottom: 0` on an absolutely positioned element stretches it to
+match its containing block's full height — and that containing block's
+height includes the expanded Collapse content once `isOpen` is true, since
+it's a sibling in the same box. Reaching this state requires two gestures
+on the same row (swipe open, then tap the still-visible shifted header to
+expand it), which is why it wasn't caught by 1.5.5's or 1.5.7's own
+gesture verification — each tested its own gesture in isolation, not the
+combination.
+
+**Fix:** the actions layer and the header content div now share their own
+dedicated `position: relative` wrapper, separate from the outer box that
+also holds the expanded panel — so the actions layer's `bottom: 0` is
+scoped to just the header's own height, regardless of whether the row is
+expanded.
+
+**Verified with:** a headless-browser harness measuring real
+`getBoundingClientRect()` values against the old and new DOM structure —
+old structure's actions layer stretched to the combined header+expanded
+height and geometrically overlapped the expanded content's box; new
+structure's actions layer matched the header's height exactly, with no
+overlap.
+
 ---
 
 ## 7. Where things stand right now
 
-- **Live web version:** 1.5.7 (confirmed published — `latest.json` on `main`
-  reports it).
-- **Live native APK:** v1.4 (build 7) — everything from 1.4.1 through 1.5.7
+- **Live web version:** 1.5.8 once this session's OTA publish lands (verify
+  with `git show origin/main:latest.json`).
+- **Live native APK:** v1.4 (build 7) — everything from 1.4.1 through 1.5.8
   has been safely OTA-only; no `android/` or `capacitor.config.json` changes
   have shipped since build 7 was cut.
 - **Database schema:** v13, unchanged since the 1.3.3 release.
