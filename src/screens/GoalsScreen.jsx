@@ -3,7 +3,7 @@ import { colors } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 import { goalsSummary } from '../state/selectors';
 import Amount from '../components/Amount';
-import { Icon } from '../components/ui';
+import { Icon, ProgressBar } from '../components/ui';
 
 // "YYYY-MM" (from <input type="month">) → timestamp at the last day of that month.
 function monthValueToTs(v) {
@@ -38,9 +38,7 @@ export default function GoalsScreen() {
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 30, fontWeight: 700, margin: '5px 0 12px' }}>
             <Amount>{summary.totalSavedF}</Amount> <span style={{ fontSize: 15, color: colors.accentGreen3 }}>/ <Amount>{summary.totalTargetF}</Amount></span>
           </div>
-          <div style={{ height: 6, borderRadius: 100, background: 'rgba(247,244,238,0.15)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', borderRadius: 100, background: colors.accentGreen1, width: `${summary.pct}%` }} />
-          </div>
+          <ProgressBar pct={summary.pct} height={6} color={colors.accentGreen1} track="rgba(247,244,238,0.15)" />
           <div style={{ marginTop: 10, fontSize: 13, color: colors.accentGreen3 }}>
             {summary.pct}% of the way{summary.behind > 0 ? ` · ${summary.behind} behind pace` : ''}
           </div>
@@ -88,9 +86,7 @@ function GoalCard({ r, onContribute, onEdit, onDelete }) {
           <span style={{ color: colors.textSecondary }}> / <Amount>{r.targetF}</Amount></span>
         </span>
       </div>
-      <div style={{ height: 7, borderRadius: 100, background: colors.divider, overflow: 'hidden' }}>
-        <div style={{ height: '100%', borderRadius: 100, background: barColor, width: `${r.pct}%` }} />
-      </div>
+      <ProgressBar pct={r.pct} height={7} color={barColor} />
       <div style={{ fontSize: 12.5, color: paceColor, fontWeight: r.onTrack === false || r.reached ? 600 : 400 }}>{r.paceText}</div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 3, alignItems: 'center' }}>

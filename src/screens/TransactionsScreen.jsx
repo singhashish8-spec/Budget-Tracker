@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { colors, fonts, radii, tint, tracking, type } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { txnWhen } from '../utils/date';
@@ -27,6 +27,7 @@ export default function TransactionsScreen() {
   // keystroke used to re-render every screen that reads useApp() AND re-run the
   // full-array filter below — the single worst typing path in the app.
   const [draft, setDraft] = useState(search);
+  const searchInputRef = useRef(null);
   useEffect(() => {
     if (draft === search) return undefined;
     const id = setTimeout(() => set({ search: draft }), SEARCH_DEBOUNCE_MS);
@@ -162,13 +163,34 @@ export default function TransactionsScreen() {
   return (
     <Screen gap={12}>
       <div style={{ fontFamily: fonts.heading, fontSize: type.screen, fontWeight: 700, letterSpacing: tracking.screen, padding: '0 4px' }}>Transactions</div>
-      <input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder="Search name, category or amount"
-        aria-label="Search transactions"
-        style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: radii.pill, padding: '12px 18px', fontSize: type.callout, color: colors.ink }}
-      />
+      <div style={{ position: 'relative' }}>
+        <input
+          ref={searchInputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Search name, category or amount"
+          aria-label="Search transactions"
+          style={{ width: '100%', background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: radii.pill, padding: `12px ${draft ? 42 : 18}px 12px 18px`, fontSize: type.callout, color: colors.ink }}
+        />
+        {/* Every native search field clears itself with a trailing ×; this one
+            had no way to but a manual select-all-backspace. Only mounted once
+            there's text — an empty field showing a disabled × is worse than no
+            × at all. */}
+        {draft && (
+          <button
+            onClick={() => { haptics.select(); setDraft(''); searchInputRef.current?.focus(); }}
+            aria-label="Clear search"
+            style={{
+              position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+              width: 26, height: 26, borderRadius: '50%', background: colors.track,
+              color: colors.textSecondary, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', animation: 'rise 0.15s ease-out',
+            }}
+          >
+            ✕
+          </button>
+        )}
+      </div>
       {/* The filters can't fit a phone's width — "Needs review · 393" alone is
           most of it — so they scroll in their own strip. The Messages toggle
           sits outside that strip so it stays reachable without scrolling.
@@ -206,7 +228,9 @@ export default function TransactionsScreen() {
           style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', borderRadius: 100, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: showMessages ? colors.primaryTint : colors.cardSurface, color: showMessages ? colors.primary : colors.textSecondary, border: `1px solid ${showMessages ? colors.primary : colors.cardBorder}` }}
         >
           <span style={{ width: 26, height: 15, borderRadius: 100, background: showMessages ? colors.primary : colors.track, position: 'relative', flexShrink: 0 }}>
-            <span style={{ position: 'absolute', top: 2, left: showMessages ? 13 : 2, width: 11, height: 11, borderRadius: '50%', background: '#FFFFFF', transition: 'left 0.15s' }} />
+            {/* transform, not left — same fix as Settings' ToggleRow (#13):
+                left forces layout on every frame, transform is composite-only. */}
+            <span style={{ position: 'absolute', top: 2, left: 2, width: 11, height: 11, borderRadius: '50%', background: '#FFFFFF', transform: `translateX(${showMessages ? 11 : 0}px)`, transition: 'transform 0.2s cubic-bezier(0.34, 1.4, 0.6, 1)' }} />
           </span>
           Messages
         </button>

@@ -969,14 +969,29 @@ button:focus-visible,
 .screen-enter[data-anim='deep'] { animation: slideInRight 0.28s var(--ease-ios); }
 .screen-enter[data-anim='tab'] { animation: fadeUp 0.22s ease-out; }
 
-/* Tap feedback on every control. */
-button { transition: transform 0.11s ease, opacity 0.11s ease; }
-button:active { transform: scale(0.97); }
+/* Tap feedback on every control.
+
+   Deliberately asymmetric: a real surface compresses fast under a finger and
+   eases back slower once released, and that asymmetry — not the scale amount —
+   is most of what makes a press read as "physical" rather than a generic web
+   button. The two durations live on different selectors on purpose: this base
+   rule's transition governs the RELEASE (the property change that happens the
+   instant :active stops matching), while button:active below carries its own,
+   shorter transition that governs the PRESS (the change into :active). CSS
+   always uses the transition declared on whichever rule is in effect at the
+   moment a property changes, so no JS or state is needed to tell press from
+   release apart — the pseudo-class does it for free.
+
+   The release curve overshoots slightly past 1 before settling (a standard
+   "back-out" bezier) for the same reason real material springs rather than
+   stopping dead. */
+button { transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.11s ease; }
+button:active { transform: scale(0.97); transition: transform 0.09s cubic-bezier(0.4, 0, 0.2, 1); }
 
 /* OS accessibility preference always wins. */
 @media (prefers-reduced-motion: reduce) {
   .screen-enter { animation: none !important; }
-  button { transition: none; }
+  button, button:active { transition: none; }
   button:active { transform: none; }
 }
 /* Explicit user choice — three levels (Settings → Appearance → Animations).
@@ -984,7 +999,7 @@ button:active { transform: scale(0.97); }
    press, so taps still feel responsive. Off stills everything. */
 :root[data-motion='reduced'] .screen-enter { animation: none; }
 :root[data-motion='off'] .screen-enter { animation: none; }
-:root[data-motion='off'] button { transition: none; }
+:root[data-motion='off'] button, :root[data-motion='off'] button:active { transition: none; }
 :root[data-motion='off'] button:active { transform: none; }
 
 /* ── Skeleton loading placeholders ───────────────────────────────────────────

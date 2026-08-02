@@ -3,22 +3,35 @@ import { colors, metrics } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 import * as haptics from '../services/haptics';
 import { alertCount } from '../state/selectors';
+import { Icon } from './ui';
 
 // The "+" opens a choice rather than jumping straight to the camera: most
 // spending that needs adding by hand is cash, which has no receipt to scan.
 
+// icon keys are Icon.jsx's own vocabulary (24px grid, 1.9px stroke) — the tab
+// bar was the one place in the app still text-only while every other icon
+// came from this same registry.
 const TABS = [
-  { key: 'home', label: 'Home' },
-  { key: 'transactions', label: 'Activity' },
+  { key: 'home', label: 'Home', icon: 'home' },
+  { key: 'transactions', label: 'Activity', icon: 'receipt' },
   null, // center FAB slot
-  { key: 'budgets', label: 'Budgets' },
-  { key: 'insights', label: 'More' },
+  { key: 'budgets', label: 'Budgets', icon: 'pie' },
+  { key: 'insights', label: 'More', icon: 'grid' },
 ];
+// Every slot (4 real tabs + the FAB) is an equal-width flex:1 column, so a
+// slot's fraction of the row is just 1/TABS.length regardless of what's in
+// it — that's what lets the indicator's translateX skip the FAB for free.
+const SLOT_PCT = 100 / TABS.length;
 
 export default function BottomNav() {
   const { state, set, go: goTab } = useApp();
   const [choosing, setChoosing] = useState(false);
   const hasAlerts = alertCount(state.txns) > 0;
+  const activeSlot = TABS.findIndex((t) => t && t.key === state.screen);
+  // 'reduced' keeps small tactile feedback (matches the rest of the app's
+  // motion philosophy — see index.css); 'off' stills everything, including
+  // the sliding indicator and the icon's settle-in scale.
+  const motionOff = state.motionPref === 'off';
 
   return (
     <div
@@ -43,6 +56,27 @@ export default function BottomNav() {
         padding: '6px 8px calc(env(safe-area-inset-bottom, 0px) + 10px)',
       }}
     >
+      {/* The active tab used to just recolour with no transition — nothing
+          marked the moment you actually switched. transform, not left/width,
+          so this never repaints; hidden (not just transparent) off a drill-down
+          screen where no tab is really "active", matching what the labels
+          already did by all going tertiary together. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: 8,
+          top: 6,
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)',
+          width: `calc((100% - 16px) * ${SLOT_PCT / 100})`,
+          borderRadius: 14,
+          background: colors.primaryTint,
+          transform: `translateX(${(activeSlot >= 0 ? activeSlot : 0) * 100}%)`,
+          opacity: activeSlot >= 0 ? 1 : 0,
+          transition: motionOff ? 'none' : 'transform 0.28s var(--ease-ios), opacity 0.18s ease',
+          pointerEvents: 'none',
+        }}
+      />
       {TABS.map((tab) =>
         tab ? (
           <button
@@ -67,7 +101,15 @@ export default function BottomNav() {
               position: 'relative',
             }}
           >
-            <span style={{ fontSize: 12.5, fontWeight: 600 }}>{tab.label}</span>
+            <Icon
+              name={tab.icon}
+              size={19}
+              style={{
+                transform: motionOff ? 'none' : `scale(${state.screen === tab.key ? 1.1 : 1})`,
+                transition: motionOff ? 'none' : 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              }}
+            />
+            <span style={{ fontSize: 11, fontWeight: 600 }}>{tab.label}</span>
             {tab.key === 'transactions' && hasAlerts && (
               <div
                 style={{

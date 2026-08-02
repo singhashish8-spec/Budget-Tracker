@@ -554,9 +554,13 @@ function ToggleRow({ title, sub, on, onToggle, border }) {
       </div>
       <button
         onClick={onToggle}
-        style={{ width: 44, height: 26, borderRadius: 100, background: on ? colors.primary : colors.track, position: 'relative', flexShrink: 0, cursor: 'pointer', transition: 'background 0.15s' }}
+        style={{ width: 44, height: 26, borderRadius: 100, background: on ? colors.primary : colors.track, position: 'relative', flexShrink: 0, cursor: 'pointer', transition: 'background 0.18s' }}
       >
-        <div style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#FFFFFF', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.15s' }} />
+        {/* translateX, not left — left forces layout on every frame of the
+            animation, the same cost the tilt highlight had before 1.5.1.
+            transform is composite-only, and a small back-out easing on the
+            travel reads closer to iOS's own switch than the linear slide did. */}
+        <div style={{ position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: '#FFFFFF', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transform: `translateX(${on ? 18 : 0}px)`, transition: 'transform 0.22s cubic-bezier(0.34, 1.4, 0.6, 1)' }} />
       </button>
     </div>
   );

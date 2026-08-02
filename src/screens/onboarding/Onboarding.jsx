@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { colors, tint } from '../../theme/tokens';
 import { useApp } from '../../state/AppContext';
+import { ProgressBar } from '../../components/ui';
 
 const ACCOUNT_TYPES = [
   { key: 'bank', label: 'Bank accounts', sub: 'Savings & current — statements', mono: 'BK', color: '#0E6E4F' },
@@ -12,20 +13,29 @@ const ACCOUNT_TYPES = [
   { key: 'loans', label: 'Loans & EMIs', sub: 'Personal, home, vehicle EMIs', mono: 'LN', color: '#A13B3B' },
 ];
 
-const dot = (active) => ({ height: 4, flex: 1, borderRadius: 100, background: active ? colors.primary : colors.track });
 
 export default function Onboarding() {
   const { state } = useApp();
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '28px 20px 32px', display: 'flex', flexDirection: 'column', gap: 20, minHeight: '100vh' }}>
+      {/* Each dot is the shared ProgressBar (the same fix Goals just got: a
+          bare inline width snaps, this component's fill eases in, and already
+          respects the motion setting), just narrow — three side by side reads
+          as one filling track rather than a percentage. */}
       <div style={{ display: 'flex', gap: 6 }}>
-        <div style={dot(state.obStep >= 1)} />
-        <div style={dot(state.obStep >= 2)} />
-        <div style={dot(state.obStep >= 3)} />
+        <ProgressBar pct={state.obStep >= 1 ? 100 : 0} height={4} track={colors.track} style={{ flex: 1 }} />
+        <ProgressBar pct={state.obStep >= 2 ? 100 : 0} height={4} track={colors.track} style={{ flex: 1 }} />
+        <ProgressBar pct={state.obStep >= 3 ? 100 : 0} height={4} track={colors.track} style={{ flex: 1 }} />
       </div>
-      {state.obStep === 1 && <StepSignIn />}
-      {state.obStep === 2 && <StepTrack />}
-      {state.obStep === 3 && <StepCategories />}
+      {/* Keyed so each Next/Back remounts this wrapper and replays the same
+          fadeUp entrance every other screen change in the app already gets
+          (App.jsx does the identical key+screen-enter trick) — onboarding was
+          the one place that hard-cut instead. */}
+      <div key={state.obStep} className="screen-enter" data-anim="tab">
+        {state.obStep === 1 && <StepSignIn />}
+        {state.obStep === 2 && <StepTrack />}
+        {state.obStep === 3 && <StepCategories />}
+      </div>
     </div>
   );
 }

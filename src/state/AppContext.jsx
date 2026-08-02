@@ -76,6 +76,9 @@ const initialState = {
   // work has no known total yet, so an indeterminate sweeping bar shows.
   procProgress: null,
   toast: '',
+  // 'success' | 'error' | 'none' — showToast's tone, so Toast.jsx can render
+  // an error distinctly instead of the same neutral pill as everything else.
+  toastTone: 'success',
   currency: 'INR',
   themeMode: 'system', // 'system' | 'light' | 'dark'
   themeAccent: 'green',
@@ -568,7 +571,7 @@ export function AppProvider({ children }) {
       if (tone === 'error') hapticError();
       else if (tone !== 'none') hapticSuccess();
       clearTimeout(toastTimer.current);
-      set({ toast: msg });
+      set({ toast: msg, toastTone: tone });
       toastTimer.current = setTimeout(() => set({ toast: '' }), 2200);
     },
     [set],
@@ -845,11 +848,14 @@ export function AppProvider({ children }) {
   }, [state.accounts, set]);
 
   const addCategory = useCallback(
-    async (label) => {
+    // color defaults to the same grey every custom category used to be
+    // hardcoded to, so a caller that doesn't pass one (there was only ever
+    // one before this) keeps its exact previous behaviour.
+    async (label, color = '#8A8577') => {
       const name = label.trim();
       if (!name) return;
       const mono = name.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || 'NC';
-      const id = await repo.addCategory({ label: name, mono, color: '#8A8577' });
+      const id = await repo.addCategory({ label: name, mono, color });
       const categories = await repo.listCategories();
       set({ categories });
       showToast(`Category "${name}" added`);

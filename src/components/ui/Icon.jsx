@@ -81,6 +81,24 @@ const PATHS = {
       <path d="M9.5 21v-6h5v6" />
     </>
   ),
+  // Budgets — a pie with one wedge marked off, the shape of "this much of the
+  // whole is spoken for." Bottom tab bar.
+  pie: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 3.5V12l6 3.5" />
+    </>
+  ),
+  // "More" — a 2x2 grid of everything else, the way iOS's own More tab reads.
+  // Bottom tab bar.
+  grid: (
+    <>
+      <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="2" />
+      <rect x="13" y="3.5" width="7.5" height="7.5" rx="2" />
+      <rect x="3.5" y="13" width="7.5" height="7.5" rx="2" />
+      <rect x="13" y="13" width="7.5" height="7.5" rx="2" />
+    </>
+  ),
   // Cash / bank balance — a banknote.
   cash: (
     <>
