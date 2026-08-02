@@ -954,6 +954,9 @@ button:focus-visible,
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes sheetup { from { transform: translateY(40px); opacity: 0.4; } to { transform: translateY(0); opacity: 1; } }
 @keyframes slidein { from { transform: translateX(48px); opacity: 0.4; } to { transform: translateX(0); opacity: 1; } }
+/* ConfirmDialog's entrance — a small scale-and-settle, distinct from a sheet's
+   slide since this is a centred alert, not something rising from an edge. */
+@keyframes dialogIn { from { opacity: 0; transform: scale(0.94) translateY(6px); } to { opacity: 1; transform: none; } }
 
 /* ── Motion: screen transitions + press feedback ─────────────────────────────
    Enabled by default. Disabled when the OS prefers reduced motion, or when the
@@ -1064,11 +1067,27 @@ button:active { transform: scale(0.97); }
    card-surface token — so it reaches all fourteen screens, including the ones
    still writing their cards by hand rather than through <Card>.
 
-   Skipped in glass mode, which paints its own depth behind translucent
-   surfaces and would only get muddier with a shadow underneath. Anything that
-   sets its own inline boxShadow (the FAB, the menu button) keeps it, because an
-   inline style always beats a stylesheet rule. */
-:root:not([data-surface='glass']) [style*="--c-cardSurface"] {
+   Skipped in glass/liquid/spatial mode, which each paint their own depth behind
+   translucent surfaces and would only get muddier with a second shadow
+   underneath. Anything that sets its own inline boxShadow (the FAB, the menu
+   button) keeps it, because an inline style always beats a stylesheet rule.
+
+   liquid and spatial were missing from this exclusion until now — a real bug,
+   not a hypothetical one. Both skins set --c-cardShadow: none specifically so
+   THIS rule would resolve to a no-op and get out of the way of their own rim
+   rules further up the file — the same trick 'glass' uses, which IS excluded.
+   But this selector and each skin's own rim rule
+   (:root[data-surface='liquid'] [style*="--c-cardSurface"] { box-shadow:
+   var(--liquid-rim), var(--liquid-lift); }, and spatial's equivalent) have
+   IDENTICAL specificity — both are :root + one attribute + one attribute. CSS
+   only falls back to source order on a specificity tie, and this rule comes
+   later in the file, so it silently won and painted box-shadow: none over
+   every card's rim highlight on both skins, on every screen, since #48
+   shipped. Confirmed by computing the resolved box-shadow directly: it was
+   literally the string "none", not a dim version of the rim — the specular
+   highlight these two skins are named for has never actually been visible on
+   an ordinary card. */
+:root:not([data-surface='glass']):not([data-surface='liquid']):not([data-surface='spatial']) [style*="--c-cardSurface"] {
   box-shadow: var(--c-cardShadow);
 }
 
