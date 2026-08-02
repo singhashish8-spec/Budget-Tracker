@@ -12,7 +12,7 @@
 > a fixed bug, a new feature), add an entry to this file in the same session,
 > before moving on. This file is only useful if it stays true.
 >
-> Last updated: **2026-08-03**, at web bundle **1.6.0** / native APK
+> Last updated: **2026-08-03**, at web bundle **1.7.0** / native APK
 > **v1.4 (build 7)**, database schema **v13**.
 
 ---
@@ -337,7 +337,8 @@ session's direct, first-hand work and carry more detail.
 | 1.5.7 | Fifth UI-audit batch: concentric corner radii (`nest()` token helper), illustrated empty states (category-monogram badge), a FAB→sheet shared-shape morph using the previously-unused `#bt-goo` filter, and a long-press quick-action menu on transaction rows | [#56](https://github.com/singhashish8-spec/Budget-Tracker/pull/56) |
 | 1.5.8 | **Bug fixes, both regressions from 1.5.7's long-press/quick-menu batch:** (1) the long-press timer only watched horizontal movement, so a vertical scroll on a transaction row could pop the quick-action menu mid-scroll and its full-viewport overlay would eat further touches — reported as "scroll not working"; (2) a row that was both swiped open and tapped open at once had its Categorize/Delete buttons stretched down over the expanded detail panel instead of just the header, because the actions layer's `bottom: 0` was anchored to the whole row's box, which grows when expanded. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
 | 1.5.9 | **Critical bug fix — app-wide scroll was structurally broken.** `.app-shell` used `min-height: 100vh` instead of a fixed height, so it grew to its content's height and every screen's `overflow-y: auto` container grew with it — `scrollHeight === clientHeight`, meaning no screen could ever scroll internally. The app only ever appeared to scroll by overflowing to the document. This also permanently satisfied Screen.jsx's pull-to-refresh "am I at the top?" check (`scrollTop` is always 0 on a container that can't scroll), so every downward swipe on Home/Transactions was captured as a refresh pull instead of a scroll. See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
-| **1.6.0** *(current)* | **SMS engine rewrite — the app's core USP.** Three classes of failure fixed: (1) *false positives* — EMI/bill reminders, scheduled "will be debited" notices, offers, failed/declined payments, UPI collect requests and mandate registrations were all being imported as real spending; the parser now requires a **completed** money verb (one not preceded by a future modal or a negation), so "will be debited" no longer counts as "debited". (2) *wrong amounts* — the account balance was being picked as the transaction amount whenever it appeared first ("Avl Bal Rs.12,345 after debit of Rs.500" imported ₹12,345); amounts are now position-scored against balance context words. (3) *EMI/subscription blindness* — recurring auto-debits (EMI, NACH, SIP, mutual-fund, and ~25 known subscription merchants) are now classified and auto-filed into EMI & Loans / Investments / Subscriptions instead of landing in "needs review" every month. Ships with the project's **first automated tests** (33 cases, `npm test`). See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
+| 1.6.0 | **SMS engine rewrite — the app's core USP.** Three classes of failure fixed: (1) *false positives* — EMI/bill reminders, scheduled "will be debited" notices, offers, failed/declined payments, UPI collect requests and mandate registrations were all being imported as real spending; the parser now requires a **completed** money verb (one not preceded by a future modal or a negation), so "will be debited" no longer counts as "debited". (2) *wrong amounts* — the account balance was being picked as the transaction amount whenever it appeared first ("Avl Bal Rs.12,345 after debit of Rs.500" imported ₹12,345); amounts are now position-scored against balance context words. (3) *EMI/subscription blindness* — recurring auto-debits (EMI, NACH, SIP, mutual-fund, and ~25 known subscription merchants) are now classified and auto-filed into EMI & Loans / Investments / Subscriptions instead of landing in "needs review" every month. Ships with the project's **first automated tests** (33 cases, `npm test`). See [§6](#6-notable-bugs-and-how-they-were-found-and-fixed) | direct push |
+| **1.7.0** *(current)* | **Parser feedback export — closes the learning loop.** Every correction made on the phone (a deleted auto-import, a muted template, a hand-set category) was trapped on the device, so the parser could never learn from real messages. Settings → Backup & restore now has **Share message-reading feedback**, which assembles those corrections into a redacted `.txt` and opens the share sheet. Needed **no schema change** — the signals were already being recorded: `deleteTransaction()` detaches its `sms_log` row instead of deleting it, so an imported-then-deleted message already leaves a `txn_id IS NULL` trace (a recorded false positive); `sms_ignores` holds muted templates; `merchant_rules` plus `sms_log`→`transactions.cat` give the category each message actually ended up in. Redaction strips account/card numbers, reference ids, phone numbers, counterparty names and **every balance figure**, while keeping the transaction amount and merchant so a case is still testable — with a test asserting a redacted message parses identically to the original. Nothing is uploaded; it is a manual share, preserving the app's no-server promise | direct push |
 
 ### Native (APK) release history
 
@@ -759,9 +760,9 @@ same way before starting work on them.
 
 ### Known gaps carried over from `docs/repository-study.md` (still true)
 
-- **Automated tests now exist, but only for the SMS parser.** `npm test`
-  (node:test, no extra dependency) runs 33 cases against
-  `src/services/smsParse.js`. Everything else is still untested —
+- **Automated tests now exist, but only for SMS parsing and redaction.**
+  `npm test` (node:test, no extra dependency) runs 43 cases across
+  `src/services/smsParse.js` and `src/services/trainingRedact.js`. Everything else is still untested —
   `selectors.js`'s ~32 pure functions (budget-window math, warranty expiry,
   duplicate detection, envelope rollover) remain the next highest-value,
   lowest-friction target, since they take no I/O and already accept an

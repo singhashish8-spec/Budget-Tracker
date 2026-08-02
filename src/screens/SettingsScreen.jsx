@@ -5,6 +5,7 @@ import { salaryDayLabel } from '../utils/date';
 import { useApp } from '../state/AppContext';
 import { backupToDrive, restoreFromFile } from '../services/backup';
 import { exportAllAsZip } from '../services/zipExport';
+import { shareTrainingReport } from '../services/trainingExport';
 import { MODES, ACCENTS, SURFACES, MOTIONS } from '../services/theme';
 import { DEPTHS, surfaceUsesDepth } from '../services/depth';
 import { FRAME_RATES, detectRefreshRate, knownRefreshRate, isRateAvailable } from '../services/frameRate';
@@ -52,6 +53,28 @@ export default function SettingsScreen() {
       await exportAllAsZip();
     } catch (err) {
       if (!/cancel/i.test(err?.message || '')) showToast('Couldn’t build the export — try again', 'error');
+    }
+  };
+
+  // Shares the redacted parser-feedback report. Every correction the user has
+  // already made on this phone (deleted imports, muted templates, hand-set
+  // categories) is the best possible input for improving smsParse.js, and until
+  // now it had no way off the device.
+  const doParserFeedback = async () => {
+    try {
+      const c = await shareTrainingReport();
+      const total = c.falsePositives + c.rejected + c.miscategorised + c.taught;
+      if (total === 0) {
+        showToast('No corrections recorded yet — use the app a while, then try again');
+      } else {
+        showToast(
+          c.via === 'clipboard'
+            ? `Copied ${total} correction${total === 1 ? '' : 's'} to the clipboard`
+            : `Shared ${total} correction${total === 1 ? '' : 's'} the app got wrong`,
+        );
+      }
+    } catch (err) {
+      if (!/cancel/i.test(err?.message || '')) showToast('Couldn\u2019t build the feedback file — try again', 'error');
     }
   };
 
@@ -348,6 +371,16 @@ export default function SettingsScreen() {
               <div style={{ fontSize: 12.5, color: colors.textSecondary }}>CSV + HTML report + JSON backup + every warranty document, bundled in one file</div>
             </div>
             <div style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>Export</div>
+          </button>
+          <button
+            onClick={doParserFeedback}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', cursor: 'pointer', padding: '13px 0', borderBottom: `1px solid ${colors.divider}` }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 600 }}>Share message-reading feedback</div>
+              <div style={{ fontSize: 12.5, color: colors.textSecondary }}>A redacted list of messages the app got wrong, so the SMS reading can be improved. Account numbers, names and balances are removed — read it before sharing.</div>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: colors.primary }}>Share</div>
           </button>
           <button
             onClick={() => go('csvImport')}
