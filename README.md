@@ -6,6 +6,12 @@ the `Budget Tracker v2` design handoff — see that review's findings for why
 some choices below (bundled assets, no client-side API keys, CSV escaping)
 are deliberate deviations from the original prototype.
 
+> **New to this project, or picking it back up after a break?** Read
+> [`docs/PROJECT_HISTORY.md`](docs/PROJECT_HISTORY.md) first — a plain-English
+> explanation of what the app does, the full version-by-version history,
+> every notable bug and how it was fixed, and what's currently pending. It's
+> kept up to date after every shipped change.
+
 ## Status: MVP core
 
 Implemented: onboarding (accounts + categories), Home, Transactions, Budgets,
