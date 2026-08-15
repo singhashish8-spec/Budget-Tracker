@@ -1,5 +1,21 @@
 # Budget Tracker — Project History & Guide
 
+> **Superseded 2026-08-15 — start at [`docs/README.md`](README.md) instead.**
+> This file is kept as a **legacy reference**, frozen as of the date below;
+> it is no longer updated. The structured system in `docs/history/`,
+> `docs/roadmap/`, `docs/features/`, and `docs/engineering/` replaces it —
+> and goes further back: this file's own version-history table starts at
+> **PR #27 / v1.0.32**, calling that "earliest version in recorded git
+> history." That was an artifact of the git clone available at the time
+> being shallow, not the actual start of the project. Unshallowing the repo
+> recovered the real history back to PR #1 / the project's actual scaffold
+> (2026-07-14) — see `docs/history/sessions/` for the backfilled account
+> and `docs/history/findings.md` for how this was discovered. Everything
+> below this notice is preserved exactly as originally written, for
+> reference and cross-checking, not as the current source of truth.
+
+---
+
 > **This is the one file to read to catch up on this project.** If you are a
 > human returning after a break, or an AI assistant starting a brand-new chat
 > session with no memory of previous conversations, read this file top to

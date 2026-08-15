@@ -7,10 +7,11 @@ some choices below (bundled assets, no client-side API keys, CSV escaping)
 are deliberate deviations from the original prototype.
 
 > **New to this project, or picking it back up after a break?** Read
-> [`docs/PROJECT_HISTORY.md`](docs/PROJECT_HISTORY.md) first — a plain-English
-> explanation of what the app does, the full version-by-version history,
-> every notable bug and how it was fixed, and what's currently pending. It's
-> kept up to date after every shipped change.
+> [`docs/README.md`](docs/README.md) first, then `docs/history/status.md` —
+> the structured documentation system (current state, decision log, full
+> session-by-session history, feature docs) that replaced the old single-file
+> `docs/PROJECT_HISTORY.md` on 2026-08-15. That file is kept only as a frozen
+> legacy reference.
 
 ## Status: MVP core
 
