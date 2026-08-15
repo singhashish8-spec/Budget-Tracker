@@ -3,16 +3,17 @@
 > Unlike the rest of this folder, this file is *overwritten* each session,
 > not appended to.
 
-Last updated: **2026-08-15**, Session 12 (documentation restructure).
+Last updated: **2026-08-15**, Session 13 (loose-end cleanup, following
+Session 12's documentation restructure).
 
-Web bundle **1.7.0** is live over OTA; native APK is **versionCode 7 /
-versionName 1.4**; database schema is **v13**. The app is a fully local-first
-India-focused personal finance tracker — SMS auto-capture, manual entry, CSV
-import, budgets (calendar/pay-cycle/envelope), EMI/bill/subscription/warranty
-tracking, net worth with holdings, goals, five visual "skins," and JSON/ZIP
-backup. No AI/cloud parsing (removed in 1.1.9 — see `roadmap/decisions.md`).
-This session did not touch app code; it rebuilt the project's documentation
-system from the real git/PR history (see `sessions/2026-08-15-session-12.md`).
+Web bundle is **1.7.1** (bumped this session — pure JS/copy fixes, ships
+OTA once merged, per `engineering/git-workflow.md`); native APK is
+**versionCode 7 / versionName 1.4**, unchanged (nothing native touched);
+database schema is **v13**. The app is a fully local-first India-focused personal
+finance tracker — SMS auto-capture, manual entry, CSV import, budgets
+(calendar/pay-cycle/envelope), EMI/bill/subscription/warranty tracking, net
+worth with holdings, goals, nine visual "skins," and JSON/ZIP backup. No
+AI/cloud parsing (removed in 1.1.9 — see `roadmap/decisions.md`).
 
 ## Right now, in one paragraph
 
@@ -37,33 +38,37 @@ to just categories, and worked through a run of on-device UI bugs (Spatial
 skin locking users out, an invisible confirm-dialog, broken tap-to-expand,
 broken app-wide scrolling) each found and fixed same-day (PRs #47–60). Most
 recently, the SMS parsing engine was rewritten to stop misreading bill
-reminders as payments (PRs #61–62). This session (12) is documentation-only:
-it recovered the full history (the repo had been examined as a shallow clone
+reminders as payments (PRs #61–62). Session 12 was documentation-only: it
+recovered the full history (the repo had been examined as a shallow clone
 that only went back to PR #27; unshallowing it revealed the real history
 starts at PR #1) and restructured it per `docs/documentationandgitplaybook.md`.
+Session 13 (this session) worked through every loose end Session 12
+surfaced: closed 3 stale GitHub PRs with diff-verified evidence, fixed the
+`.env.example`/README doc drift, fixed a real user-facing bug found along
+the way (onboarding claimed data was encrypted — it isn't, hasn't been
+since PR #17), and fixed the pull-to-refresh gesture's root cause.
 
 ## What's still pending / open
 
-- **Three PRs are open and unmerged on GitHub**: #34 (SQLite crash + CSV
-  injection fix, from Jules) and #37 (DB-reset-on-OTA-update fix, from Jules)
-  — PR #38's own body describes integrating "Jules's" equivalent fixes for
-  both issues (sql.js pin, CSV-injection regex hardening, connection-
-  consistency check), so these two are **likely superseded duplicates**, but
-  that has never been explicitly re-verified against current `main` — treat
-  as needing triage, not confirmed-safe-to-close. See `findings.md`. #47 (a
-  structural repository study) is a genuinely useful doc that was never
-  merged — see `roadmap/decisions.md`.
-- **No automated tests, no TypeScript/type-checking, no CI on pull requests**
-  (`npm run lint` is oxlint only). Carried over from `roadmap/architecture.md`
-  §7.2. `selectors.js`'s 32 pure functions (injectable clock) are the
-  highest-value, lowest-friction place to start.
-- **The `.env.example` / README AI-scanning inconsistency** flagged in the
-  repository study (PR #47, unmerged) is still unresolved in the tree: the
-  file still documents a `VITE_GEMINI_API_KEY` for a feature that was removed
-  in 1.1.9 and no longer exists in the code at all.
-- Deferred/dropped UI-audit findings and other known gaps: see
+- **No automated tests beyond one file, no TypeScript/type-checking, no CI
+  on pull requests** (`npm run lint` is oxlint only). Carried over from
+  `roadmap/architecture.md` §8 — treated as roadmap/infrastructure work in
+  Session 13, not a "loose end" to silently fix, since it's architecturally
+  significant. `selectors.js`'s dozens of pure functions (injectable clock)
+  remain the highest-value, lowest-friction place to start.
+- **Nothing in Session 13 was verified on a real device** — the pull-to-
+  refresh fix especially should be checked on a phone; see `findings.md`.
+- **Web bundle 1.7.1 (this session's fixes) hasn't published yet** — that
+  happens automatically once this branch's PR merges to `main` (see
+  `features/ota-updates.md`).
+- Deferred/dropped UI-audit findings and other minor known gaps: see
   `docs/PROJECT_HISTORY.md` §8 (not yet migrated into `roadmap/decisions.md`
-  row-by-row — worth doing in a follow-up session).
+  row-by-row — worth doing in a follow-up session, lower priority now that
+  the higher-value loose ends are closed).
+- All three previously-open PRs (#34, #37, #47) are now **closed** — see
+  `roadmap/decisions.md` and `findings.md` for the resolution evidence.
+- The `.env.example`/README AI-scanning drift is **fixed** as of this
+  session.
 
 ## What's built and confirmed working
 
@@ -93,4 +98,5 @@ working on a real device" as different claims — the PR history itself does.
 | 09 | 2026-07-27/29 | `sessions/2026-07-27-session-09.md` — Event budgets/CSV/ZIP/schema v13, five skins, direct-push |
 | 10 | 2026-08-01/03 | `sessions/2026-08-01-session-10.md` — Repository study, four skins+depth engine, backup-restore fix, UI bug run (PRs #47–58) |
 | 11 | 2026-08-02/03 | `sessions/2026-08-02-session-11.md` — Scroll fixes, SMS engine rewrite, parser-feedback export (PRs #59–62) |
-| 12 | 2026-08-15 | `sessions/2026-08-15-session-12.md` — Documentation restructure (this session) |
+| 12 | 2026-08-15 | `sessions/2026-08-15-session-12.md` — Documentation restructure |
+| 13 | 2026-08-15 | `sessions/2026-08-15-session-13.md` — Closing every loose end from Session 12 (this session) |

@@ -8,7 +8,7 @@ const ACCOUNT_TYPES = [
   { key: 'card', label: 'Credit cards', sub: 'Bills & monthly statements', mono: 'CC', color: '#7A5C9E' },
   { key: 'upi', label: 'UPI apps', sub: 'GPay, PhonePe, Paytm history', mono: 'UP', color: '#2D6E8F' },
   { key: 'sms', label: 'SMS auto-tracking', sub: 'Reads bank & UPI SMS to log spends instantly', mono: 'SM', color: '#C2622E' },
-  { key: 'cash', label: 'Cash', sub: 'Add cash spends by hand or bill photo', mono: 'CA', color: '#B8892B' },
+  { key: 'cash', label: 'Cash', sub: 'Add cash spends by hand', mono: 'CA', color: '#B8892B' },
   { key: 'invest', label: 'Investments', sub: 'Mutual funds, stocks, SIPs', mono: 'MF', color: '#1E8F72' },
   { key: 'loans', label: 'Loans & EMIs', sub: 'Personal, home, vehicle EMIs', mono: 'LN', color: '#A13B3B' },
 ];
@@ -67,11 +67,11 @@ function StepSignIn() {
         </div>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 30, fontWeight: 700, lineHeight: 1.15 }}>Budget Tracker</div>
         <div style={{ fontSize: 15, color: colors.textSecondary, lineHeight: 1.45 }}>
-          Link what you use. We'll read your bills and statements, sort every expense, and flag anything we can't recognise.
+          Link what you use. We'll read your bank & UPI SMS to log spends automatically, and sort everything into categories.
         </div>
       </div>
       <div style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 1.5, background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '13px 14px' }}>
-        Your data is encrypted and stays on this device. You can back it up to Google Drive anytime from Settings.
+        Your data stays on this device — nothing is sent anywhere unless you choose to back it up to Google Drive from Settings.
       </div>
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button

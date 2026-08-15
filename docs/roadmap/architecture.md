@@ -169,8 +169,14 @@ behavior and break offline use.
 ## 6. Security posture
 
 - **No AI/cloud parsing** — removed entirely in PR #41 (`roadmap/decisions.md`).
-- **No faked auth** — Google Sign-In shows "not configured" rather than
-  simulating success.
+- **No OAuth, no faked auth.** The original repository study (and the
+  session-13 fix in `history/findings.md`) both claimed onboarding had a
+  Google Sign-In button showing a "not configured" toast — checked against
+  current code in Session 13 and that's **not what's there**: there's no
+  sign-in step at all, and Google Drive backup works without OAuth (JSON
+  export through the native share sheet — see `features/backup-restore.md`).
+  The onboarding screen itself claimed "Your data is encrypted" until
+  Session 13 fixed it — see `history/findings.md`.
 - **CSV formula injection (CWE-1236)** guarded in `exportReport.js`
   (`csvCell`) — a value matching `/^[\s\xA0]*[=+\-@]/` (leading whitespace,
   BOM, non-breaking space included) is prefixed with a literal `'`.

@@ -275,3 +275,114 @@ no code/config changes made).
 **Standing lesson:** removing a feature's code doesn't remove the feature's
 footprint in onboarding docs and example config — those need their own
 explicit check.
+
+---
+
+## Finding: PRs #34 and #37 (Jules) confirmed superseded by diff, not assumption (Session 13)
+
+**What was found:** the previous entry above ("Session 12") logged this as
+an open question — #38's body *described* integrating equivalent fixes, but
+that was never checked against the actual diffs. Session 13 pulled both
+PRs' full diffs via `mcp__github__pull_request_read` (`get_diff`) and
+compared them line-by-line against current `main`: #34's `sql.js` version
+pin and CSV-injection regex are present, byte-identical; #37's DB
+connection-consistency check is present, byte-identical, and its
+feature-branch additions (`warranty_months`, `splitTransaction`,
+`globalBudgetWarning`) are present in equivalent or since-evolved form.
+
+**Why it happened / why it wasn't caught earlier:** nobody had actually run
+the diff — "PR #38's body says it integrated this" is a different, weaker
+claim than "confirmed by diff," and the gap between those two claims sat
+undisturbed since 2026-07-25 (PR #38's merge) until this session.
+
+**Impact on the plan:** both PRs closed on GitHub with the diff evidence
+quoted in the closing comment (see `roadmap/decisions.md`). #37 would
+additionally have reintroduced a hand-committed `release/` zip that #38
+explicitly removed as a bad practice — merging it as-is would have been a
+regression, not a fix.
+
+**Standing lesson:** this is the same lesson the Session 12 entry above
+already named — "another PR's description says it did the same thing" is
+not the same claim as "diffed and confirmed redundant" — but it's worth
+recording that even *knowing* that lesson, the actual diff still didn't get
+pulled until a full session later. Naming a lesson and acting on it are two
+different steps.
+
+---
+
+## Finding: onboarding screen told users their data was encrypted — it isn't, and this exact class of bug had already been fixed once before (Session 13)
+
+**What was found:** `src/screens/onboarding/Onboarding.jsx`'s first screen
+told every new user "Your data is encrypted and stays on this device."
+Encryption was removed in PR #17 (2026-07-22) — see `roadmap/decisions.md`
+— over three weeks before this text was even written. The same file also
+told users the app would "read your bills and statements" and that cash
+entries could be added "by hand or bill photo," both describing the AI
+receipt-scanning capability removed in PR #41 (2026-07-26).
+
+**Why it happened / why it wasn't caught earlier:** `src/App.jsx` carries a
+code comment recording that the *database-error* screen had this exact
+same class of bug once already — it used to tell users their "encrypted
+data can't be unlocked" after encryption was removed, and got fixed. That
+fix evidently didn't prompt a project-wide search for the same stale claim
+elsewhere; the onboarding screen, which most users see far less often than
+the error screen (once, at first install), kept the wrong copy for weeks.
+
+**Impact on the plan:** fixed in Session 13 — the encryption claim, the
+"read your bills and statements" AI-parsing framing, and the "bill photo"
+cash-entry claim were all rewritten to describe what the app actually does
+now (SMS-based capture, no encryption claim, no photo capture for cash).
+
+**Standing lesson:** when a stale claim like "your data is encrypted" is
+found and fixed in one place, grep the rest of the codebase for the same
+claim before considering the bug closed — a single-file fix for a
+copy/messaging bug is usually a spot-fix, not a full fix.
+
+---
+
+## Finding: pull-to-refresh's `preventDefault()` timing was a real gap, fixed and partially verified (Session 13)
+
+**What was found:** PR #60's own closing note flagged that pull-to-refresh
+"did not visibly arm" in its headless touch test, attributed to the scroll
+container's `touch-action: auto`. Tracing the actual code
+(`src/components/ui/Screen.jsx`) found the more precise mechanism:
+`preventDefault()` wasn't called until *after* 8px of downward movement
+(the pull-intent threshold) — for the first several `pointermove` events at
+the very top of the list, nothing suppressed the browser's own handling.
+Chrome's compositor can commit a touch sequence to native scrolling within
+those first few events when nothing has called `preventDefault()` yet, and
+once committed, a later `preventDefault()` call no longer cancels it.
+
+**Why it happened / why it wasn't caught earlier:** the original
+implementation (PR #54) correctly reasoned about *which* events should
+claim the gesture (downward, at scrollTop 0) but not about *when within
+that decision* the browser needed to be told to stand down — the two
+concerns look like the same thing but aren't.
+
+**Impact on the plan:** `preventDefault()` now fires from the first pixel
+of downward movement at the top of the list, before the pull-intent
+threshold decides whether to actually commit to the pull gesture. Verified
+with a real headless-browser harness (Playwright + Chromium, real touch
+input via the DevTools Protocol) mounting the actual `Screen` component:
+confirmed `preventDefault()` now fires starting at move #1 instead of
+waiting for 8px of movement, and confirmed the `pulling` state transition
+and `pullY` calculation both still behave correctly. Could **not** get a
+full end-to-end confirmation (a completed drag past the trigger actually
+calling `onRefresh`) — CDP's synthetic touch dispatch stopped generating
+further pointer events for the same touch point immediately after
+`el.setPointerCapture()` was called, on **both** the pre-fix and post-fix
+code equally (confirmed by testing the pre-fix code with the identical
+harness), which points to a CDP/headless testing-tool limitation around
+`setPointerCapture` rather than anything the fix changed.
+
+**Standing lesson:** `touch-action` isn't the only lever for this class of
+bug — *when* `preventDefault()` is first called relative to the browser's
+own gesture-commitment window matters independently, and is a lower-risk
+fix than changing `touch-action` (which risks breaking ordinary scrolling
+project-wide, exactly the failure class in the `min-height: 100vh` finding
+above). Also: CDP's `Input.dispatchTouchEvent` combined with
+`setPointerCapture()` in the page under test is not a reliable way to
+verify a *complete* custom touch gesture end-to-end in this environment —
+useful for verifying event-handling logic up to the capture point, not
+past it. Real on-device verification remains the only way to fully confirm
+gesture fixes like this one, consistent with this project's entire history.
