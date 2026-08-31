@@ -386,3 +386,138 @@ verify a *complete* custom touch gesture end-to-end in this environment —
 useful for verifying event-handling logic up to the capture point, not
 past it. Real on-device verification remains the only way to fully confirm
 gesture fixes like this one, consistent with this project's entire history.
+
+---
+
+## Finding: `DetentSheet`'s drag gesture had the same forced-passive-listener bug as pull-to-refresh, plus a bubbling bug the audit didn't catch (Session 14)
+
+**What was found:** the 36-item full-codebase audit flagged `DetentSheet.jsx`
+(the read-only warranty/EMI/bill/subscription dashboard sheet) as using
+Touch Events for its drag-to-dismiss gesture — the exact same class of bug
+already root-caused and fixed in `Screen.jsx`'s pull-to-refresh in Session
+13 (React 19 unconditionally registers `touchstart`/`touchmove` as
+`{passive:true}`, so `preventDefault()` inside a touch handler silently
+does nothing). Migrating it to Pointer Events (verified via a real
+headless-browser test, same harness pattern as Session 13) surfaced a
+second, previously undocumented bug: the sheet's grabber/header handle and
+its own outer container both had pointer handlers, and Pointer Events
+bubble child-before-parent — so a pointerdown on the handle fired the
+child's handler, then bubbled to the outer container's handler, which
+overwrote the drag-state the child had just set. Fixed by adding
+`e.stopPropagation()` to the handle's handler.
+
+**Why it happened / why it wasn't caught earlier:** the original audit
+correctly identified the Touch-Events-vs-passive-listener issue by reading
+the code, but did not attempt the migration itself, so the second,
+independent bubbling bug — only observable once Touch Events were actually
+replaced with Pointer Events, which bubble where the old Touch Events
+handlers hadn't been structured to expect it — wasn't visible from a
+read-only pass.
+
+**Impact on the plan:** fixed in the same commit as the rest of the
+High-severity findings. No plan change; recorded because it's a second bug
+found *while fixing* a documented one, the same pattern as the onboarding
+false-encryption-claim finding in Session 13.
+
+**Standing lesson:** when migrating Touch Events to Pointer Events for the
+`preventDefault()`-timing fix, check every element in the same gesture
+tree that has its own pointer handler — Pointer Events bubble in a way
+Touch Events handlers in this codebase weren't written to guard against,
+so the migration itself can introduce (or, as here, reveal) a
+child-vs-parent event-ordering bug that didn't exist as a *symptom* under
+Touch Events, only as a latent one.
+
+---
+
+## Finding: an unattached `WebView` with no strong reference is GC-eligible mid-load, and the print/PDF path had exactly that shape (Session 14)
+
+**What was found:** `NativeToolsPlugin.java`'s `printHtml()` created its
+`WebView` as a local variable inside a `runOnUiThread` lambda, with the
+only other reference being the `WebViewClient` callback's own `view`
+parameter (not the outer variable). Once the lambda returned, nothing held
+a strong reference to the `WebView` while its page load — and the print
+job that depends on `onPageFinished` firing — was still pending. Android's
+`WebView` is a normal GC root candidate like any other object; if collected
+mid-load, `onPageFinished` never fires and the PDF-export/print call hangs
+forever with no error surfaced to the JS side.
+
+**Why it happened / why it wasn't caught earlier:** this class of bug is
+timing-dependent on the garbage collector and device memory pressure — it
+would not reproduce reliably (or ever) on a low-memory-pressure dev
+device, which is consistent with this project's established pattern of
+device-visible bugs surfacing only later, in production, under real memory
+conditions (see the collapsing-header and Spatial-skin-lockout findings
+from earlier sessions).
+
+**Impact on the plan:** fixed by holding the `WebView` on an instance
+field, cleared once the print job resolves or rejects (both success and
+failure paths). Could not be verified end-to-end in this environment (no
+Android runtime/device available) — verified by careful manual reasoning
+about Java object lifetime and GC roots only, consistent with how every
+other native-Android-only finding in this project's history has had to be
+verified.
+
+**Standing lesson:** any `WebView` (or similar heavyweight async-callback
+object) created without being attached to a view hierarchy needs an
+explicit strong reference for the lifetime of its pending async work —
+"it worked when I tested it" is not evidence against this bug, since GC
+timing is exactly the variable that makes it intermittent.
+
+---
+
+## Finding: the exported HTML/PDF report silently converted amounts through demo FX rates, while the CSV export of the same data did not (Session 14)
+
+**What was found:** `exportReport.js`'s HTML/PDF report used `fmt()` —
+which converts every amount through `RATES`, explicitly documented in
+`utils/currency.js` as "demo rates only, not live FX" — while the CSV
+export of the exact same transactions (`csvFormat.js`) always wrote the
+raw stored INR value, correctly labeled `Amount (INR)`. A user with their
+display currency set to anything other than INR would get a PDF report
+and a CSV of the same data that disagreed with each other, with the PDF's
+numbers being a fabricated conversion presented with no disclaimer.
+
+**Why it happened / why it wasn't caught earlier:** `fmt()` is the
+correct, and only, currency formatter used everywhere else in the app
+(every on-screen amount should follow the user's display-currency choice)
+— using it inside the export path as well was a reasonable-looking
+default that doesn't hold once you consider an *exported document* is
+meant to be a record of what was actually spent, not a live on-screen
+display.
+
+**Impact on the plan:** added `fmtInr()` to `utils/currency.js` — always
+renders the stored INR amount regardless of the active display currency —
+and switched `exportReport.js`'s HTML/PDF builder to use it instead of
+`fmt()`. The CSV export was already correct and untouched. All other
+screens continue using `fmt()` unchanged; this was export-path-only.
+
+**Standing lesson:** a shared formatter that's correct for on-screen
+display isn't automatically correct for an exported/printed document — an
+export is a record, not a view, and a demo/illustrative conversion rate
+has no business appearing in something a user might keep as a financial
+record.
+
+---
+
+## Finding: two audit items investigated and deliberately left unchanged (Session 14)
+
+**`DetentSheet`'s upward-drag threshold (Medium #9):** the audit flagged
+the sheet's drag-to-dismiss gesture as only responding to downward drags,
+not upward ones. Re-checked against the file's own header comment, which
+states this is intentional — the sheet is meant to be dismissed by
+dragging it away, not by dragging further into the screen. No code
+changed.
+
+**`repo.js`'s `WARRANTY_FIELDS.purchaseAt`/`.warrantyMonths` missing null
+guards (Low #2):** every sibling field in this mapping table guards
+against `null`/`''`, but these two call `Math.round(Number(v))` directly,
+which the original audit flagged as unverified against real call sites —
+`Number(undefined)` is `NaN`, and both columns are `NOT NULL INTEGER`.
+Traced all three real call sites: `WarrantyScreen.jsx`'s `WarrantySheet`
+component gates its `save()` behind `valid = product.trim() && purchase &&
+monthsN > 0`, so `onSave`/`addWarranty` can never fire with an invalid
+`monthsN`, and `purchaseAt` always resolves through `?? Date.now()`.
+Both `RemindersScreen.jsx` call sites likewise always supply a numeric
+`wMonths` (defaulted via `|| 0`) and a numeric `purchaseAt` (defaulted via
+a `||`/`??` chain ending in `Date.now()`). No path in the app can reach
+`repo.js` with either field missing. No code changed — the guard would be
+dead defensive code for a state that cannot occur.

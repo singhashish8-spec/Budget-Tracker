@@ -3,72 +3,75 @@
 > Unlike the rest of this folder, this file is *overwritten* each session,
 > not appended to.
 
-Last updated: **2026-08-15**, Session 13 (loose-end cleanup, following
-Session 12's documentation restructure).
+Last updated: **2026-08-31**, Session 14 (full codebase audit, then fixing
+every one of the 36 findings it turned up).
 
-Web bundle is **1.7.1** (bumped this session — pure JS/copy fixes, ships
-OTA once merged, per `engineering/git-workflow.md`); native APK is
-**versionCode 7 / versionName 1.4**, unchanged (nothing native touched);
-database schema is **v13**. The app is a fully local-first India-focused personal
-finance tracker — SMS auto-capture, manual entry, CSV import, budgets
-(calendar/pay-cycle/envelope), EMI/bill/subscription/warranty tracking, net
-worth with holdings, goals, nine visual "skins," and JSON/ZIP backup. No
-AI/cloud parsing (removed in 1.1.9 — see `roadmap/decisions.md`).
+Web bundle is **1.7.1** (not yet re-bumped for this session's fixes — see
+"still pending" below); native APK is **versionCode 7 / versionName 1.4**,
+unchanged; database schema is **v13**. The app is a fully local-first
+India-focused personal finance tracker — SMS auto-capture, manual entry,
+CSV import, budgets (calendar/pay-cycle/envelope), EMI/bill/subscription/
+warranty tracking, net worth with holdings, goals, nine visual "skins," and
+JSON/ZIP backup. No AI/cloud parsing (removed in 1.1.9 — see
+`roadmap/decisions.md`).
 
 ## Right now, in one paragraph
 
-The app was scaffolded 2026-07-14 as a Vite+React+Capacitor MVP (onboarding,
-home, transactions, budgets, add-expense, SMS-based auto-capture) and built
+The app was scaffolded 2026-07-14 as a Vite+React+Capacitor MVP and built
 out through direct pushes to `main` for its first ~9 versions before a
 PR-based workflow started on 2026-07-21. From there it moved fast: OTA/APK
-delivery got fixed (the app had been silently failing to update since 1.0.4),
-goals/dashboards/bill-types/smart-patterns/theming landed (PRs #1–16), a
-critical database-encryption bug that wiped user data on every update got
-root-caused and fixed by removing SQLCipher entirely (PRs #17–23), a large
-one-handed-UI overhaul plus Google's Jules agent contributing warranty/
-cooling-off/split features happened next (PRs #24–38), then EMI progress
-bars, warranty tracking, AI removal (Gemini was ripped out for being the only
-network-calling, third-party-trusting part of the app), side-hustle/GST/
-envelope budgeting, and the first native APK release with share-target/
-reminders/haptics shipped (PRs #39–46). A direct-push burst (07-27 to 07-29,
-no PR workflow) added event budgets, CSV import, ZIP export, and schema v13.
-A five-day gap, then a design-heavy phase landed four new visual skins with a
-depth engine, fixed a backup-restore bug that was quietly deleting data down
-to just categories, and worked through a run of on-device UI bugs (Spatial
-skin locking users out, an invisible confirm-dialog, broken tap-to-expand,
-broken app-wide scrolling) each found and fixed same-day (PRs #47–60). Most
-recently, the SMS parsing engine was rewritten to stop misreading bill
-reminders as payments (PRs #61–62). Session 12 was documentation-only: it
-recovered the full history (the repo had been examined as a shallow clone
-that only went back to PR #27; unshallowing it revealed the real history
-starts at PR #1) and restructured it per `docs/documentationandgitplaybook.md`.
-Session 13 (this session) worked through every loose end Session 12
-surfaced: closed 3 stale GitHub PRs with diff-verified evidence, fixed the
-`.env.example`/README doc drift, fixed a real user-facing bug found along
-the way (onboarding claimed data was encrypted — it isn't, hasn't been
-since PR #17), and fixed the pull-to-refresh gesture's root cause.
+delivery got fixed, goals/dashboards/bill-types/smart-patterns/theming
+landed (PRs #1–16), a critical database-encryption bug that wiped user
+data on every update got root-caused and fixed by removing SQLCipher
+entirely (PRs #17–23), a one-handed-UI overhaul plus Google's Jules agent
+contributing warranty/cooling-off/split features happened next (PRs
+#24–38), then EMI progress bars, warranty tracking, AI removal, side-
+hustle/GST/envelope budgeting, and the first native APK release shipped
+(PRs #39–46). A direct-push burst added event budgets, CSV import, ZIP
+export, and schema v13 (07-27 to 07-29). A design-heavy phase landed four
+new visual skins with a depth engine, fixed a backup-restore data-loss bug,
+and worked through a run of on-device UI bugs (PRs #47–60). The SMS
+parsing engine was then rewritten to stop misreading bill reminders as
+payments (PRs #61–62). Session 12 recovered the project's full history
+(the repo had been examined as a shallow clone) and restructured
+documentation per `docs/documentationandgitplaybook.md`. Session 13 closed
+every loose end Session 12 surfaced (3 stale PRs, doc drift, a false
+onboarding encryption claim, the pull-to-refresh root cause). **Session 14
+(this session)** ran a from-scratch, six-agent deep audit of the entire
+codebase — 36 findings across 3 Critical / 15 High / 9 Medium / 9 Low — and
+then fixed every one of them: two silent-money-correctness bugs and a
+transaction-loss risk (Critical, in `db/sqlite.js` and
+`scripts/release-apk.mjs`), quick-add/CSV-import/OTA-update-check/
+notification/date-math/gesture bugs (High, 15 of 15), state/backup/CI-
+workflow/native-plugin issues (Medium, 8 of 9 — the 9th confirmed
+intentional), and a batch of smaller correctness/cleanup items (Low, 9 of
+9 — one confirmed unreachable rather than patched). Two audit findings were
+investigated and deliberately left unchanged, with the reasoning recorded
+in `findings.md` and `roadmap/decisions.md` rather than silently dropped.
 
 ## What's still pending / open
 
-- **No automated tests beyond one file, no TypeScript/type-checking, no CI
-  on pull requests** (`npm run lint` is oxlint only). Carried over from
-  `roadmap/architecture.md` §8 — treated as roadmap/infrastructure work in
-  Session 13, not a "loose end" to silently fix, since it's architecturally
-  significant. `selectors.js`'s dozens of pure functions (injectable clock)
-  remain the highest-value, lowest-friction place to start.
-- **Nothing in Session 13 was verified on a real device** — the pull-to-
-  refresh fix especially should be checked on a phone; see `findings.md`.
-- **Web bundle 1.7.1 (this session's fixes) hasn't published yet** — that
-  happens automatically once this branch's PR merges to `main` (see
-  `features/ota-updates.md`).
-- Deferred/dropped UI-audit findings and other minor known gaps: see
-  `docs/PROJECT_HISTORY.md` §8 (not yet migrated into `roadmap/decisions.md`
-  row-by-row — worth doing in a follow-up session, lower priority now that
-  the higher-value loose ends are closed).
-- All three previously-open PRs (#34, #37, #47) are now **closed** — see
-  `roadmap/decisions.md` and `findings.md` for the resolution evidence.
-- The `.env.example`/README AI-scanning drift is **fixed** as of this
-  session.
+- **Nothing from the 36-item Session 14 audit remains unaddressed** — every
+  item was either fixed (34 of 36) or has a recorded, verified reason it
+  wasn't (`DetentSheet`'s upward-drag threshold is intentional design;
+  `repo.js`'s `WARRANTY_FIELDS` null guards are unreachable at every real
+  call site) — see `findings.md` and `roadmap/decisions.md`.
+- **No automated tests beyond what exists, no TypeScript/type-checking, no
+  CI on pull requests** (`npm run lint` is oxlint only). Test coverage grew
+  this session (43 → 66 tests: new files for `quickAdd.js`, `csvFormat.js`,
+  `liveUpdate.js`, `date.js`), but CI itself remains unactioned —
+  architecturally significant, not a "loose end" to silently add mid
+  bug-fix pass.
+- **Nothing in Session 14 was verified on a real device.** The two Pointer
+  Events migrations (`BottomNav`, `DetentSheet`) and the warranty/bill
+  date-math fixes are the highest-value things to check on a phone first —
+  consistent with every prior session in this project's history.
+- **Web bundle version not yet bumped for this session's fixes** — will
+  happen once this branch's PR is reviewed; see `features/ota-updates.md`.
+- Deferred/dropped UI-audit findings from before Session 12: see
+  `docs/PROJECT_HISTORY.md` §8 (still not migrated into
+  `roadmap/decisions.md` row-by-row — lower priority, unchanged from
+  Session 13's note).
 
 ## What's built and confirmed working
 
@@ -99,4 +102,5 @@ working on a real device" as different claims — the PR history itself does.
 | 10 | 2026-08-01/03 | `sessions/2026-08-01-session-10.md` — Repository study, four skins+depth engine, backup-restore fix, UI bug run (PRs #47–58) |
 | 11 | 2026-08-02/03 | `sessions/2026-08-02-session-11.md` — Scroll fixes, SMS engine rewrite, parser-feedback export (PRs #59–62) |
 | 12 | 2026-08-15 | `sessions/2026-08-15-session-12.md` — Documentation restructure |
-| 13 | 2026-08-15 | `sessions/2026-08-15-session-13.md` — Closing every loose end from Session 12 (this session) |
+| 13 | 2026-08-15 | `sessions/2026-08-15-session-13.md` — Closing every loose end from Session 12 |
+| 14 | 2026-08-31 | `sessions/2026-08-31-session-14.md` — Full 36-item codebase audit, then fixing every finding (this session) |
