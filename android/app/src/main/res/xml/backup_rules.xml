@@ -2,9 +2,10 @@
 <!-- API < 31.
 
      Include-list ONLY: naming an <include> makes Android back up nothing but
-     what is listed, so the encrypted database can never travel by accident.
-     Its SQLCipher key is Keystore-bound and cannot be restored alongside it,
-     which would leave a restored copy permanently undecryptable.
+     what is listed, so the raw SQLite database can never travel by accident.
+     The database is stored unencrypted (see src/db/sqlite.js for why), so
+     keeping it off any backup/transfer path — cloud or device-to-device —
+     is the only thing standing between it and another device.
 
      The one file allowed out is the app's own JSON snapshot, which restores
      cleanly on any device. No <exclude> for the database is needed — or even

@@ -37,6 +37,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # fetch-depth 2 (not the default 1/shallow) so the publish step
+          # below can diff against the previous commit to tell "nothing
+          # changed" apart from "src/ changed but web-version.txt wasn't
+          # bumped, so this push silently never ships."
+          fetch-depth: 2
 
       - uses: actions/setup-node@v4
         with:
@@ -62,7 +68,16 @@ jobs:
           cp "_site/latest.json" "./latest.json"
           git add latest.json
           if git diff --cached --quiet -- latest.json; then
-            echo "Version ${VERSION} already live — nothing to publish."
+            # The manifest didn't change, meaning web-version.txt didn't move.
+            # That's routine for a docs-only or config-only push — but if this
+            # push actually touched app code, silently doing nothing is wrong:
+            # a real change would never ship. Distinguish the two rather than
+            # logging both the same way.
+            if git diff --quiet HEAD~1 -- src/ public/ index.html 2>/dev/null; then
+              echo "Version ${VERSION} already live — nothing to publish."
+            else
+              echo "::warning::src/ (or public/, index.html) changed in this push, but web-version.txt wasn't bumped, so nothing was published — this code change has not shipped. Bump web-version.txt and push again."
+            fi
             exit 0
           fi
           # Version changed: swap in the new bundle, dropping older ones so only

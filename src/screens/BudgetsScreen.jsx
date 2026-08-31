@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { colors, tint } from '../theme/tokens';
 import { fmt } from '../utils/currency';
 import { useApp } from '../state/AppContext';
@@ -69,6 +69,17 @@ export default function BudgetsScreen() {
   const [expandedBudget, setExpandedBudget] = useState(null);
   const { txns, categories, budgets } = state;
   const rows = budgetRows(txns, categories, budgets, { salaryDay: state.salaryDay });
+  // Only the expanded row needs its detail (a 6-month trend + top-merchant
+  // scan per category) — this used to run unconditionally for every row on
+  // every render, including collapsed ones, so any unrelated app-state
+  // change (a toast timer, a background SMS sync) while sitting on this
+  // screen re-ran it for every budget. HomeScreen already fixed the same
+  // anti-pattern for its own category drill-down; this brings Budgets in
+  // line with it.
+  const expandedDetail = useMemo(
+    () => (expandedBudget ? categoryDetail(txns, categories, expandedBudget, { salaryDay: state.salaryDay }) : null),
+    [expandedBudget, txns, categories, state.salaryDay],
+  );
   const overallLimit = budgets.reduce((a, b) => a + b.limit, 0);
   const overallSpent = rows.reduce((a, r) => a + r.spent, 0);
   const overallPct = overallLimit ? Math.min(100, Math.round((overallSpent / overallLimit) * 100)) : 0;
@@ -111,7 +122,12 @@ export default function BudgetsScreen() {
           const barColor = b.status === 'over' ? colors.danger : b.status === 'near' ? colors.warning : colors.primary;
           const statusColor = b.status === 'over' ? colors.danger : b.status === 'near' ? colors.warning : colors.successText;
           const isOpen = expandedBudget === b.cat;
-          const d = categoryDetail(txns, categories, b.cat, { salaryDay: state.salaryDay });
+          // Collapse still renders its children while closed (it hides them
+          // with a CSS height animation, doesn't unmount them), so a row
+          // that isn't open needs a safe placeholder here rather than
+          // `null` — this is never actually visible, just present so the
+          // JSX below doesn't crash on `d.topMerchants`.
+          const d = isOpen && expandedDetail ? expandedDetail : { topMerchants: [] };
           return (
             <div key={b.cat} style={{ background: colors.cardSurface, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '14px 15px' }}>
               <button

@@ -836,6 +836,10 @@ export function subscriptionPriceChanges(reminders, txns) {
       .sort((a, b) => txnTime(b) - txnTime(a));
     if (!charges.length) continue;
     const latest = charges[0].amount;
+    // A reminder saved with no amount yet has nothing to compare against —
+    // without this, diff / r.amount divided by zero and always passed the
+    // threshold below, showing every such subscription as an "∞%" rise.
+    if (!r.amount || r.amount <= 0) continue;
     // A rounding wobble isn't a price rise — require a real, visible jump.
     const diff = latest - r.amount;
     if (diff > 0 && diff / r.amount >= 0.02) {

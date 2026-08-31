@@ -1648,19 +1648,25 @@ export function AppProvider({ children }) {
       });
       await repo.addSmsLog({ rawSms: entry.rawSms, txnId: id });
       const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
-      set({ txns, smsLog, smsUnmatched: state.smsUnmatched.filter((u) => u.rawSms !== entry.rawSms) });
+      // backStateRef.current, not the closed-over state.smsUnmatched: a
+      // background silent scan can update smsUnmatched while the awaits
+      // above are in flight, and computing the next list from the
+      // render-time closure would overwrite that concurrent update instead
+      // of building on top of it — the same hazard the confirmCapture/
+      // dismissCapture/checkCaptures functions above already guard against.
+      set({ txns, smsLog, smsUnmatched: backStateRef.current.smsUnmatched.filter((u) => u.rawSms !== entry.rawSms) });
       showToast(`Added as ${type === 'income' ? 'money in' : 'a spend'}`);
     },
-    [state.smsUnmatched, set, showToast],
+    [set, showToast],
   );
 
   const ignoreUnmatched = useCallback(
     async (entry) => {
       await repo.addSmsIgnore(smsSignature(entry.rawSms));
-      set({ smsUnmatched: state.smsUnmatched.filter((u) => u.rawSms !== entry.rawSms) });
+      set({ smsUnmatched: backStateRef.current.smsUnmatched.filter((u) => u.rawSms !== entry.rawSms) });
       showToast('Ignored — messages like this won’t be shown again');
     },
-    [state.smsUnmatched, set, showToast],
+    [set, showToast],
   );
 
   // "This wasn't a duplicate": give a merged message its own transaction and

@@ -1,6 +1,5 @@
 package com.budgettracker.app;
 
-import android.content.ClipData;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -51,6 +50,11 @@ public class AppIntegrationPlugin extends Plugin {
         Intent intent = getActivity().getIntent();
         if (intent != null) {
             String action = intent.getAction();
+            // Only SEND/SEND_MULTIPLE are ever routed here — the manifest declares
+            // no ACTION_VIEW intent-filter for this activity, so there is no
+            // ACTION_VIEW branch to handle here.
+            boolean handledAction = Intent.ACTION_SEND.equals(action)
+                || Intent.ACTION_SEND_MULTIPLE.equals(action);
             if (Intent.ACTION_SEND.equals(action)) {
                 Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
                 JSObject f = readUri(uri);
@@ -63,16 +67,18 @@ public class AppIntegrationPlugin extends Plugin {
                         if (f != null) files.put(f);
                     }
                 }
-            } else if (intent.getClipData() != null && Intent.ACTION_VIEW.equals(action)) {
-                ClipData clip = intent.getClipData();
-                for (int i = 0; i < clip.getItemCount(); i++) {
-                    JSObject f = readUri(clip.getItemAt(i).getUri());
-                    if (f != null) files.put(f);
-                }
             }
-            // Clear it so returning to the app later doesn't re-import the same
-            // file every time the activity resumes.
-            if (files.length() > 0) {
+            // Clear it so returning to the app later doesn't keep re-attempting
+            // the same share on every resume. This used to only clear when at
+            // least one file actually came back — so a share that failed
+            // entirely (every URI over MAX_BYTES, or unreadable) left the
+            // intent in place, and consumePendingShare() silently re-did the
+            // same doomed read, from scratch, every single time the app
+            // resumed, with no error ever surfaced to the user. Clearing
+            // whenever a share intent was actually handled — regardless of
+            // whether it produced any files — means a failed share is
+            // consumed once, like a successful one already was.
+            if (handledAction) {
                 intent.setAction(Intent.ACTION_MAIN);
                 intent.removeExtra(Intent.EXTRA_STREAM);
             }
