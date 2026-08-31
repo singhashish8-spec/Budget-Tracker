@@ -105,6 +105,30 @@ export function parseAmount(raw) {
   return Number.isFinite(n) ? (neg ? -n : n) : null;
 }
 
+// A remembered column mapping is only trustworthy if the file's actual
+// header row still looks like it did when the mapping was saved — if the
+// bank reorders or inserts a column, the old indices silently point at the
+// wrong data instead of erroring (this is exactly how a reference-number
+// column once got imported as the amount, with the direction flipped).
+// Case/whitespace-loose, so a merely differently-formatted header (not
+// reordered) still counts as matching.
+function normalizeHeaderCell(s) {
+  return String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+export function headerMatchesRememberedProfile(mapping, headerRow) {
+  if (!mapping.hasHeader || !mapping.headerLabels || !headerRow) return true; // nothing recorded to check against
+  const cols = ['dateCol', 'merchantCol', 'amountCol', 'debitCol', 'creditCol'];
+  for (const col of cols) {
+    const idx = mapping[col];
+    if (idx == null) continue;
+    const remembered = mapping.headerLabels[idx];
+    if (remembered == null) continue; // this column wasn't part of the saved mapping
+    if (normalizeHeaderCell(headerRow[idx]) !== normalizeHeaderCell(remembered)) return false;
+  }
+  return true;
+}
+
 // Turns parsed CSV rows + a column mapping into the same shape UploadScreen's
 // AI path produces, so both feed the existing ReviewImportScreen unchanged.
 // mapping: { hasHeader, dateCol, merchantCol, typeMode: 'signed'|'debitCredit',

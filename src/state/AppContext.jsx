@@ -805,6 +805,16 @@ export function AppProvider({ children }) {
   // ── automatic snapshots ──
   // Rewrite the snapshot shortly after anything changes. Debounced so a burst
   // of SMS imports produces one write, not dozens.
+  //
+  // writeAutoBackup() itself always captures a fully current snapshot (it
+  // reads straight from the DB via gatherData(), not from this component's
+  // state) — but this effect only *fires* when something in its dependency
+  // array changes. It used to list only txns/budgets/reminders/goals/
+  // netWorthItems, so a session spent only editing warranties, envelopes,
+  // event budgets, or CSV bank profiles never scheduled a new snapshot at
+  // all — a reinstall right after could restore an older snapshot missing
+  // that entire session's work, with nothing at the time suggesting
+  // anything was wrong.
   useEffect(() => {
     if (state.loading || !state.onboarded) return undefined;
     const t = setTimeout(async () => {
@@ -816,7 +826,23 @@ export function AppProvider({ children }) {
       }
     }, 4000);
     return () => clearTimeout(t);
-  }, [state.loading, state.onboarded, state.txns, state.budgets, state.reminders, state.goals, state.netWorthItems, set]);
+  }, [
+    state.loading,
+    state.onboarded,
+    state.txns,
+    state.budgets,
+    state.reminders,
+    state.goals,
+    state.netWorthItems,
+    state.warranties,
+    state.warrantyDocs,
+    state.warrantyClaims,
+    state.envelopes,
+    state.eventBudgets,
+    state.csvProfiles,
+    state.merchantRules,
+    set,
+  ]);
 
   // Restore the snapshot found at startup. importBackup merges on original
   // ids, so running it more than once can't duplicate anything.

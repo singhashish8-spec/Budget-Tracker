@@ -3,6 +3,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { gatherData } from './backup';
 import { formatErrors } from './errorLog';
+import { buildTransactionsCsv } from './csvFormat';
 
 // Bundles everything exportable into one file via a browser-side zip
 // (fflate) rather than a server-side library (archiver is Node-only and
@@ -11,23 +12,14 @@ import { formatErrors } from './errorLog';
 // the database as base64 data URLs and are otherwise only viewable one at a
 // time inside the app.
 const CSV_BOM = String.fromCharCode(0xfeff);
-// Same formula-injection guard as exportReport.js's csvCell (CWE-1236): a
-// merchant/note starting with = + - or @ gets quoted with a leading ' so
-// Excel/Sheets never treats it as a live formula.
-const CSV_FORMULA_LEAD = new RegExp(`^[\\s${CSV_BOM}\\xA0]*[=+\\-@]`);
 
+// buildCsvText used to carry its own independent copy of the formula-
+// injection guard and cell formatting — which is exactly how a
+// negative-amount bug (every expense turned into a text cell, silently
+// undercounting a spreadsheet SUM() of the column) shipped here and in
+// exportReport.js at once, unnoticed in either place. Now shared.
 function buildCsvText(txns, categories) {
-  function csvCell(value) {
-    let v = String(value ?? '');
-    if (CSV_FORMULA_LEAD.test(v)) v = `'${v}`;
-    return `"${v.replace(/"/g, '""')}"`;
-  }
-  const catLabel = (id) => categories.find((c) => c.id === id)?.label ?? 'Uncategorised';
-  const rows = [['Date', 'Merchant', 'Account', 'Category', 'Type', 'Amount (INR)']];
-  txns.forEach((t) => {
-    rows.push([t.date, t.merchant, t.account || '', catLabel(t.cat), t.type, t.type === 'income' ? t.amount : -t.amount]);
-  });
-  return CSV_BOM + rows.map((r) => r.map(csvCell).join(',')).join('\n');
+  return buildTransactionsCsv(txns, categories, CSV_BOM);
 }
 
 function escHtml(x) {

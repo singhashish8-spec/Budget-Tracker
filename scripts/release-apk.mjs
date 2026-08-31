@@ -17,7 +17,8 @@
 // uploads whatever APK you point it at.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, copyFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, copyFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
+import { delimiter as PATH_DELIM, join as pathJoin } from 'node:path';
 
 const OWNER = 'singhashish8-spec';
 const REPO = 'Budget-Tracker';
@@ -57,6 +58,60 @@ const notes = [
   'the existing app** — do **NOT** uninstall first (uninstalling erases your data).',
 ].join('\n');
 
+// --- verify the APK is actually signed before publishing it ---------------
+// This is the file that installs as an UPDATE over what's already on
+// people's phones — publishing an unsigned or wrong-certificate build here
+// either fails to install for everyone, or (worse, if signed with a
+// different but still-valid key) installs cleanly with no visible
+// difference to the user. `apksigner` (from Android SDK build-tools) is the
+// canonical way to check; it's installed by name in this project's CI
+// workflow. If it can't be found at all (e.g. a manual run on a machine
+// without the full SDK), this warns loudly rather than silently assuming
+// the file is fine — it does not hard-block, since that would make manual
+// publishing impossible on such a machine.
+function findApksigner() {
+  const androidHome = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+  const candidates = [];
+  if (androidHome) {
+    candidates.push(pathJoin(androidHome, 'build-tools'));
+  }
+  for (const dir of candidates) {
+    try {
+      const versions = readdirSync(dir).sort().reverse();
+      for (const v of versions) {
+        const exe = process.platform === 'win32' ? 'apksigner.bat' : 'apksigner';
+        const p = pathJoin(dir, v, exe);
+        if (existsSync(p)) return p;
+      }
+    } catch { /* ANDROID_HOME/build-tools not laid out as expected — fall through to PATH */ }
+  }
+  const pathDirs = (process.env.PATH || '').split(PATH_DELIM);
+  const exeName = process.platform === 'win32' ? 'apksigner.bat' : 'apksigner';
+  for (const dir of pathDirs) {
+    const p = pathJoin(dir, exeName);
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
+
+const apksigner = findApksigner();
+if (apksigner) {
+  try {
+    execFileSync(apksigner, ['verify', apkPath], { stdio: 'pipe' });
+    console.log(`✔ Signature verified (${apksigner})`);
+  } catch (e) {
+    console.error(`\n❌ ${apkPath} failed signature verification — refusing to publish it.`);
+    console.error('   This file would not install as a valid update. apksigner said:');
+    console.error('   ' + (e.stderr?.toString().trim() || e.message));
+    process.exit(1);
+  }
+} else {
+  console.warn('\n⚠ Could not find `apksigner` (checked $ANDROID_HOME/build-tools and PATH) —');
+  console.warn('  publishing WITHOUT verifying the APK is actually signed. If this upload');
+  console.warn('  fails to install as an update on a phone that already has the app, this');
+  console.warn('  is the first thing to check.\n');
+}
+
 // --- make sure the uploaded file has the fixed name -----------------------
 mkdirSync('release', { recursive: true });
 const uploadPath = `release/${ASSET_NAME}`;
@@ -87,8 +142,17 @@ try {
 
 try {
   if (exists) {
-    console.log('  (release exists — replacing the APK on it)');
+    console.log('  (release exists — replacing the APK and its notes)');
     execFileSync('gh', ['release', 'upload', tag, uploadPath, '--repo', repoFlag, '--clobber'], {
+      stdio: 'inherit',
+    });
+    // --clobber only replaces the binary asset — it leaves title/notes as
+    // whatever they were the first time this tag was published. Since the
+    // build number can change without the versionName tag changing (e.g. a
+    // re-signed build, or a same-versionName rebuild), re-publishing without
+    // this would leave the release page describing an older build than the
+    // one actually being served underneath it.
+    execFileSync('gh', ['release', 'edit', tag, '--repo', repoFlag, '--title', title, '--notes', notes], {
       stdio: 'inherit',
     });
   } else {

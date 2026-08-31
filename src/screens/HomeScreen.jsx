@@ -12,6 +12,19 @@ import Amount from '../components/Amount';
 import Collapse from '../components/Collapse';
 import { Card, Screen, SectionHeader, List, ListRow, ProgressBar, Mono, EmptyState, CountUp, Icon } from '../components/ui';
 
+// The next real occurrence of a bill's due day — this month if it hasn't
+// passed yet (including today), otherwise next month. Sorting bills by this
+// instead of raw due_day is what makes "Upcoming bills" actually mean
+// soonest-first: late in the month, an overdue bill from early on (due_day
+// 2) used to outrank one due tomorrow (due_day 28) just because 2 < 28.
+function nextDueDate(dueDay, now) {
+  const day = Math.min(28, Math.max(1, dueDay || 1));
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let at = new Date(now.getFullYear(), now.getMonth(), day);
+  if (at.getTime() < today.getTime()) at = new Date(now.getFullYear(), now.getMonth() + 1, day);
+  return at;
+}
+
 export default function HomeScreen() {
   const { state, go, goReview, openCategorySheet, openDetail, togglePrivacy, scanSms } = useApp();
   const { txns, categories } = state;
@@ -44,12 +57,16 @@ export default function HomeScreen() {
     : cycle.calendar
       ? 'Spent this month'
       : `Spent since ${cycle.start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+  const now = new Date();
   const upcomingBills = useMemo(() => [...state.reminders]
     .filter((r) => r.paid_for !== monthKey)
-    .sort((a, b) => a.due_day - b.due_day)
-    .slice(0, 2), [state.reminders, monthKey]);
-
-  const now = new Date();
+    .sort((a, b) => nextDueDate(a.due_day, now).getTime() - nextDueDate(b.due_day, now).getTime())
+    .slice(0, 2),
+    // `now` intentionally excluded, same reasoning as forecasts/expiringWs
+    // below — it changes identity every render, and only the calendar day
+    // (not the instant) matters for this sort.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.reminders, monthKey]);
   // A subscription charging more than the amount on its reminder — the honest
   // version of "bill negotiation": we can't haggle, but we can notice.
   const priceRises = useMemo(
@@ -77,9 +94,19 @@ export default function HomeScreen() {
   );
   // Only the open category needs its detail computed — this used to run for
   // every row on every render, each one six nested month-window scans deep.
+  //
+  // categoryDetail's `now` used to never be passed, so it silently defaulted
+  // to the live clock — completely independent of whichever month the user
+  // had picked in the dropdown above. The collapsed row (topCategories,
+  // period-aware) could show June's total while expanding it compared
+  // today's month against last month, neither of which was June. Passing a
+  // date inside the selected month makes categoryDetail's own "this cycle
+  // vs last cycle" math land on the right months.
+  const detailNow = period ? new Date(period.y, period.m, 15) : now;
   const expandedDetail = useMemo(
-    () => (expandedCat ? categoryDetail(txns, categories, expandedCat, { salaryDay: state.salaryDay }) : null),
-    [expandedCat, txns, categories, state.salaryDay],
+    () => (expandedCat ? categoryDetail(txns, categories, expandedCat, { salaryDay: state.salaryDay, now: detailNow }) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [expandedCat, txns, categories, state.salaryDay, period],
   );
 
   const monthOptions = useMemo(() => Array.from({ length: 12 }, (_, i) => {

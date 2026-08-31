@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { colors, metrics, radii, nest } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
 import * as haptics from '../services/haptics';
@@ -229,17 +230,30 @@ export default function BottomNav() {
         ),
       )}
 
-      {choosing && motionOff && (
+      {choosing && motionOff && createPortal(
         // Reduced-motion path: no morph, no filter — the sheet just appears.
+        // Portalled to <body>, not rendered inline inside this component's own
+        // root — that root carries .bt-material, which gets a real
+        // backdrop-filter on the Glass/Liquid Glass/Spatial skins, and a
+        // backdrop-filter (like transform/perspective) makes its element a
+        // containing block for position:fixed descendants. Left inline, this
+        // overlay's `inset:0` resolved against the tab bar's own ~70px box
+        // instead of the viewport, squeezing the whole sheet into that strip
+        // — the same class of bug as the Spatial `perspective` lockout, in a
+        // new spot.
         <div style={{ position: 'fixed', inset: 0, zIndex: 55, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
           <div onClick={() => setChoosing(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(27,31,35,0.4)' }} />
           <div style={{ position: 'relative', background: colors.bgApp, borderRadius: `${radii.sheet}px ${radii.sheet}px 0 0`, padding: '20px 16px calc(env(safe-area-inset-bottom, 0px) + 24px)' }}>
             {sheetBody}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {choosing && !motionOff && (
+      {choosing && !motionOff && createPortal(
+        // Same containing-block reasoning as the reduced-motion branch above
+        // — portalled to <body> so backdrop-filter on .bt-material can't
+        // capture this overlay's position:fixed.
         <div style={{ position: 'fixed', inset: 0, zIndex: 55 }}>
           <div
             onClick={closeChoosing}
@@ -287,7 +301,8 @@ export default function BottomNav() {
               {sheetBody}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

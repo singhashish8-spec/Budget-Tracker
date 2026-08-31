@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { warrantyStatus } from '../state/selectors';
+import { warrantyStatus, billRow } from '../state/selectors';
 
 // Scheduled reminders for the two things that cost real money when missed: a
 // warranty quietly running out, and a bill going unpaid.
@@ -98,6 +98,14 @@ function buildWarrantyNotifications(warranties, now) {
 function buildBillNotifications(reminders, now) {
   const out = [];
   for (const r of reminders || []) {
+    // A termed EMI or fixed-run bill that's already fully paid off has
+    // nothing left to remind about. billRow's own paid/remaining math (the
+    // same figure the Reminders screen shows as "0 left") is the source of
+    // truth for "finished" — this loop never checked it before, so a
+    // completed loan kept getting a new monthly alarm scheduled forever.
+    const row = billRow(r, now);
+    if (row.hasProgress && row.remaining <= 0) continue;
+
     const day = Math.min(28, Math.max(1, r.due_day || 1));
     // Next occurrence of the due day: this month if it hasn't passed, else next.
     let at = new Date(now.getFullYear(), now.getMonth(), day, 9, 0, 0);

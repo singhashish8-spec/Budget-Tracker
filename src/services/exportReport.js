@@ -2,30 +2,15 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { fmt } from '../utils/currency';
 import { printHtmlAsPdf } from './nativeTools';
+import { buildTransactionsCsv, categoryLabel } from './csvFormat';
 
-// CSV formula/injection guard (CWE-1236): a merchant or date string that
-// originates from AI-extracted, attacker-influenceable file content (a
-// doctored receipt, a modified bank-statement HTML) could start with
-// =, +, -, or @ and get interpreted as a live formula when the exported
-// file is opened in Excel/Sheets — quoting the cell alone does NOT stop
-// this. Prefixing with a literal `'` neutralizes it. Flagged in the design
-// review; this is the fix.
-function csvCell(value) {
-  let v = String(value ?? '');
-  if (/^[\s\uFEFF\xA0]*[=+\-@]/.test(v)) v = `'${v}`;
-  return `"${v.replace(/"/g, '""')}"`;
-}
-
-function categoryLabel(categories, catId) {
-  return categories.find((c) => c.id === catId)?.label ?? 'Uncategorised';
-}
-
-function buildCsv(txns, categories) {
-  const rows = [['Date', 'Merchant', 'Account', 'Category', 'Type', 'Amount (INR)']];
-  txns.forEach((t) => {
-    rows.push([t.date, t.merchant, t.account || '', categoryLabel(categories, t.cat), t.type, t.type === 'income' ? t.amount : -t.amount]);
-  });
-  return '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\n');
+// csvCell/csvNumber/buildCsv used to be defined here directly, duplicating
+// zipExport.js's independent copy of the same logic — which is exactly how
+// a negative-amount formula-guard bug (every expense amount turned into a
+// text cell, so a spreadsheet's own SUM() silently skipped it) shipped in
+// both places at once. Now shared from ./csvFormat.
+export function buildCsv(txns, categories) {
+  return buildTransactionsCsv(txns, categories);
 }
 
 async function writeAndShare(filename, data, mimeType) {
