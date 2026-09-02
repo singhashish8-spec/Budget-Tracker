@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { colors, tint } from '../theme/tokens';
 import { useApp } from '../state/AppContext';
-import { detectDelimiter, parseCsv, rowsToTransactions } from '../services/csvImport';
+import { detectDelimiter, parseCsv, rowsToTransactions, headerMatchesRememberedProfile } from '../services/csvImport';
 import Amount from '../components/Amount';
 import { fmt } from '../utils/currency';
 import Sheet from '../components/Sheet';
@@ -52,7 +52,19 @@ export default function CsvImportScreen() {
   const applyProfile = (name) => {
     setProfileName(name);
     const p = state.csvProfiles.find((x) => x.name === name);
-    if (p) setMapping({ ...emptyMapping(), ...p.mapping });
+    if (!p) return;
+    const headerRow = mapping.hasHeader ? rows?.[0] : null;
+    if (!headerMatchesRememberedProfile(p.mapping, headerRow)) {
+      // The columns don't look like they did when this mapping was saved —
+      // applying the old indices anyway risks silently reading the wrong
+      // column as the amount. Start from a blank mapping and make the user
+      // re-pick every column, rather than pre-filling something that could
+      // be quietly wrong.
+      setMapping(emptyMapping());
+      showToast(`"${name}"'s columns look different from what's remembered — please re-check the mapping below`, 'error');
+      return;
+    }
+    setMapping({ ...emptyMapping(), ...p.mapping });
   };
 
   const colCount = rows ? Math.max(...rows.slice(0, 5).map((r) => r.length)) : 0;
@@ -65,7 +77,12 @@ export default function CsvImportScreen() {
       return;
     }
     if (remember && profileName.trim()) {
-      await saveCsvProfile(profileName.trim(), mapping);
+      // Snapshot the header row alongside the column indices, so a future
+      // import can tell whether this bank's export format has since changed
+      // before trusting the remembered indices — see
+      // headerMatchesRememberedProfile in services/csvImport.js.
+      const headerLabels = mapping.hasHeader ? rows[0] : null;
+      await saveCsvProfile(profileName.trim(), { ...mapping, headerLabels });
     }
     setStaged(txns);
     setStagedSource(profileName.trim() || fileName);

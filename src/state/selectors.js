@@ -1,5 +1,5 @@
 import { fmt } from '../utils/currency';
-import { payCycleWindow } from '../utils/date';
+import { payCycleWindow, addMonthsClamped } from '../utils/date';
 
 // Pure derived-value helpers, mirroring the design prototype's renderVals()
 // but split out so screens/tests can call them without a live DB connection.
@@ -53,8 +53,7 @@ export function expiringWarranties(txns, now = new Date()) {
 // to buy an extension or squeeze in a last free service).
 export function warrantyStatus(purchaseAt, months, extendedMonths = 0, now = new Date()) {
   const total = (Number(months) || 0) + (Number(extendedMonths) || 0);
-  const expire = new Date(purchaseAt);
-  expire.setMonth(expire.getMonth() + total);
+  const expire = addMonthsClamped(purchaseAt, total);
   const DAY = 24 * 60 * 60 * 1000;
   const daysLeft = Math.round((expire.getTime() - now.getTime()) / DAY);
   const status = daysLeft < 0 ? 'expired' : daysLeft <= 60 ? 'expiring' : 'valid';
@@ -397,8 +396,16 @@ export function billRow(r, now = new Date()) {
     let paid = monthsBetween + (now.getDate() >= dueDay ? 1 : 0);
     paid = Math.max(0, Math.min(total, paid));
     const remaining = Math.max(0, total - paid);
-    // Last instalment falls (total-1) months after the first.
-    const payoff = new Date(start.getFullYear(), start.getMonth() + Math.max(0, total - 1), dueDay);
+    // Last instalment falls (total-1) months after the first. dueDay is
+    // clamped to the start month's own length first (a due day of 31 in a
+    // 30-day month is impossible), then addMonthsClamped carries that
+    // clamping forward for every later month it lands on — the naive
+    // new Date(y, m, dueDay) construction let a loan starting near
+    // month-end silently overflow into the following month and report its
+    // payoff one month too late.
+    const startMonthLastDay = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+    const firstDue = new Date(start.getFullYear(), start.getMonth(), Math.min(dueDay, startMonthLastDay));
+    const payoff = addMonthsClamped(firstDue, Math.max(0, total - 1));
     const payoffLabel = payoff.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
     const pct = total ? Math.round((paid / total) * 100) : 0;
     const isEmi = kind === 'emi';
@@ -793,7 +800,14 @@ export function spendingForecast(txns, budgets, categories, { salaryDay = 0, now
   const rows = budgetRows(txns, categories, budgets, { salaryDay, now });
   return rows
     .map((r) => {
-      const w = budgetWindow({ period: r.period, startsAt: r.startsAt, endsAt: r.endsAt }, salaryDay, now);
+      // budgetRows already computed the correct window for this budget and
+      // put it on r.window — recomputing it here from {period, startsAt,
+      // endsAt} used to reach for fields the row never actually carries
+      // (it only has `window` and `period`), so budgetWindow's custom-range
+      // branch never triggered and every custom-period budget (an event
+      // budget, say) silently got checked against a plain calendar month
+      // instead of its real, often much shorter, window.
+      const w = r.window;
       const total = Math.max(1, w.end - w.start);
       const elapsed = Math.min(total, Math.max(0, now.getTime() - +w.start));
       const fraction = elapsed / total;
@@ -822,6 +836,10 @@ export function subscriptionPriceChanges(reminders, txns) {
       .sort((a, b) => txnTime(b) - txnTime(a));
     if (!charges.length) continue;
     const latest = charges[0].amount;
+    // A reminder saved with no amount yet has nothing to compare against —
+    // without this, diff / r.amount divided by zero and always passed the
+    // threshold below, showing every such subscription as an "∞%" rise.
+    if (!r.amount || r.amount <= 0) continue;
     // A rounding wobble isn't a price rise — require a real, visible jump.
     const diff = latest - r.amount;
     if (diff > 0 && diff / r.amount >= 0.02) {
@@ -880,9 +898,16 @@ export function envelopeRows(txns, categories, envelopes, periodKey = periodKeyO
     for (let i = 0; i < depth; i += 1) { keys.unshift(k); k = prevPeriodKey(k); }
     let balance = 0;
     for (const pk of keys) {
-      const a = assignedFor(catId, pk);
-      if (a === 0 && balance === 0) continue;
-      balance = balance + a - spentFor(catId, pk);
+      // Every month in the window contributes, even one with no new
+      // assignment and a currently-zero balance — skipping those (the
+      // previous "if (a === 0 && balance === 0) continue" check) silently
+      // dropped that month's spending from the running total, so an
+      // envelope's balance landing on exactly zero could make a real
+      // overspend the very next month vanish instead of carrying forward
+      // as a debt to cover, which is the entire point of this feature. The
+      // loop is already bounded by `depth` (12 months, fixed), so this
+      // wasn't needed for performance either.
+      balance = balance + assignedFor(catId, pk) - spentFor(catId, pk);
     }
     return balance;
   };

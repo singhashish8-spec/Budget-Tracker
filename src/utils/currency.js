@@ -27,3 +27,15 @@ export function fmt(amountInInr) {
   const converted = Math.round((amountInInr || 0) * rate);
   return formatterFor(activeCurrency).format(converted);
 }
+
+// Always renders the stored INR amount, ignoring the display-currency toggle.
+// Exported reports (HTML/PDF/CSV) need to agree with each other on what a
+// transaction was actually worth — the CSV always writes the raw stored INR
+// value, so an HTML/PDF report built with fmt() instead would silently run
+// every amount through RATES, which is explicitly a demo/illustrative rate,
+// not live FX (see the note above). Baking that into a document a user might
+// keep for their records would make the two exports of the same data disagree,
+// and pass off a fabricated conversion as a real one.
+export function fmtInr(amountInInr) {
+  return formatterFor('INR').format(amountInInr || 0);
+}

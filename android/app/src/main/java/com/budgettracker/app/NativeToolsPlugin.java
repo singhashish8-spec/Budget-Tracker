@@ -33,6 +33,13 @@ import org.json.JSONObject;
 @CapacitorPlugin(name = "NativeTools")
 public class NativeToolsPlugin extends Plugin {
 
+    // Held here, not just as a local in printHtml(), because an unattached
+    // WebView with no strong reference is eligible for GC while its async
+    // page load is still pending — losing it mid-load means onPageFinished
+    // never fires and the print call hangs forever with no error. Cleared
+    // once the job resolves or rejects.
+    private WebView printWebView;
+
     @PluginMethod
     public void isNotificationAccessEnabled(PluginCall call) {
         String pkg = getContext().getPackageName();
@@ -105,7 +112,7 @@ public class NativeToolsPlugin extends Plugin {
         }
         activity.runOnUiThread(() -> {
             try {
-                WebView printWebView = new WebView(activity);
+                printWebView = new WebView(activity);
                 printWebView.setWebViewClient(new WebViewClient() {
                     @Override
                     public void onPageFinished(WebView view, String url) {
@@ -116,11 +123,14 @@ public class NativeToolsPlugin extends Plugin {
                             call.resolve();
                         } catch (Exception e) {
                             call.reject("Couldn't start the print job", e);
+                        } finally {
+                            printWebView = null;
                         }
                     }
                 });
                 printWebView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
             } catch (Exception e) {
+                printWebView = null;
                 call.reject("Couldn't prepare the report for printing", e);
             }
         });

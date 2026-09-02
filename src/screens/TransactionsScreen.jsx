@@ -148,7 +148,19 @@ export default function TransactionsScreen() {
   );
 
   return (
-    <Screen gap={12} onRefresh={() => scanSms({ silent: false })}>
+    <Screen
+      gap={12}
+      onRefresh={async () => {
+        await scanSms({ silent: false });
+        // A refresh can bring in newly-imported transactions, but smsMap is
+        // only ever fetched once (see the effect above) — without this, a
+        // new row's message text stayed blank (no cache entry for its id)
+        // until the screen was left and remounted. Resetting to null makes
+        // that same effect refetch it, exactly as if messages had just been
+        // switched on.
+        setSmsMap(null);
+      }}
+    >
       <div style={{ fontFamily: fonts.heading, fontSize: type.screen, fontWeight: 700, letterSpacing: tracking.screen, padding: '0 4px' }}>Transactions</div>
       <div style={{ position: 'relative' }}>
         <input

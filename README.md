@@ -7,22 +7,31 @@ some choices below (bundled assets, no client-side API keys, CSV escaping)
 are deliberate deviations from the original prototype.
 
 > **New to this project, or picking it back up after a break?** Read
-> [`docs/PROJECT_HISTORY.md`](docs/PROJECT_HISTORY.md) first — a plain-English
-> explanation of what the app does, the full version-by-version history,
-> every notable bug and how it was fixed, and what's currently pending. It's
-> kept up to date after every shipped change.
+> [`docs/README.md`](docs/README.md) first, then `docs/history/status.md` —
+> the structured documentation system (current state, decision log, full
+> session-by-session history, feature docs) that replaced the old single-file
+> `docs/PROJECT_HISTORY.md` on 2026-08-15. That file is kept only as a frozen
+> legacy reference.
 
-## Status: MVP core
+## Status
 
-Implemented: onboarding (accounts + categories), Home, Transactions, Budgets,
-category picking, camera/file capture → AI-import → review screen, local
-SQLite persistence with versioned migrations.
+> This section used to describe an early MVP snapshot and had drifted badly
+> out of date — most of what it once listed as "deferred" has since shipped.
+> See `docs/history/status.md` for the always-current version of this.
 
-**Deferred** (not yet built): Insights, net worth, savings goals, 80C card,
-bill reminders, smart patterns, SMS auto-tracking, Settings, multi-currency,
-CSV/PDF export, Google Drive sync, and all of the "Master Production
-Blueprint" custom features (dynamic pay-cycle, location tagging, NL chat
-query, top-shelf pinning, recurring calendar engine, influx flowchart).
+Live as of web bundle 1.7.0 / native APK versionCode 7: onboarding, Home,
+Transactions, Budgets (calendar/pay-cycle/envelope), Insights, net worth
+(with manually-priced holdings), savings goals, event budgets, bill/EMI/
+subscription reminders with progress tracking, a first-class Warranty
+tracker, SMS auto-tracking (bank/UPI SMS + notification capture) with a
+rule-based parsing engine, smart-pattern detection, CSV import, JSON/ZIP
+backup and restore with automatic on-device snapshots, side-hustle/GST
+tagging, and 9 visual themes ("skins"). Local SQLite persistence with
+versioned migrations (schema v13). See `docs/roadmap/architecture.md` for
+the technical shape and `docs/features/` for individual feature writeups.
+
+**Removed** (was built, then deliberately taken out): AI/cloud receipt and
+bank-statement parsing — see `docs/roadmap/decisions.md` for why.
 
 ## Setup
 
@@ -58,23 +67,17 @@ with a visible error rather than hanging forever (`src/db/sqlite.js`); it has
 not been confirmed to work in a normal desktop browser yet — verify on your
 own machine before relying on it for iteration.
 
-## Configuring the placeholders
+## No environment variables needed
 
-Two integrations are stubbed out on purpose rather than faked:
+`.env.example` documented an AI-parsing API key here for a while — that
+feature was removed (see below), so as of now the app needs **zero**
+environment variables to build or run. `VITE_APP_VERSION` (shown in
+Settings → About) is injected automatically at build time from
+`web-version.txt`, not something you configure.
 
-- **Google Sign-In / Drive sync** — the onboarding sign-in button shows a
-  "not configured" toast instead of a fake success state. Wire real OAuth +
-  `drive.appdata` scope sync before shipping; do not simulate success.
-- **AI receipt/statement parsing** (`src/services/aiExtract.js`) — posts to
-  `VITE_AI_PARSE_ENDPOINT`, a backend endpoint *you* control. It deliberately
-  never calls Claude/Gemini directly from the client: an API key shipped
-  inside the APK is extractable by anyone who downloads it. Stand up a small
-  backend that holds the real key and forwards to the LLM using the contract
-  documented at the top of that file, then set:
-  ```
-  # .env.local (gitignored)
-  VITE_AI_PARSE_ENDPOINT=https://your-backend.example.com/parse
-  ```
+Google Drive backup doesn't need OAuth or any client configuration either —
+it serializes your data to a JSON file and opens the native Android share
+sheet, where "Save to Drive" is one tap. See `docs/features/backup-restore.md`.
 
 ## Architecture notes carried over from the design review
 
@@ -84,16 +87,21 @@ Two integrations are stubbed out on purpose rather than faked:
   loaded page with a bridge to SMS/camera/biometrics bypasses Play Store
   review of what the app actually does at runtime, and breaks offline use.
   Ship UI updates through the Play Store like a normal app.
-- **No API keys in the client** — see AI parsing above.
-- **SQLite is not yet encrypted at rest.** `src/db/sqlite.js` opens the
-  native connection with `'no-encryption'`. Before shipping, switch to the
-  plugin's encrypted mode (SQLCipher-backed) and gate it behind the app-lock
-  biometric prompt — this is a known gap, not an oversight.
-- **CSV/formula injection**: not built yet (export is deferred), but when it
-  is, merchant/date strings originating from AI-extracted, attacker-
-  influenceable file content must be prefixed with `'` if they start with
-  `=+-@` before quoting — quoting alone does not stop Excel from treating a
-  leading `=` as a formula.
+- **No API keys in the client** — the app calls no third-party service at
+  all; see "Removed" above.
+- **SQLite is deliberately unencrypted**, not "not yet" encrypted — this
+  reverses what an earlier version of this README said. It used to be
+  encrypted (SQLCipher, keyed from the Android Keystore); that key could be
+  lost across an app update, permanently bricking the database. It was
+  removed on purpose (`src/db/sqlite.js` opens with `'no-encryption'`) —
+  protection now rests on the Android app sandbox, and only the JSON backup
+  ever leaves the device, never the raw database file. See
+  `docs/roadmap/decisions.md`.
+- **CSV/formula injection (CWE-1236) is guarded**, not deferred — `csvCell()`
+  in `src/services/exportReport.js` prefixes a value with `'` if it starts
+  with `=+-@` (including after leading whitespace/BOM/non-breaking space)
+  before quoting, since quoting alone doesn't stop a spreadsheet app from
+  treating a leading `=` as a formula.
 
 ## Play Store launch (corrections to the original roadmap PDF)
 
@@ -102,5 +110,5 @@ Two integrations are stubbed out on purpose rather than faked:
 - Two mandatory gating steps were missing from the original milestone list:
   the **Data Safety form** (required given SMS + camera + location-adjacent
   data collection) and a **privacy policy URL**.
-- Ongoing LLM API costs (per receipt/statement/chat parse) aren't $0 past
-  free-tier quotas — budget this separately from the one-time console fee.
+- ~~Ongoing LLM API costs (per receipt/statement/chat parse) aren't $0 past
+  free-tier quotas~~ — moot now that AI parsing has been removed entirely.

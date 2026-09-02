@@ -114,7 +114,7 @@ export default function SmsScreen() {
             </div>
           );
         })}
-        {state.smsLog.length === 0 && <div style={{ fontSize: 13.5, color: colors.textTertiary, padding: '12px 0', textAlign: 'center' }}>No SMS read yet — try the simulate button</div>}
+        {state.smsLog.length === 0 && <div style={{ fontSize: 13.5, color: colors.textTertiary, padding: '12px 0', textAlign: 'center' }}>No SMS read yet — try "Scan my messages" above</div>}
       </div>
 
       <div style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', padding: '4px 20px' }}>

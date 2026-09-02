@@ -58,28 +58,55 @@ export default function DetentSheet({ onClose, header, children, footer, motion 
 
   const atTop = () => (bodyRef.current?.scrollTop ?? 0) <= 0;
 
-  const onTouchStart = (e) => {
-    const t = e.touches[0];
-    drag.current = { startY: t.clientY, startT: Date.now(), from: detent, active: false, fromHandle: false };
+  // Pointer Events, not Touch Events: React 19 unconditionally registers its
+  // touchstart/touchmove/wheel root listeners as { passive: true } (verified
+  // against node_modules/react-dom's own source — pointer events are not in
+  // that forced list), which made onTouchMove's e.preventDefault() below a
+  // silent no-op — the browser's own native scroll/overscroll on the sheet
+  // body never actually stopped, so it and the sheet's own transform-driven
+  // motion could run at once instead of the sheet cleanly tracking the
+  // finger. ui/Screen.jsx's pull-to-refresh already uses Pointer Events for
+  // exactly this reason; this follows the same, already-proven pattern.
+  const onPointerDown = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    drag.current = { startY: e.clientY, startT: Date.now(), from: detent, active: false, fromHandle: false, pointerId: e.pointerId };
   };
 
-  const onHandleTouchStart = (e) => {
-    const t = e.touches[0];
-    drag.current = { startY: t.clientY, startT: Date.now(), from: detent, active: true, fromHandle: true };
+  const onHandlePointerDown = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // Stop this from bubbling to the sheet's own onPointerDown below — the
+    // grabber/header sit inside the sheet div, so without this the event
+    // reached the parent handler right after this one and immediately
+    // overwrote the `active: true` just set here back to `false`, silently
+    // undoing "the grabber always drags the sheet" (verified: confirmed
+    // pointerdown bubbles child-then-parent in this DOM shape). Present in
+    // both the old touch-event version and this one until now.
+    e.stopPropagation();
+    drag.current = { startY: e.clientY, startT: Date.now(), from: detent, active: true, fromHandle: true, pointerId: e.pointerId };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
   };
 
-  const onTouchMove = (e) => {
+  const onPointerMove = (e) => {
     const d = drag.current;
     if (!d) return;
-    const dy = e.touches[0].clientY - d.startY;
+    const dy = e.clientY - d.startY;
 
     if (!d.active) {
-      // Claim the gesture only when the body can't scroll any further up.
-      if (dy > 6 && atTop()) d.active = true;
-      // Dragging up from half is a sheet gesture too — there is no more sheet
-      // above to scroll into.
-      else if (dy < -6 && d.from === 'half') d.active = true;
-      else return;
+      // Claim the gesture only when the body can't scroll any further up, or
+      // (dragging up from half) there's no more sheet above to scroll into.
+      // Anything else stays a plain scroll, untouched.
+      const candidateDown = dy > 0 && atTop();
+      const candidateUp = dy < 0 && d.from === 'half';
+      if (!candidateDown && !candidateUp) return;
+      // Prevent the browser from committing this touch sequence to its own
+      // native scroll before deciding whether to treat it as a sheet-drag —
+      // same reasoning and pattern as ui/Screen.jsx's pull-to-refresh fix
+      // (docs/history/findings.md): claim it on the first qualifying pixel,
+      // not only once past the commit threshold below.
+      if (e.cancelable) e.preventDefault();
+      if (Math.abs(dy) <= 6) return;
+      d.active = true;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
     }
     // Above the full detent the sheet resists rather than flying off-screen.
     const resisted = dy < 0 && detent === 'full' ? dy * 0.25 : dy;
@@ -87,9 +114,12 @@ export default function DetentSheet({ onClose, header, children, footer, motion 
     if (e.cancelable) e.preventDefault();
   };
 
-  const onTouchEnd = () => {
+  const onPointerUp = (e) => {
     const d = drag.current;
     drag.current = null;
+    if (d?.pointerId != null) {
+      try { e.currentTarget.releasePointerCapture?.(d.pointerId); } catch { /* already released */ }
+    }
     if (!d || !d.active) { setDragY(0); return; }
 
     const dy = dragY;
@@ -128,9 +158,10 @@ export default function DetentSheet({ onClose, header, children, footer, motion 
         }}
       />
       <div
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         className="bt-material bt-sheet"
         style={{
           position: 'relative',
@@ -154,7 +185,7 @@ export default function DetentSheet({ onClose, header, children, footer, motion 
       >
         {/* Grabber — always drags the sheet, whatever the body is doing. */}
         <div
-          onTouchStart={onHandleTouchStart}
+          onPointerDown={onHandlePointerDown}
           onClick={() => { haptics.select(); setDetent(detent === 'half' ? 'full' : 'half'); }}
           style={{ padding: '10px 0 4px', flexShrink: 0, cursor: 'grab', touchAction: 'none' }}
         >
@@ -163,7 +194,7 @@ export default function DetentSheet({ onClose, header, children, footer, motion 
 
         {header != null && (
           <div
-            onTouchStart={onHandleTouchStart}
+            onPointerDown={onHandlePointerDown}
             style={{ flexShrink: 0, padding: '4px 16px 12px', borderBottom: `var(--hairline) solid ${colors.divider}`, touchAction: 'none' }}
           >
             {header}

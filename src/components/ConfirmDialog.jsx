@@ -42,7 +42,7 @@ export default function ConfirmDialog({ title, message, confirmLabel = 'Delete',
             {cancelLabel}
           </button>
           <button
-            onClick={() => { haptics.error(); onConfirm(); }}
+            onClick={() => { (destructive ? haptics.error : haptics.tap)(); onConfirm(); }}
             style={{
               flex: 1, borderRadius: 100, padding: 12, fontSize: 14.5, fontWeight: 600, cursor: 'pointer',
               background: destructive ? colors.danger : colors.primary, color: '#FFFFFF', border: 'none',

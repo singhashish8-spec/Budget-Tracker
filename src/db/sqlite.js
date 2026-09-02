@@ -54,23 +54,38 @@ async function ensureWebStore() {
 async function seedCategories(db) {
   for (let i = 0; i < BUILTIN_CATEGORIES.length; i++) {
     const c = BUILTIN_CATEGORIES[i];
+    // transaction=false: this runs inside runMigrations' own explicit
+    // transaction, and the plugin auto-wraps each call in its own
+    // begin/commit by default — nesting that inside an already-open
+    // transaction throws "Already in transaction".
     await db.run(
       `INSERT OR IGNORE INTO categories (id, label, mono, color, is_builtin, sort_order) VALUES (?,?,?,?,1,?)`,
       [c.id, c.label, c.mono, c.color, i],
+      false,
     );
   }
 }
 
-// Safeguard: a migration must never be able to silently destroy user data.
-// Any DROP TABLE / DELETE / TRUNCATE in a migration is rejected before it can
-// run, so a future schema change can't wipe existing rows the way the
-// original design was suspected of doing. Additive-only migrations
-// (CREATE TABLE IF NOT EXISTS, ALTER TABLE ADD COLUMN, CREATE INDEX) are safe.
-const DESTRUCTIVE_SQL = /\b(DROP\s+TABLE|DELETE\s+FROM|TRUNCATE|DROP\s+COLUMN)\b/i;
+// Strip SQL comments before scanning below, so a comment sitting between two
+// keywords (e.g. `DROP /*x*/ TABLE`) can't hide a statement from the check —
+// `\bDROP\s+TABLE\b` only matches literal adjacent whitespace, and a comment
+// broke that adjacency without this.
+function stripSqlComments(sql) {
+  return sql.replace(/--[^\n]*/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
+}
+
+// Safeguard: a migration must never be able to silently destroy user data, or
+// silently break an older OTA web bundle still running against this schema.
+// Any DROP TABLE / DELETE / TRUNCATE / DROP COLUMN / RENAME in a migration is
+// rejected before it can run, so a future schema change can't wipe existing
+// rows or pull a column out from under a bundle that still reads its old
+// name. Additive-only migrations (CREATE TABLE IF NOT EXISTS, ALTER TABLE ADD
+// COLUMN, CREATE INDEX) are safe.
+const DESTRUCTIVE_SQL = /\b(DROP\s+TABLE|DELETE\s+FROM|TRUNCATE|DROP\s+COLUMN|RENAME\s+(?:TO|COLUMN))\b/i;
 
 function assertNonDestructive(migration) {
   for (const stmt of migration.statements) {
-    if (DESTRUCTIVE_SQL.test(stmt)) {
+    if (DESTRUCTIVE_SQL.test(stripSqlComments(stmt))) {
       throw new Error(
         `Migration v${migration.version} contains a destructive statement and was blocked to protect user data: ${stmt.slice(0, 60)}…`,
       );
@@ -94,18 +109,35 @@ async function runMigrations(db) {
   const pending = MIGRATIONS.filter((m) => m.version > current);
   if (!pending.length) return;
 
-  for (const migration of pending) {
-    for (const stmt of migration.statements) {
-      await db.execute(stmt);
+  // The whole batch runs as one transaction. Without this, a process killed
+  // partway through (very possible right after installing an update, when
+  // memory is tight) leaves schema_version un-bumped with only *some* of the
+  // batch's statements already applied — and re-running the same batch from
+  // its first statement on the next launch (which is exactly what happens,
+  // since current never advanced) throws on the step that already ran,
+  // permanently, on every future launch. Wrapping it means SQLite's own
+  // crash recovery rolls an interrupted batch back to nothing instead.
+  await db.beginTransaction();
+  try {
+    for (const migration of pending) {
+      for (const stmt of migration.statements) {
+        // transaction=false — see the seedCategories comment above.
+        await db.execute(stmt, false);
+      }
     }
+    await db.run(
+      `INSERT INTO schema_meta (key, value) VALUES ('schema_version', ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [String(LATEST_SCHEMA_VERSION)],
+      false,
+    );
+    if (current === 0) await seedCategories(db);
+    await db.commitTransaction();
+  } catch (err) {
+    try { await db.rollbackTransaction(); } catch { /* connection may already be dead — best effort */ }
+    throw err;
   }
-  await db.run(
-    `INSERT INTO schema_meta (key, value) VALUES ('schema_version', ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    [String(LATEST_SCHEMA_VERSION)],
-  );
 
-  if (current === 0) await seedCategories(db);
   if (isWeb()) await sqlite.saveToStore(DB_NAME);
 }
 

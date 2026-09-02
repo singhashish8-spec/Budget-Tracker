@@ -805,6 +805,16 @@ export function AppProvider({ children }) {
   // ── automatic snapshots ──
   // Rewrite the snapshot shortly after anything changes. Debounced so a burst
   // of SMS imports produces one write, not dozens.
+  //
+  // writeAutoBackup() itself always captures a fully current snapshot (it
+  // reads straight from the DB via gatherData(), not from this component's
+  // state) — but this effect only *fires* when something in its dependency
+  // array changes. It used to list only txns/budgets/reminders/goals/
+  // netWorthItems, so a session spent only editing warranties, envelopes,
+  // event budgets, or CSV bank profiles never scheduled a new snapshot at
+  // all — a reinstall right after could restore an older snapshot missing
+  // that entire session's work, with nothing at the time suggesting
+  // anything was wrong.
   useEffect(() => {
     if (state.loading || !state.onboarded) return undefined;
     const t = setTimeout(async () => {
@@ -816,7 +826,23 @@ export function AppProvider({ children }) {
       }
     }, 4000);
     return () => clearTimeout(t);
-  }, [state.loading, state.onboarded, state.txns, state.budgets, state.reminders, state.goals, state.netWorthItems, set]);
+  }, [
+    state.loading,
+    state.onboarded,
+    state.txns,
+    state.budgets,
+    state.reminders,
+    state.goals,
+    state.netWorthItems,
+    state.warranties,
+    state.warrantyDocs,
+    state.warrantyClaims,
+    state.envelopes,
+    state.eventBudgets,
+    state.csvProfiles,
+    state.merchantRules,
+    set,
+  ]);
 
   // Restore the snapshot found at startup. importBackup merges on original
   // ids, so running it more than once can't duplicate anything.
@@ -1622,19 +1648,25 @@ export function AppProvider({ children }) {
       });
       await repo.addSmsLog({ rawSms: entry.rawSms, txnId: id });
       const [txns, smsLog] = await Promise.all([repo.listTransactions(), repo.listSmsLog()]);
-      set({ txns, smsLog, smsUnmatched: state.smsUnmatched.filter((u) => u.rawSms !== entry.rawSms) });
+      // backStateRef.current, not the closed-over state.smsUnmatched: a
+      // background silent scan can update smsUnmatched while the awaits
+      // above are in flight, and computing the next list from the
+      // render-time closure would overwrite that concurrent update instead
+      // of building on top of it — the same hazard the confirmCapture/
+      // dismissCapture/checkCaptures functions above already guard against.
+      set({ txns, smsLog, smsUnmatched: backStateRef.current.smsUnmatched.filter((u) => u.rawSms !== entry.rawSms) });
       showToast(`Added as ${type === 'income' ? 'money in' : 'a spend'}`);
     },
-    [state.smsUnmatched, set, showToast],
+    [set, showToast],
   );
 
   const ignoreUnmatched = useCallback(
     async (entry) => {
       await repo.addSmsIgnore(smsSignature(entry.rawSms));
-      set({ smsUnmatched: state.smsUnmatched.filter((u) => u.rawSms !== entry.rawSms) });
+      set({ smsUnmatched: backStateRef.current.smsUnmatched.filter((u) => u.rawSms !== entry.rawSms) });
       showToast('Ignored — messages like this won’t be shown again');
     },
-    [state.smsUnmatched, set, showToast],
+    [set, showToast],
   );
 
   // "This wasn't a duplicate": give a merged message its own transaction and

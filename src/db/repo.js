@@ -33,8 +33,7 @@ export async function listTransactions() {
   return (res.values ?? []).map((t) => ({ ...t, cat: t.category_id }));
 }
 
-export async function addTransaction(txn) {
-  const db = await getDb();
+async function insertTransactionRow(db, txn) {
   const id = txn.id || newId('txn');
   await db.run(
     `INSERT INTO transactions (id, merchant, account, date, amount, category_id, type, source, created_at, note, sms_address, sms_date, method, occurred_at, warranty_months, business, gst_rate)
@@ -59,6 +58,12 @@ export async function addTransaction(txn) {
       txn.gst_rate == null || txn.gst_rate === '' ? null : Math.round(Number(txn.gst_rate)),
     ],
   );
+  return id;
+}
+
+export async function addTransaction(txn) {
+  const db = await getDb();
+  const id = await insertTransactionRow(db, txn);
   await persist();
   return id;
 }
@@ -137,12 +142,14 @@ export async function deleteTransaction(id) {
 }
 
 export async function addTransactions(txns, onProgress) {
+  const db = await getDb();
   let done = 0;
   for (const t of txns) {
-    await addTransaction(t);
+    await insertTransactionRow(db, t);
     done += 1;
     onProgress?.(done, txns.length);
   }
+  await persist();
 }
 
 export async function setTransactionCategory(id, categoryId) {
@@ -744,7 +751,7 @@ export async function deleteCsvProfile(name) {
 // This is the real recovery path after a reinstall wipes the local database.
 export async function importBackup(data) {
   const db = await getDb();
-  const counts = { categories: 0, transactions: 0, budgets: 0, reminders: 0, goals: 0, netWorthItems: 0, eventBudgets: 0, csvProfiles: 0 };
+  const counts = { categories: 0, transactions: 0, budgets: 0, reminders: 0, goals: 0, netWorthItems: 0, eventBudgets: 0, csvProfiles: 0, warranties: 0, warrantyClaims: 0, envelopes: 0, merchantRules: 0 };
   // Kept so the document loop can report a representative cause once at the
   // end rather than logging an entry per failed row.
   let lastDocumentError = null;
@@ -771,7 +778,7 @@ export async function importBackup(data) {
     await db.run(
       `INSERT OR REPLACE INTO budgets (category_id, monthly_limit, period, starts_at, ends_at) VALUES (?,?,?,?,?)`,
       [
-        b.category_id ?? b.cat,
+        b.category_id ?? b.cat ?? null,
         Math.round(b.monthly_limit ?? b.limit),
         b.period ?? null,
         b.starts_at ?? b.startsAt ?? null,
@@ -808,6 +815,7 @@ export async function importBackup(data) {
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [w.id, w.product, w.brand ?? null, w.amount ?? null, w.purchase_at ?? Date.now(), w.warranty_months ?? 0, w.extended_months ?? null, w.store ?? null, w.serial ?? null, w.photo ?? null, w.txn_id ?? null, w.reminder_id ?? null, w.note ?? null, w.created_at ?? Date.now()],
     );
+    counts.warranties++;
   }
   for (const c of data.warrantyClaims ?? []) {
     if (!c.id || !c.warranty_id) continue;
@@ -815,6 +823,7 @@ export async function importBackup(data) {
       `INSERT OR REPLACE INTO warranty_claims (id, warranty_id, raised_at, kind, issue, status, cost, note, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
       [c.id, c.warranty_id, c.raised_at ?? Date.now(), c.kind ?? 'claim', c.issue ?? '', c.status ?? 'open', c.cost ?? null, c.note ?? null, c.created_at ?? Date.now()],
     );
+    counts.warrantyClaims++;
   }
   for (const e of data.envelopes ?? []) {
     if (!e.category_id || !e.period_key) continue;
@@ -822,6 +831,7 @@ export async function importBackup(data) {
       `INSERT OR REPLACE INTO envelopes (id, category_id, period_key, assigned, created_at) VALUES (?,?,?,?,?)`,
       [e.id ?? newId('env'), e.category_id, e.period_key, Math.round(e.assigned ?? 0), e.created_at ?? Date.now()],
     );
+    counts.envelopes++;
   }
   for (const m of data.merchantRules ?? []) {
     if (!m.signature || !m.category_id) continue;
@@ -829,6 +839,7 @@ export async function importBackup(data) {
       `INSERT OR REPLACE INTO merchant_rules (signature, category_id) VALUES (?,?)`,
       [m.signature, m.category_id],
     );
+    counts.merchantRules++;
   }
   for (const e of data.eventBudgets ?? []) {
     await db.run(

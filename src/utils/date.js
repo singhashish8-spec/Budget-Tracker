@@ -16,6 +16,24 @@ function lastDayOfMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
 }
 
+// Adds `months` to a date, clamping the day-of-month to the target month's
+// actual length instead of letting it overflow into the month after. JS's
+// own `Date#setMonth` doesn't do this: Jan 31 + 1 month rolls past a
+// 28-day February into March 3, not "end of February" — the naive
+// `d.setMonth(d.getMonth() + months)` pattern used to do exactly that for
+// warranty-expiry and EMI-payoff dates, throwing both off by several days
+// for anything starting on the 29th–31st. Resetting the day to 1 before
+// changing the month sidesteps the overflow entirely; only then is the day
+// restored, clamped to what the target month actually has.
+export function addMonthsClamped(date, months) {
+  const d = new Date(date);
+  const day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + months);
+  d.setDate(Math.min(day, lastDayOfMonth(d.getFullYear(), d.getMonth())));
+  return d;
+}
+
 // Resolve a salaryDay code (1-31, or 32 = last day) to an actual date in a
 // given year/month, clamping to that month's length (e.g. day 31 in Feb → 28/29).
 function resolvePayday(year, month, salaryDay) {

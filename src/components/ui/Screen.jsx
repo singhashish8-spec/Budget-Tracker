@@ -40,7 +40,17 @@ export default function Screen({ gap = 14, style, children, onRefresh, ...rest }
       // Only claim the gesture once we're sure it's a downward pull at the
       // very top of the list — anything else (an upward flick, or any drag
       // once already scrolled down) stays a normal scroll.
-      if (el.scrollTop > 0 || dy <= 8) return;
+      if (el.scrollTop > 0 || dy <= 0) return;
+      // We're at the top and moving down: this container's own `touch-action`
+      // is 'auto' (needed so ordinary vertical scrolling stays native once
+      // scrollTop > 0), so the browser is free to commit this touch sequence
+      // to its own native scroll within the first few pointermove events —
+      // and once committed, calling preventDefault() later no longer cancels
+      // it. Claim it here, on the very first pixel of downward movement,
+      // rather than waiting for the 8px pull-intent threshold below — see
+      // docs/history/findings.md for the full writeup.
+      e.preventDefault();
+      if (dy <= 8) return;
       drag.current.pulling = true;
       setDragging(true);
       el.setPointerCapture?.(e.pointerId);

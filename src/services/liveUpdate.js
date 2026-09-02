@@ -12,6 +12,36 @@ import { CapacitorUpdater } from '@capgo/capacitor-updater';
 
 const MANIFEST_URL = 'https://singhashish8-spec.github.io/Budget-Tracker/latest.json';
 
+// Compares two dotted version strings numerically per segment, so "1.10.0"
+// correctly reads as newer than "1.9.0" (a plain string/lexicographic
+// compare would get that backwards). Returns 1 if a>b, -1 if a<b, 0 if
+// equal or if either string can't be parsed as a dotted version.
+function compareVersions(a, b) {
+  const pa = String(a).split('.').map((n) => parseInt(n, 10));
+  const pb = String(b).split('.').map((n) => parseInt(n, 10));
+  if (pa.some(Number.isNaN) || pb.some(Number.isNaN)) return 0;
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const da = pa[i] ?? 0;
+    const db = pb[i] ?? 0;
+    if (da !== db) return da > db ? 1 : -1;
+  }
+  return 0;
+}
+
+// Whether `candidate` (a published manifest version) is actually newer than
+// `current` (the version running now) — not just *different* from it. The
+// check used to be plain equality ("is this different from what I'm
+// running?"), which treats an older, rolled-back, or corrupted publish the
+// same as a genuine update: it would silently re-download and apply an
+// older bundle over a newer one already installed. 'builtin' (no OTA bundle
+// downloaded yet — still running what's baked into the APK) has no version
+// number to compare against, so anything published counts as worth having.
+export function isNewerVersion(candidate, current) {
+  if (current === 'builtin') return true;
+  return compareVersions(candidate, current) > 0;
+}
+
 export async function initLiveUpdates() {
   if (!Capacitor.isNativePlatform()) return;
   // Tell the plugin THIS bundle loaded successfully, so it won't auto-roll-back
@@ -38,7 +68,7 @@ async function checkForUpdate() {
 
   const current = await CapacitorUpdater.current().catch(() => null);
   const currentVersion = current?.bundle?.version || 'builtin';
-  if (manifest.version === currentVersion) return; // already up to date
+  if (!isNewerVersion(manifest.version, currentVersion)) return; // not actually newer — nothing to do
 
   // Reuse an already-downloaded bundle of this version rather than re-fetching.
   const list = (await CapacitorUpdater.list().catch(() => null))?.bundles || [];

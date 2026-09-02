@@ -13,7 +13,7 @@ import { HAPTIC_LEVELS } from '../services/haptics';
 import * as haptics from '../services/haptics';
 import { notificationsSupported } from '../services/notify';
 import { dataUrlBytes, formatBytes } from '../utils/image';
-import { updatesSupported, fetchManifest, getCurrentVersion, downloadUpdate, applyUpdateAndReload } from '../services/liveUpdate';
+import { updatesSupported, fetchManifest, getCurrentVersion, downloadUpdate, applyUpdateAndReload, isNewerVersion } from '../services/liveUpdate';
 import { listErrors, clearErrors, formatErrors } from '../services/errorLog';
 import { Clipboard } from '@capacitor/clipboard';
 import { Icon } from '../components/ui';
@@ -106,7 +106,7 @@ export default function SettingsScreen() {
     const manifest = await fetchManifest();
     if (!manifest) { setUpd({ phase: 'error', error: 'Couldn’t reach the update server. Check your connection and try again.' }); return; }
     const current = await getCurrentVersion();
-    if (manifest.version === current) { setUpd({ phase: 'uptodate', version: current }); return; }
+    if (!isNewerVersion(manifest.version, current)) { setUpd({ phase: 'uptodate', version: current }); return; }
     setUpd({ phase: 'available', manifest, version: manifest.version });
   };
   const startDownload = async () => {
